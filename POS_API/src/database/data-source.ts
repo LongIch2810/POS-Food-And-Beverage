@@ -1,7 +1,8 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { AuthRateEvent } from '../auth/entities/auth-rate-event.entity';
-import { Branch } from './entities/branch.entity';
+import { Branch } from '../organization/entities/branch.entity';
+import { DiningTable } from '../organization/entities/dining-table.entity';
 import { Permission } from '../auth/entities/permission.entity';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { Role } from '../auth/entities/role.entity';
@@ -15,6 +16,7 @@ if (!databaseUrl) throw new Error('DATABASE_URL is required');
 export const entities = [
   Store,
   Branch,
+  DiningTable,
   Role,
   Permission,
   RolePermission,

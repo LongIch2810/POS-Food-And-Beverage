@@ -4,7 +4,7 @@ import { Request, Response } from 'express';
 import { httpError } from '../../http/http-error';
 import { AccessGuard, AuthenticatedRequest, RequirePermission } from '../../auth/security/access.guard';
 import { dataResponse } from '../../http/api-response';
-import { CreateOwnerDto, CreateStoreDto, platformValidationPipe, SuspendStoreDto } from './platform.dto';
+import { CreateStoreDto, platformValidationPipe, SuspendStoreDto } from './platform.dto';
 import { PlatformService } from '../platform.service';
 import { platformPage } from '../platform.pagination';
 
@@ -14,7 +14,6 @@ function validId(id: string): string {
   if (!uuid.test(id)) throw httpError(422, 'VALIDATION_ERROR', 'Mã tài nguyên không hợp lệ.');
   return id;
 }
-
 function noInput(request: Request, query: boolean): void {
   if ((!query && Object.keys(request.query).length) || request.body !== undefined
     || Number(request.header('Content-Length')) > 0 || request.header('Transfer-Encoding')) {
@@ -72,37 +71,5 @@ export class PlatformController {
     noInput(request, false);
     return dataResponse({ store: await this.platform.setStoreStatus(validId(id), 'ACTIVE', undefined,
       request.authUser!.id, requestId(response)) });
-  }
-}
-
-@Controller('api/v1/users')
-@UseGuards(AccessGuard)
-export class PlatformUsersController {
-  constructor(private readonly platform: PlatformService) {}
-
-  @Get()
-  @RequirePermission('user.read_owner')
-  async list(@Req() request: Request) {
-    noInput(request, true);
-    return this.platform.listOwners(platformPage(request.query, 'owners'));
-  }
-
-  @Post()
-  @RequirePermission('user.create_owner')
-  @ApiBody({ type: CreateOwnerDto })
-  async create(@Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response,
-    @Body(platformValidationPipe) input: CreateOwnerDto) {
-    jsonInput(request);
-    validId(input.storeId);
-    return dataResponse(await this.platform.addOwner(input, request.authUser!.id, requestId(response)));
-  }
-
-  @Post(':id/reset-password')
-  @HttpCode(200)
-  @RequirePermission('user.reset_owner_password')
-  async resetPassword(@Param('id') id: string, @Req() request: AuthenticatedRequest,
-    @Res({ passthrough: true }) response: Response) {
-    noInput(request, false);
-    return dataResponse(await this.platform.resetOwnerPassword(validId(id), request.authUser!.id, requestId(response)));
   }
 }
