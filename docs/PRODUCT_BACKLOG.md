@@ -1,8 +1,8 @@
 # PRODUCT_BACKLOG
 
-**Trạng thái:** Product Backlog còn được refinement. Thứ tự dưới đây là ưu tiên đề xuất cho MVP; [Sprint 2 đã kết thúc ngày 30/10/2026](../sprints/sprint-02/SPRINT.md#kết-luận-sprint-2--2026-10-30). Chưa chốt Sprint Backlog tiếp theo. Bảng này không thay thế đặc tả endpoint.
+**Trạng thái:** Product Backlog còn được refinement. Thứ tự dưới đây là ưu tiên đề xuất cho MVP; [Sprint 2 đã kết thúc ngày 30/10/2026](../sprints/sprint-02/SPRINT.md#kết-luận-sprint-2--2026-10-30). [Sprint 3 đã kết thúc và được Product Owner nghiệm thu local ngày 01/11/2026](../sprints/sprint-03/SPRINT.md#kết-luận-sprint-3--2026-11-01): PB-04 + PB-13 tổ chức. Lịch ban đầu 30/10–05/11/2026 được giữ trong hồ sơ; sprint kết thúc sớm. Chưa nghiệm thu CI/production hoặc toàn bộ PB-13. Bảng này không thay thế đặc tả endpoint.
 
-Nguồn phạm vi: [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md) mục 5; quy tắc chi tiết ở [BUSINESS_RULES.md](BUSINESS_RULES.md). PB-01, PB-02 và lát cắt xác thực của PB-13 đã được Product Owner nghiệm thu. Ngày30/10/2026, PB-03 và PB-13 lát cắt quản trị nền tảng được nghiệm thu local theo phạm vi và bằng chứng trong [Sprint 2](../sprints/sprint-02/SPRINT.md). UI đăng nhập/quản trị nền tảng dùng API thật, các màn vận hành vẫn là demo mock. Mỗi item cần refinement và spec đã chốt trong `specs/` trước khi code phần tương ứng.
+Nguồn phạm vi: [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md) mục 5; quy tắc chi tiết ở [BUSINESS_RULES.md](BUSINESS_RULES.md). PB-01, PB-02 và lát cắt xác thực của PB-13 đã được Product Owner nghiệm thu. Ngày30/10/2026, PB-03 và PB-13 lát cắt quản trị nền tảng được nghiệm thu local theo phạm vi và bằng chứng trong [Sprint 2](../sprints/sprint-02/SPRINT.md). Ngày01/11/2026, PB-04 và PB-13 tổ chức được nghiệm thu local trong Sprint 3. UI đăng nhập/quản trị nền tảng/Cài đặt tổ chức dùng API thật; các màn POS, ca, thực đơn, kho và báo cáo vẫn là demo mock. Mỗi item cần refinement và spec đã chốt trong `specs/` trước khi code phần tương ứng.
 
 ## Product Backlog MVP
 
@@ -28,13 +28,23 @@ Mỗi PB được tách thành item nhỏ khi refinement. Các mục Giai đoạ
 
 ## Việc theo dõi sau Sprint 2
 
-PB-03 và PB-13 quản trị nền tảng đã nghiệm thu trong phạm vi đã chốt; không có item thuộc phạm vi đó bị trả lại vì không đạt. Các việc dưới tiếp tục theo dependency hoặc phạm vi đã hoãn, chưa phải cam kết Sprint 3:
+PB-03 và PB-13 quản trị nền tảng đã nghiệm thu trong phạm vi đã chốt; không có item thuộc phạm vi đó bị trả lại vì không đạt. PB-04 và PB-13 tổ chức sau đó đã được nghiệm thu local trong Sprint 3; các việc khác dưới đây tiếp tục theo dependency hoặc phạm vi đã hoãn:
 
 | Việc | Theo dõi tại | Điều kiện tiếp tục |
 | --- | --- | --- |
-| Chi nhánh, bàn, tài khoản MANAGER/CASHIER và UI thật | PB-04 + PB-13 tương ứng | Refinement và chốt spec tổ chức trước code; PB-04 là ưu tiên đề xuất tiếp theo. |
+| Chi nhánh, bàn, tài khoản MANAGER/CASHIER và UI thật | PB-04 + PB-13 tương ứng | Đã hoàn tất và được Product Owner nghiệm thu local ngày01/11/2026; [kết luận Sprint 3](../sprints/sprint-03/SPRINT.md#kết-luận-sprint-3--2026-11-01) dẫn bằng chứng và giới hạn. Chưa xác nhận production. |
 | Chặn PLATFORM_ADMIN qua HTTP trên từng API vận hành thật | PB-06 đến PB-12 + PB-13 tương ứng | Kiểm tra khi endpoint ca/bán hàng/kho/thanh toán/báo cáo được triển khai; test context hiện tại không thay thế kiểm tra endpoint này. |
 | UI nhật ký quản trị | Giai đoạn 2 | Chỉ triển khai khi có yêu cầu riêng; backend log BR-86 đã có trong PB-03. |
 | Màn vận hành còn mock; vận hành production và sao lưu | Các lát cắt PB-13 còn lại; PB-14 | Không suy từ nghiệm thu local của auth/platform thành hoàn tất toàn bộ UI hoặc production. |
 
-Hồ sơ sprint: [Sprint 1 (đã kết thúc)](../sprints/sprint-01/SPRINT.md), [Sprint 2 (đã kết thúc)](../sprints/sprint-02/SPRINT.md).
+## Việc theo dõi sau Sprint 3
+
+| Việc | Theo dõi tại | Điều kiện tiếp tục |
+| --- | --- | --- |
+| Thực đơn và UI tương ứng | PB-05 + PB-13 | Ưu tiên đề xuất tiếp theo; cần refinement và chốt riêng, chưa cam kết Sprint 4. |
+| Khóa sửa quỹ sau ca CASHIER đầu tiên | PB-06 | Tích hợp kiểm tra lịch sử ca dưới cùng khóa Branch với mở ca, trước khi bật API mở ca; chưa nghiệm thu hành vi sau ca. |
+| API vận hành và UI còn dùng mock | PB-06..PB-12 + PB-13 | Triển khai và kiểm tra từng endpoint thật theo dependency; chưa nằm trong nghiệm thu Sprint 3. |
+| Timeout cleanup DB QA lần đầu | [Error record](../errors/2026-11-01-pb13-api-qa-cleanup-timeout.md) | Lượt chạy lại qua48/48; nguyên nhân sâu chưa xác minh, giữ log để theo dõi. |
+| Tích hợp Git, CI và production | Quy trình Git; PB-14 | Ngày02/11 đã tách commit API/UI/bằng chứng theo yêu cầu PO; push/CI theo task commit-push Sprint 3. Chưa merge; nghiệm thu local không thay thế CI, triển khai, sao lưu hoặc khôi phục. |
+
+Hồ sơ sprint: [Sprint 1 (đã kết thúc)](../sprints/sprint-01/SPRINT.md), [Sprint 2 (đã kết thúc)](../sprints/sprint-02/SPRINT.md), [Sprint 3 (đã kết thúc, nghiệm thu local)](../sprints/sprint-03/SPRINT.md).

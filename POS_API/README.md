@@ -1,6 +1,6 @@
-# POS API local — PB-01/PB-02/PB-03
+# POS API local — PB-01/PB-02/PB-03/PB-04
 
-Yêu cầu: Node.js 22, Docker Desktop và Docker Compose. UI xác thực và quản trị nền tảng đã nối API; các màn vận hành còn dùng dữ liệu mô phỏng.
+Yêu cầu: Node.js 22, Docker Desktop và Docker Compose. UI xác thực, quản trị nền tảng và Cài đặt tổ chức đã nối API; POS/ca/thực đơn/kho/báo cáo còn dùng dữ liệu mô phỏng.
 
 1. Tạo `POS_INFRA/.env.local` từ `.env.example` và đặt username, mật khẩu ngẫu nhiên, tên DB. Không commit file này.
 2. Ở gốc repo chạy `docker compose --env-file POS_INFRA/.env.local -f POS_INFRA/compose.local.yml up -d --wait`.
@@ -26,7 +26,9 @@ src/<module>/
 
 Controller gọi service; service không nhận Express Request/Response. Không tạo thư mục rỗng hoặc thêm lớp trung gian chỉ để khớp mẫu. Auth có thêm cấu hình/cookie/Passport; platform giữ pagination tại gốc module vì controller và service cùng dùng. Không bắt buộc tách mỗi DTO thành một file.
 
-`auth/entities/` chứa User, Role, Permission, RolePermission, RefreshToken và AuthRateEvent; `platform/entities/` chứa Store. Branch tạm ở `database/entities/` đến khi module Organization được triển khai. Import entity trực tiếp, giữ callback TypeORM cho relation và đăng ký đầy đủ trong `database/data-source.ts`; không gom entity liên module qua barrel. `database/` giữ DataSource, DatabaseModule và migration; không sửa migration lịch sử khi chỉ di chuyển source.
+`auth/entities/` chứa User, Role, Permission, RolePermission, RefreshToken và AuthRateEvent; `platform/entities/` chứa Store; `organization/entities/` chứa Branch và DiningTable. Import entity trực tiếp, giữ callback TypeORM cho relation và đăng ký đầy đủ trong `database/data-source.ts`; không gom entity liên module qua barrel. `database/` giữ DataSource, DatabaseModule và migration; không sửa migration lịch sử khi chỉ di chuyển source.
+
+PB-04 cung cấp GET/POST/PATCH `/api/v1/branches`, `/api/v1/dining-tables`, và luồng staff GET/POST/PATCH/reset trong `/api/v1/users`; luồng OWNER của platform giữ hợp đồng cũ. Xem [spec tổ chức](../specs/organization.md), [spec nhân viên](../specs/users.md), [UI tổ chức](../specs/organization-ui.md). PB-13 đã nối Cài đặt với API; kiểm tra khóa sửa quỹ sau ca đầu tiên thuộc PB-06. Test bổ sung tạo/xóa DB thử riêng prefix `pos_pb04_test_` và `pos_pb04_migration_`.
 
 `src/http/` giữ response envelope, helper/filter lỗi và health controller dùng chung. `src/main.ts`, `src/app.module.ts`, bootstrap admin và Swagger setup ở cấp ứng dụng. Chi tiết ranh giới xem [ARCHITECTURE.md](../docs/architecture/ARCHITECTURE.md#51-backend-một-modular-monolith).
 
