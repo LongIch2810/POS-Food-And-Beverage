@@ -35,3 +35,9 @@
 - Áp dụng: Khi phỏng vấn, tạo, sửa hoặc rà soát đặc tả chức năng hay endpoint POS, kể cả khi việc viết spec là một bước trong task triển khai.
 - Bài học: Chủ động đọc và áp dụng `.agents/skills/create-pos-spec/SKILL.md` trước khi làm spec; đối chiếu tài liệu, trình bản nháp, hỏi các quyết định còn mở và chỉ ghi vào `specs/` sau khi đã chốt. Thông tin có sẵn không thay thế bước rà và chốt.
 - Căn cứ: Người dùng nhắc kiểm tra việc dùng skill khi lập `specs/platform.md` ngày 2026-10-30; phần mô tả và quy trình của `.agents/skills/create-pos-spec/SKILL.md`.
+
+## JsonBodyGuard và HTTP Client cho các request DELETE / 204 No Content
+
+- Áp dụng: API Guard validate Content-Type application/json và Frontend fetch client xử lý response status.
+- Bài học: Request `DELETE` thông thường không có body; `JsonBodyGuard` phải bỏ qua kiểm tra Content-Type cho `DELETE` để không trả 400 sai. Phía client UI `request()` phải kiểm tra `response.status === 204` để trả về `undefined` thay vì parse JSON `response.json()` gây crash `UNKNOWN` error.
+- Căn cứ: Sửa `JsonBodyGuard` trong `POS_API/src/http/request-validation.ts` và `request()` trong `POS_UI/src/http/client.ts`; xác minh qua `menu.integration.test.ts` (MENU-01, MENU-02) và `menu-service.test.mjs` (PB13-MENU-HTTP).

@@ -1,0 +1,4 @@
+
+> pos-api@0.1.0 build
+> node ./node_modules/typescript/bin/tsc -p tsconfig.json
+

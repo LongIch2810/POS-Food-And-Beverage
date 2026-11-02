@@ -100,7 +100,9 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
         }
         return <ShiftsScreen onNavigateToInvoice={handleNavigateToInvoice} />;
       case 'products':
-        if (!has('product.manage')) return <AccessDenied message="Yêu cầu quyền quản lý thực đơn (product.manage)." />;
+        if (!has('menu.read') && !has('menu.manage') && !has('product.manage')) {
+          return <AccessDenied message="Yêu cầu quyền xem hoặc quản lý thực đơn (menu.read hoặc menu.manage)." />;
+        }
         return <ProductsScreen />;
       case 'inventory':
         if (!has('inventory.view')) return <AccessDenied message="Yêu cầu quyền xem kho hàng (inventory.view)." />;
@@ -148,7 +150,11 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {currentTab !== 'settings' && !currentTab.startsWith('platform_') && <div role="status" style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning)', padding: '8px 16px', textAlign: 'center' }}>Màn hình này dùng dữ liệu mẫu, chưa kết nối API.</div>}
+      {currentTab !== 'settings' && currentTab !== 'products' && !currentTab.startsWith('platform_') && (
+        <div role="status" style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning)', padding: '8px 16px', textAlign: 'center' }}>
+          Màn hình này dùng dữ liệu mẫu, chưa kết nối API.
+        </div>
+      )}
       {error && <div role="alert">{error}</div>}
 
       <AppShell currentTab={currentTab} onSelectTab={setCurrentTab}>

@@ -1,144 +1,248 @@
-// POS-F&B Products, Toppings, Categories, and Promotions Screen per DESIGN.md & BR-11, BR-12, BR-36..BR-41, BR-48, BR-49
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { productService, ProductDetailItem } from './productService';
-import { mockStorage } from '../../mock/mockStorage';
-import { MockEngine } from '../../mock/mockEngine';
-import { Category, Topping, PromotionCode } from '../../types/entities';
+import {
+  menuService,
+  MenuCategory,
+  MenuProduct,
+  MenuSize,
+  MenuTopping,
+} from '../../services/menuService';
 import { formatVND } from '../../utils/formatters';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Dialog } from '../../components/ui/Dialog';
 import { Field } from '../../components/ui/Field';
 import { DataTable, Column } from '../../components/ui/DataTable';
-import { RecipeModal } from './RecipeModal';
 import {
   UtensilsCrossed,
   Layers,
   Sparkles,
-  Ticket,
   Plus,
-  BookOpen,
   Edit2,
   Power,
   Check,
+  Trash2,
+  Upload,
+  Image as ImageIcon,
+  Ruler,
+  RefreshCw,
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
 export const ProductsScreen: React.FC = () => {
   const { session } = useAuth();
   const { showToast } = useToast();
-  const canManageProducts = session.permissions.includes('product.manage');
-  const storeId = MockEngine.getCurrentUser().store_id || 'store-1';
+  const canManageMenu =
+    session.permissions.includes('menu.manage') ||
+    session.permissions.includes('product.manage') ||
+    session?.user?.role_code === 'OWNER' ||
+    session?.user?.role_code === 'MANAGER';
 
-  const [activeMainTab, setActiveMainTab] = useState<'products' | 'toppings' | 'categories' | 'promotions'>('products');
+  const [activeMainTab, setActiveMainTab] = useState<'products' | 'toppings' | 'categories' | 'sizes' | 'promotions'>('products');
 
-  // Products state
-  const [productsWithDetails, setProductsWithDetails] = useState<ProductDetailItem[]>(() =>
-    productService.getProductsWithDetails(storeId)
-  );
+  // Real data state
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [sizes, setSizes] = useState<MenuSize[]>([]);
+  const [products, setProducts] = useState<MenuProduct[]>([]);
+  const [toppings, setToppings] = useState<MenuTopping[]>([]);
+  const [categoryToppingsMap, setCategoryToppingsMap] = useState<Record<string, string[]>>({});
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('ALL');
-  const [categories, setCategories] = useState<Category[]>(() => productService.getCategories(storeId));
-  const [toppings, setToppings] = useState<Topping[]>(() => productService.getToppings(storeId));
-  const [promotions, setPromotions] = useState<PromotionCode[]>(() => productService.getPromotions(storeId));
+  const [loading, setLoading] = useState(true);
+
+  // File upload ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingProductId, setUploadingProductId] = useState<string | null>(null);
 
   // Modals state
-  const [editingRecipe, setEditingRecipe] = useState<{
-    productName?: string;
-    sizeName?: string;
-    productSizeId?: string;
-    toppingName?: string;
-    toppingId?: string;
-  } | null>(null);
-
-  // Category Modal
+  // 1. Category Modal
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingCategory, setEditingCategory] = useState<MenuCategory | null>(null);
   const [categoryName, setCategoryName] = useState('');
+  const [categoryDescription, setCategoryDescription] = useState('');
   const [categorySortOrder, setCategorySortOrder] = useState('1');
 
-  // Product Modal
+  // 2. Size Modal
+  const [sizeModalOpen, setSizeModalOpen] = useState(false);
+  const [editingSize, setEditingSize] = useState<MenuSize | null>(null);
+  const [sizeName, setSizeName] = useState('');
+  const [sizeSortOrder, setSizeSortOrder] = useState('1');
+
+  // 3. Product Modal
   const [productModalOpen, setProductModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<ProductDetailItem['product'] | null>(null);
+  const [editingProduct, setEditingProduct] = useState<MenuProduct | null>(null);
   const [productCategoryId, setProductCategoryId] = useState('');
   const [productName, setProductName] = useState('');
   const [productDescription, setProductDescription] = useState('');
 
-  // Price Edit Modal
+  // 4. Product Add Size & Price Modal
+  const [addSizeModalOpen, setAddSizeModalOpen] = useState(false);
+  const [targetProductForSize, setTargetProductForSize] = useState<MenuProduct | null>(null);
+  const [selectedSizeId, setSelectedSizeId] = useState('');
+  const [newSizePrice, setNewSizePrice] = useState('29000');
+
+  // 5. Price Edit Modal
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [editingProductSize, setEditingProductSize] = useState<{ id: string; name: string; size: string; price: string } | null>(null);
 
-  // Topping Modal
+  // 6. Topping Modal
   const [toppingModalOpen, setToppingModalOpen] = useState(false);
-  const [editingTopping, setEditingTopping] = useState<Topping | null>(null);
+  const [editingTopping, setEditingTopping] = useState<MenuTopping | null>(null);
   const [toppingName, setToppingName] = useState('');
   const [toppingPrice, setToppingPrice] = useState('5000');
 
-  // Category-Topping Mapping Modal
-  const [mappingTopping, setMappingTopping] = useState<Topping | null>(null);
+  // 7. Category-Topping Mapping Modal
+  const [mappingTopping, setMappingTopping] = useState<MenuTopping | null>(null);
 
-  // Promotion Modal
-  const [promoModalOpen, setPromoModalOpen] = useState(false);
-  const [promoCode, setPromoCode] = useState('');
-  const [promoType, setPromoType] = useState<'PERCENT' | 'FIXED'>('PERCENT');
-  const [promoValue, setPromoValue] = useState('10');
-  const [promoMinOrder, setPromoMinOrder] = useState('50000');
-  const [promoMaxDiscount, setPromoMaxDiscount] = useState('30000');
-  const [promoUsageLimit, setPromoUsageLimit] = useState('100');
+  // Load data from real API
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [catList, sizeList, prodList, topList] = await Promise.all([
+        menuService.getAllCategories(),
+        menuService.getSizes(),
+        menuService.getAllProducts(),
+        menuService.getAllToppings(),
+      ]);
 
-  const refresh = () => {
-    setProductsWithDetails(productService.getProductsWithDetails(storeId));
-    setCategories(productService.getCategories(storeId));
-    setToppings(productService.getToppings(storeId));
-    setPromotions(productService.getPromotions(storeId));
-  };
+      setCategories(catList);
+      setSizes(sizeList);
+      setProducts(prodList);
+      setToppings(topList);
+
+      // Load category-topping relationships only for active category or toppings tab
+      if (activeMainTab === 'toppings' || activeCategoryFilter !== 'ALL') {
+        const targetCats = activeCategoryFilter !== 'ALL'
+          ? catList.filter((c) => c.id === activeCategoryFilter)
+          : catList;
+        const mapping: Record<string, string[]> = { ...categoryToppingsMap };
+        await Promise.all(
+          targetCats.map(async (cat) => {
+            try {
+              const tops = await menuService.getCategoryToppings(cat.id);
+              mapping[cat.id] = tops.map((t) => t.id);
+            } catch {
+              mapping[cat.id] = [];
+            }
+          }),
+        );
+        setCategoryToppingsMap(mapping);
+      }
+    } catch (err: any) {
+      showToast({ type: 'error', message: err?.message || 'Không thể tải dữ liệu thực đơn.' });
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast]);
 
   useEffect(() => {
-    const unsubscribe = mockStorage.subscribe(refresh);
-    return () => unsubscribe();
-  }, [storeId]);
+    loadData();
+  }, [loadData]);
 
   // --- CATEGORY ACTIONS ---
   const handleOpenCreateCategory = () => {
     setEditingCategory(null);
     setCategoryName('');
+    setCategoryDescription('');
     setCategorySortOrder((categories.length + 1).toString());
     setCategoryModalOpen(true);
   };
 
-  const handleOpenEditCategory = (cat: Category) => {
+  const handleOpenEditCategory = (cat: MenuCategory) => {
     setEditingCategory(cat);
     setCategoryName(cat.name);
-    setCategorySortOrder(cat.sort_order.toString());
+    setCategoryDescription(cat.description || '');
+    setCategorySortOrder(cat.sortOrder.toString());
     setCategoryModalOpen(true);
   };
 
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const order = parseInt(categorySortOrder, 10) || 1;
+      const order = parseInt(categorySortOrder, 10) || 0;
       if (editingCategory) {
-        await productService.updateCategory(editingCategory.id, { name: categoryName, sort_order: order });
+        await menuService.patchCategory(editingCategory.id, {
+          name: categoryName,
+          description: categoryDescription || null,
+          sortOrder: order,
+        });
         showToast({ type: 'success', message: 'Cập nhật danh mục thành công' });
       } else {
-        await productService.createCategory(categoryName, order);
+        await menuService.createCategory({
+          name: categoryName,
+          description: categoryDescription || null,
+          sortOrder: order,
+        });
         showToast({ type: 'success', message: 'Tạo danh mục mới thành công' });
       }
       setCategoryModalOpen(false);
-      refresh();
+      loadData();
     } catch (err: any) {
       showToast({ type: 'error', message: err?.message || 'Lỗi lưu danh mục' });
     }
   };
 
-  const handleToggleCategoryActive = async (cat: Category) => {
+  const handleToggleCategoryActive = async (cat: MenuCategory) => {
     try {
-      await productService.toggleCategoryActive(cat.id);
-      showToast({ type: 'info', message: `Đã ${cat.is_active ? 'ngưng dùng' : 'mở lại'} danh mục ${cat.name}` });
-      refresh();
+      await menuService.patchCategory(cat.id, { isActive: !cat.isActive });
+      showToast({ type: 'info', message: `Đã ${cat.isActive ? 'ngưng dùng' : 'kích hoạt lại'} danh mục ${cat.name}` });
+      loadData();
     } catch (err: any) {
       showToast({ type: 'error', message: err?.message || 'Không thể đổi trạng thái danh mục' });
+    }
+  };
+
+  const handleDeleteCategory = async (cat: MenuCategory) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa danh mục "${cat.name}"?`)) return;
+    try {
+      await menuService.deleteCategory(cat.id);
+      showToast({ type: 'success', message: `Đã xóa danh mục ${cat.name}` });
+      loadData();
+    } catch (err: any) {
+      showToast({ type: 'error', message: err?.message || 'Không thể xóa danh mục đang có món.' });
+    }
+  };
+
+  // --- SIZE ACTIONS ---
+  const handleOpenCreateSize = () => {
+    setEditingSize(null);
+    setSizeName('');
+    setSizeSortOrder((sizes.length + 1).toString());
+    setSizeModalOpen(true);
+  };
+
+  const handleOpenEditSize = (s: MenuSize) => {
+    setEditingSize(s);
+    setSizeName(s.name);
+    setSizeSortOrder(s.sortOrder.toString());
+    setSizeModalOpen(true);
+  };
+
+  const handleSaveSize = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const order = parseInt(sizeSortOrder, 10) || 0;
+      if (editingSize) {
+        await menuService.patchSize(editingSize.id, { name: sizeName, sortOrder: order });
+        showToast({ type: 'success', message: 'Cập nhật kích cỡ thành công' });
+      } else {
+        await menuService.createSize({ name: sizeName, sortOrder: order });
+        showToast({ type: 'success', message: 'Tạo kích cỡ mới thành công' });
+      }
+      setSizeModalOpen(false);
+      loadData();
+    } catch (err: any) {
+      showToast({ type: 'error', message: err?.message || 'Lỗi lưu kích cỡ' });
+    }
+  };
+
+  const handleDeleteSize = async (s: MenuSize) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa kích cỡ "${s.name}"?`)) return;
+    try {
+      await menuService.deleteSize(s.id);
+      showToast({ type: 'success', message: `Đã xóa kích cỡ ${s.name}` });
+      loadData();
+    } catch (err: any) {
+      showToast({ type: 'error', message: err?.message || 'Không thể xóa kích cỡ đang được sử dụng.' });
     }
   };
 
@@ -151,9 +255,9 @@ export const ProductsScreen: React.FC = () => {
     setProductModalOpen(true);
   };
 
-  const handleOpenEditProduct = (prod: ProductDetailItem['product']) => {
+  const handleOpenEditProduct = (prod: MenuProduct) => {
     setEditingProduct(prod);
-    setProductCategoryId(prod.category_id);
+    setProductCategoryId(prod.categoryId);
     setProductName(prod.name);
     setProductDescription(prod.description || '');
     setProductModalOpen(true);
@@ -163,37 +267,123 @@ export const ProductsScreen: React.FC = () => {
     e.preventDefault();
     try {
       if (editingProduct) {
-        await productService.updateProduct(editingProduct.id, {
-          category_id: productCategoryId,
+        await menuService.patchProduct(editingProduct.id, {
+          categoryId: productCategoryId,
           name: productName,
-          description: productDescription,
+          description: productDescription || null,
         });
         showToast({ type: 'success', message: 'Cập nhật thông tin món thành công' });
       } else {
-        await productService.createProduct(productCategoryId, productName, productDescription);
+        await menuService.createProduct({
+          categoryId: productCategoryId,
+          name: productName,
+          description: productDescription || null,
+        });
         showToast({ type: 'success', message: 'Thêm món mới thành công' });
       }
       setProductModalOpen(false);
-      refresh();
+      loadData();
     } catch (err: any) {
       showToast({ type: 'error', message: err?.message || 'Lỗi lưu món' });
     }
   };
 
-  const handleToggleProductActive = async (prod: ProductDetailItem['product']) => {
+  const handleToggleProductActive = async (prod: MenuProduct) => {
     try {
-      await productService.toggleProductActive(prod.id);
-      showToast({ type: 'info', message: `Đã ${prod.is_active ? 'ngưng bán' : 'mở bán lại'} món ${prod.name}` });
-      refresh();
+      await menuService.patchProduct(prod.id, { isActive: !prod.isActive });
+      showToast({ type: 'info', message: `Đã ${prod.isActive ? 'ngưng bán' : 'mở bán lại'} món ${prod.name}` });
+      loadData();
     } catch (err: any) {
       showToast({ type: 'error', message: err?.message || 'Không thể đổi trạng thái món' });
     }
   };
 
-  // --- PRICE EDIT ACTIONS ---
-  const handleOpenPriceModal = (prodName: string, sizeName: string, sizeId: string, currentPrice: bigint) => {
+  const handleDeleteProduct = async (prod: MenuProduct) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa món "${prod.name}"?`)) return;
+    try {
+      await menuService.deleteProduct(prod.id);
+      showToast({ type: 'success', message: `Đã xóa món ${prod.name}` });
+      loadData();
+    } catch (err: any) {
+      showToast({ type: 'error', message: err?.message || 'Không thể xóa món đã cấu hình giá hoặc có hóa đơn.' });
+    }
+  };
+
+  // --- IMAGE ACTIONS ---
+  const handleTriggerUpload = (productId: string) => {
+    setUploadingProductId(productId);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadingProductId) return;
+
+    if (file.size > 2000000) {
+      showToast({ type: 'error', message: 'Dung lượng ảnh tối đa 2 MB.' });
+      return;
+    }
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      showToast({ type: 'error', message: 'Chỉ chấp nhận định dạng JPEG, PNG hoặc WebP.' });
+      return;
+    }
+
+    try {
+      await menuService.uploadProductImage(uploadingProductId, file);
+      showToast({ type: 'success', message: 'Tải ảnh món lên thành công!' });
+      loadData();
+    } catch (err: any) {
+      showToast({ type: 'error', message: err?.message || 'Lỗi tải ảnh món.' });
+    } finally {
+      setUploadingProductId(null);
+    }
+  };
+
+  const handleDeleteImage = async (productId: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn gỡ ảnh đại diện của món này?')) return;
+    try {
+      await menuService.deleteProductImage(productId);
+      showToast({ type: 'info', message: 'Đã gỡ ảnh món.' });
+      loadData();
+    } catch (err: any) {
+      showToast({ type: 'error', message: err?.message || 'Lỗi gỡ ảnh món.' });
+    }
+  };
+
+  // --- PRODUCT SIZE & PRICE ACTIONS ---
+  const handleOpenAddSize = (prod: MenuProduct) => {
+    setTargetProductForSize(prod);
+    const existingSizeIds = prod.sizes.map((s) => s.sizeId);
+    const availableSizes = sizes.filter((s) => !existingSizeIds.includes(s.id));
+    setSelectedSizeId(availableSizes[0]?.id || '');
+    setNewSizePrice('29000');
+    setAddSizeModalOpen(true);
+  };
+
+  const handleSaveNewProductSize = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetProductForSize || !selectedSizeId) return;
+    try {
+      const price = parseInt(newSizePrice.replace(/\D/g, ''), 10) || 0;
+      await menuService.createProductSize(targetProductForSize.id, {
+        sizeId: selectedSizeId,
+        price,
+      });
+      showToast({ type: 'success', message: 'Thêm kích cỡ và giá bán thành công!' });
+      setAddSizeModalOpen(false);
+      loadData();
+    } catch (err: any) {
+      showToast({ type: 'error', message: err?.message || 'Lỗi gán kích cỡ cho món' });
+    }
+  };
+
+  const handleOpenPriceModal = (prodName: string, sizeName: string, productSizeId: string, currentPrice: number) => {
     setEditingProductSize({
-      id: sizeId,
+      id: productSizeId,
       name: prodName,
       size: sizeName,
       price: currentPrice.toString(),
@@ -205,16 +395,27 @@ export const ProductsScreen: React.FC = () => {
     e.preventDefault();
     if (!editingProductSize) return;
     try {
-      const price = BigInt(editingProductSize.price.replace(/\D/g, '') || '0');
-      await productService.updateProductSizePrice(editingProductSize.id, price);
+      const price = parseInt(editingProductSize.price.replace(/\D/g, ''), 10) || 0;
+      await menuService.patchProductSize(editingProductSize.id, { price });
       showToast({
         type: 'success',
-        message: `Đã cập nhật giá bán. Đơn đã lập trước đó vẫn giữ nguyên snapshot giá cũ.`,
+        message: 'Đã cập nhật giá bán mới. Hóa đơn cũ vẫn giữ nguyên snapshot.',
       });
       setPriceModalOpen(false);
-      refresh();
+      loadData();
     } catch (err: any) {
-      showToast({ type: 'error', message: err?.message || 'Lỗi cập nhật giá' });
+      showToast({ type: 'error', message: err?.message || 'Lỗi cập nhật giá bán' });
+    }
+  };
+
+  const handleDeleteProductSize = async (productSizeId: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn gỡ kích cỡ này khỏi món?')) return;
+    try {
+      await menuService.deleteProductSize(productSizeId);
+      showToast({ type: 'success', message: 'Đã gỡ kích cỡ khỏi món.' });
+      loadData();
+    } catch (err: any) {
+      showToast({ type: 'error', message: err?.message || 'Không thể gỡ kích cỡ đã có trong hóa đơn.' });
     }
   };
 
@@ -226,7 +427,7 @@ export const ProductsScreen: React.FC = () => {
     setToppingModalOpen(true);
   };
 
-  const handleOpenEditTopping = (top: Topping) => {
+  const handleOpenEditTopping = (top: MenuTopping) => {
     setEditingTopping(top);
     setToppingName(top.name);
     setToppingPrice(top.price.toString());
@@ -236,180 +437,58 @@ export const ProductsScreen: React.FC = () => {
   const handleSaveTopping = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const price = BigInt(toppingPrice.replace(/\D/g, '') || '0');
+      const price = parseInt(toppingPrice.replace(/\D/g, ''), 10) || 0;
       if (editingTopping) {
-        await productService.updateTopping(editingTopping.id, { name: toppingName, price });
+        await menuService.patchTopping(editingTopping.id, { name: toppingName, price });
         showToast({ type: 'success', message: 'Cập nhật topping thành công' });
       } else {
-        await productService.createTopping(toppingName, price);
+        await menuService.createTopping({ name: toppingName, price });
         showToast({ type: 'success', message: 'Tạo topping mới thành công' });
       }
       setToppingModalOpen(false);
-      refresh();
+      loadData();
     } catch (err: any) {
       showToast({ type: 'error', message: err?.message || 'Lỗi lưu topping' });
     }
   };
 
-  const handleToggleToppingActive = async (top: Topping) => {
+  const handleToggleToppingActive = async (top: MenuTopping) => {
     try {
-      await productService.toggleToppingActive(top.id);
-      showToast({ type: 'info', message: `Đã ${top.is_active ? 'ngưng bán' : 'mở bán lại'} topping ${top.name}` });
-      refresh();
+      await menuService.patchTopping(top.id, { isActive: !top.isActive });
+      showToast({ type: 'info', message: `Đã ${top.isActive ? 'ngưng bán' : 'mở bán lại'} topping ${top.name}` });
+      loadData();
     } catch (err: any) {
       showToast({ type: 'error', message: err?.message || 'Không thể đổi trạng thái topping' });
     }
   };
 
-  // --- PROMOTION ACTIONS ---
-  const handleOpenCreatePromo = () => {
-    setPromoCode('');
-    setPromoType('PERCENT');
-    setPromoValue('10');
-    setPromoMinOrder('50000');
-    setPromoMaxDiscount('30000');
-    setPromoUsageLimit('100');
-    setPromoModalOpen(true);
-  };
-
-  const handleSavePromo = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleDeleteTopping = async (top: MenuTopping) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa topping "${top.name}"?`)) return;
     try {
-      const val = BigInt(promoValue.replace(/\D/g, '') || '0');
-      const minOrder = BigInt(promoMinOrder.replace(/\D/g, '') || '0');
-      const maxDisc = BigInt(promoMaxDiscount.replace(/\D/g, '') || '0');
-      const limit = parseInt(promoUsageLimit, 10) || 100;
-
-      await productService.createPromotion({
-        store_id: storeId,
-        code: promoCode,
-        discount_type: promoType,
-        discount_value: val,
-        min_order_amount: minOrder,
-        max_discount_amount: maxDisc,
-        usage_limit: limit,
-        start_at: new Date().toISOString(),
-        end_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-        is_active: true,
-      });
-      showToast({ type: 'success', message: 'Tạo mã khuyến mãi thành công!' });
-      setPromoModalOpen(false);
-      refresh();
+      await menuService.deleteTopping(top.id);
+      showToast({ type: 'success', message: `Đã xóa topping ${top.name}` });
+      loadData();
     } catch (err: any) {
-      showToast({ type: 'error', message: err?.message || 'Lỗi tạo mã khuyến mãi' });
+      showToast({ type: 'error', message: err?.message || 'Không thể xóa topping đang được gán danh mục.' });
     }
   };
 
-  const handleTogglePromoActive = async (promo: PromotionCode) => {
-    try {
-      await productService.togglePromotionActive(promo.id);
-      showToast({ type: 'info', message: `Đã ${promo.is_active ? 'ngưng áp dụng' : 'kích hoạt lại'} mã ${promo.code}` });
-      refresh();
-    } catch (err: any) {
-      showToast({ type: 'error', message: err?.message || 'Không thể đổi trạng thái mã' });
-    }
-  };
-
-  const filteredProducts = productsWithDetails.filter((item) => {
+  // Filter products by selected category
+  const filteredProducts = products.filter((p) => {
     if (activeCategoryFilter === 'ALL') return true;
-    return item.category.id === activeCategoryFilter;
+    return p.categoryId === activeCategoryFilter;
   });
 
-  const categoryToppings = productService.getCategoryToppings();
-
-  // Columns for Toppings DataTable
-  const toppingColumns: Column<Topping>[] = [
-    { key: 'name', header: 'Tên Topping', render: (t) => <strong>{t.name}</strong> },
-    { key: 'price', header: 'Giá bán', align: 'right', render: (t) => <span className="money">{formatVND(t.price)}</span> },
-    {
-      key: 'categories',
-      header: 'Áp dụng cho Danh mục',
-      render: (t) => {
-        const linkedCats = categoryToppings
-          .filter((ct) => ct.topping_id === t.id)
-          .map((ct) => categories.find((c) => c.id === ct.category_id)?.name)
-          .filter(Boolean);
-        return (
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {linkedCats.length > 0 ? (
-              linkedCats.map((name) => (
-                <Badge key={name} variant="neutral" size="sm">
-                  {name}
-                </Badge>
-              ))
-            ) : (
-              <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Chưa gán</span>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      key: 'status',
-      header: 'Trạng thái',
-      render: (t) => (
-        <Badge variant={t.is_active ? 'success' : 'neutral'} size="sm">
-          {t.is_active ? 'Đang bán' : 'Ngưng bán'}
-        </Badge>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Thao tác',
-      align: 'right',
-      render: (t) => (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-          <Button
-            variant="text"
-            size="sm"
-            style={{ height: 32, padding: '0 8px' }}
-            icon={<BookOpen size={14} />}
-            onClick={() => setEditingRecipe({ toppingName: t.name, toppingId: t.id })}
-          >
-            Định lượng
-          </Button>
-          <Button
-            variant="text"
-            size="sm"
-            style={{ height: 32, padding: '0 8px' }}
-            icon={<Layers size={14} />}
-            onClick={() => setMappingTopping(t)}
-          >
-            Gán danh mục
-          </Button>
-          <Button
-            variant="text"
-            size="sm"
-            style={{ height: 32, padding: '0 8px' }}
-            icon={<Edit2 size={14} />}
-            onClick={() => handleOpenEditTopping(t)}
-          >
-            Sửa
-          </Button>
-          <Button
-            variant="text"
-            size="sm"
-            style={{ height: 32, padding: '0 8px', color: t.is_active ? 'var(--color-danger)' : 'var(--color-success)' }}
-            icon={<Power size={14} />}
-            onClick={() => handleToggleToppingActive(t)}
-          >
-            {t.is_active ? 'Ngưng' : 'Bán lại'}
-          </Button>
-        </div>
-      ),
-    },
-  ];
-
-  // Columns for Categories DataTable
-  const categoryColumns: Column<Category>[] = [
+  // Table Columns
+  const categoryColumns: Column<MenuCategory>[] = [
     { key: 'name', header: 'Tên danh mục', render: (c) => <strong>{c.name}</strong> },
-    { key: 'sort', header: 'Thứ tự hiển thị', align: 'center', render: (c) => <span>{c.sort_order}</span> },
+    { key: 'sort', header: 'Thứ tự', align: 'center', render: (c) => <span>{c.sortOrder}</span> },
     {
       key: 'count',
       header: 'Số món trong nhóm',
       align: 'center',
       render: (c) => {
-        const count = productsWithDetails.filter((p) => p.category.id === c.id).length;
+        const count = products.filter((p) => p.categoryId === c.id).length;
         return <span>{count} món</span>;
       },
     },
@@ -417,8 +496,8 @@ export const ProductsScreen: React.FC = () => {
       key: 'status',
       header: 'Trạng thái',
       render: (c) => (
-        <Badge variant={c.is_active ? 'success' : 'neutral'} size="sm">
-          {c.is_active ? 'Hiển thị' : 'Ẩn'}
+        <Badge variant={c.isActive ? 'success' : 'neutral'} size="sm">
+          {c.isActive ? 'Hiển thị' : 'Ẩn'}
         </Badge>
       ),
     },
@@ -440,51 +519,91 @@ export const ProductsScreen: React.FC = () => {
           <Button
             variant="text"
             size="sm"
-            style={{ height: 32, padding: '0 8px', color: c.is_active ? 'var(--color-danger)' : 'var(--color-success)' }}
+            style={{ height: 32, padding: '0 8px', color: c.isActive ? 'var(--color-danger)' : 'var(--color-success)' }}
             icon={<Power size={14} />}
             onClick={() => handleToggleCategoryActive(c)}
           >
-            {c.is_active ? 'Ẩn' : 'Hiện'}
+            {c.isActive ? 'Ẩn' : 'Hiện'}
+          </Button>
+          <Button
+            variant="text"
+            size="sm"
+            style={{ height: 32, padding: '0 8px', color: 'var(--color-danger)' }}
+            icon={<Trash2 size={14} />}
+            onClick={() => handleDeleteCategory(c)}
+          >
+            Xóa
           </Button>
         </div>
       ),
     },
   ];
 
-  // Columns for Promotions DataTable
-  const promoColumns: Column<PromotionCode>[] = [
-    { key: 'code', header: 'Mã giảm giá', render: (p) => <strong style={{ color: 'var(--color-brand-700)', letterSpacing: '0.05em' }}>{p.code}</strong> },
+  const sizeColumns: Column<MenuSize>[] = [
+    { key: 'name', header: 'Tên kích cỡ', render: (s) => <strong>{s.name}</strong> },
+    { key: 'sort', header: 'Thứ tự hiển thị', align: 'center', render: (s) => <span>{s.sortOrder}</span> },
     {
-      key: 'discount',
-      header: 'Mức giảm',
-      render: (p) => (
-        <span>
-          {p.discount_type === 'PERCENT' ? `${p.discount_value}% (Tối đa ${formatVND(p.max_discount_amount)})` : formatVND(p.discount_value)}
-        </span>
-      ),
-    },
-    {
-      key: 'min',
-      header: 'Đơn tối thiểu',
+      key: 'actions',
+      header: 'Thao tác',
       align: 'right',
-      render: (p) => <span className="money">{formatVND(p.min_order_amount)}</span>,
-    },
-    {
-      key: 'usage',
-      header: 'Lượt dùng',
-      align: 'center',
-      render: (p) => (
-        <span>
-          {p.used_count} / {p.usage_limit}
-        </span>
+      render: (s) => (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+          <Button
+            variant="text"
+            size="sm"
+            style={{ height: 32, padding: '0 8px' }}
+            icon={<Edit2 size={14} />}
+            onClick={() => handleOpenEditSize(s)}
+          >
+            Sửa
+          </Button>
+          <Button
+            variant="text"
+            size="sm"
+            style={{ height: 32, padding: '0 8px', color: 'var(--color-danger)' }}
+            icon={<Trash2 size={14} />}
+            onClick={() => handleDeleteSize(s)}
+          >
+            Xóa
+          </Button>
+        </div>
       ),
+    },
+  ];
+
+  const toppingColumns: Column<MenuTopping>[] = [
+    { key: 'name', header: 'Tên Topping', render: (t) => <strong>{t.name}</strong> },
+    { key: 'price', header: 'Giá bán', align: 'right', render: (t) => <span className="money">{formatVND(BigInt(t.price))}</span> },
+    {
+      key: 'categories',
+      header: 'Áp dụng cho Danh mục',
+      render: (t) => {
+        const linkedCatNames = Object.entries(categoryToppingsMap)
+          .filter(([_, topIds]) => topIds.includes(t.id))
+          .map(([catId]) => categories.find((c) => c.id === catId)?.name)
+          .filter(Boolean);
+
+        return (
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {linkedCatNames.length > 0 ? (
+              linkedCatNames.map((name) => (
+                <Badge key={name} variant="neutral" size="sm">
+                  {name}
+                </Badge>
+              ))
+            ) : (
+              <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Chưa gán</span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'status',
       header: 'Trạng thái',
-      render: (p) => (
-        <Badge variant={p.is_active ? 'success' : 'neutral'} size="sm">
-          {p.is_active ? 'Đang áp dụng' : 'Tạm dừng'}
+      render: (t) => (
+        <Badge variant={t.isActive ? 'success' : 'neutral'} size="sm">
+          {t.isActive ? 'Đang bán' : 'Ngưng bán'}
         </Badge>
       ),
     },
@@ -492,21 +611,50 @@ export const ProductsScreen: React.FC = () => {
       key: 'actions',
       header: 'Thao tác',
       align: 'right',
-      render: (p) => (
-        <Button
-          variant="text"
-          size="sm"
-          style={{ height: 32, padding: '0 8px', color: p.is_active ? 'var(--color-danger)' : 'var(--color-success)' }}
-          icon={<Power size={14} />}
-          onClick={() => handleTogglePromoActive(p)}
-        >
-          {p.is_active ? 'Tắt' : 'Bật'}
-        </Button>
+      render: (t) => (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+          <Button
+            variant="text"
+            size="sm"
+            style={{ height: 32, padding: '0 8px' }}
+            icon={<Layers size={14} />}
+            onClick={() => setMappingTopping(t)}
+          >
+            Gán danh mục
+          </Button>
+          <Button
+            variant="text"
+            size="sm"
+            style={{ height: 32, padding: '0 8px' }}
+            icon={<Edit2 size={14} />}
+            onClick={() => handleOpenEditTopping(t)}
+          >
+            Sửa
+          </Button>
+          <Button
+            variant="text"
+            size="sm"
+            style={{ height: 32, padding: '0 8px', color: t.isActive ? 'var(--color-danger)' : 'var(--color-success)' }}
+            icon={<Power size={14} />}
+            onClick={() => handleToggleToppingActive(t)}
+          >
+            {t.isActive ? 'Ngưng' : 'Bán lại'}
+          </Button>
+          <Button
+            variant="text"
+            size="sm"
+            style={{ height: 32, padding: '0 8px', color: 'var(--color-danger)' }}
+            icon={<Trash2 size={14} />}
+            onClick={() => handleDeleteTopping(t)}
+          >
+            Xóa
+          </Button>
+        </div>
       ),
     },
   ];
 
-  if (!canManageProducts) {
+  if (!canManageMenu) {
     return (
       <div style={{ flex: 1, padding: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center', maxWidth: 420 }}>
@@ -514,7 +662,7 @@ export const ProductsScreen: React.FC = () => {
             Không có quyền truy cập
           </div>
           <p style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
-            Bạn không có quyền quản lý thực đơn (cần quyền product.manage).
+            Bạn không có quyền quản lý thực đơn (yêu cầu quyền menu.manage).
           </p>
         </div>
       </div>
@@ -523,18 +671,30 @@ export const ProductsScreen: React.FC = () => {
 
   return (
     <div style={{ flex: 1, padding: 'clamp(14px, 2.5vw, 24px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Hidden file input for uploading product image */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/jpeg,image/png,image/webp"
+        style={{ display: 'none' }}
+      />
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text)' }}>
-            Quản lý Thực đơn & Khuyến mãi
+            Quản lý Thực đơn
           </h1>
           <p style={{ fontSize: 14, color: 'var(--color-text-muted)', marginTop: 4 }}>
-            Menu, giá bán, công thức pha chế và chương trình giảm giá toàn cửa hàng
+            Danh mục, món ăn, kích cỡ, giá bán và topping dùng chung toàn cửa hàng
           </p>
         </div>
 
-        <div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="secondary" icon={<RefreshCw size={16} />} onClick={loadData} disabled={loading}>
+            Làm mới
+          </Button>
           {activeMainTab === 'products' && (
             <Button variant="primary" icon={<Plus size={16} />} onClick={handleOpenCreateProduct}>
               Thêm món mới
@@ -550,16 +710,16 @@ export const ProductsScreen: React.FC = () => {
               Thêm danh mục
             </Button>
           )}
-          {activeMainTab === 'promotions' && (
-            <Button variant="primary" icon={<Plus size={16} />} onClick={handleOpenCreatePromo}>
-              Tạo mã giảm giá
+          {activeMainTab === 'sizes' && (
+            <Button variant="primary" icon={<Plus size={16} />} onClick={handleOpenCreateSize}>
+              Thêm kích cỡ
             </Button>
           )}
         </div>
       </div>
 
       {/* Main Tabs */}
-      <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--color-border)', paddingBottom: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid var(--color-border)', paddingBottom: 4, overflowX: 'auto' }}>
         <button
           type="button"
           onClick={() => setActiveMainTab('products')}
@@ -578,7 +738,7 @@ export const ProductsScreen: React.FC = () => {
           }}
         >
           <UtensilsCrossed size={16} />
-          <span>Món & Định lượng ({productsWithDetails.length})</span>
+          <span>Món & Giá bán ({products.length})</span>
         </button>
 
         <button
@@ -625,28 +785,34 @@ export const ProductsScreen: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => setActiveMainTab('promotions')}
+          onClick={() => setActiveMainTab('sizes')}
           style={{
             height: 40,
             padding: '0 16px',
             borderRadius: 'var(--radius-pill)',
             border: 'none',
-            background: activeMainTab === 'promotions' ? 'var(--color-brand-100)' : 'transparent',
-            color: activeMainTab === 'promotions' ? 'var(--color-brand-800)' : 'var(--color-text-muted)',
-            fontWeight: activeMainTab === 'promotions' ? 700 : 500,
+            background: activeMainTab === 'sizes' ? 'var(--color-brand-100)' : 'transparent',
+            color: activeMainTab === 'sizes' ? 'var(--color-brand-800)' : 'var(--color-text-muted)',
+            fontWeight: activeMainTab === 'sizes' ? 700 : 500,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
           }}
         >
-          <Ticket size={16} />
-          <span>Mã khuyến mãi ({promotions.length})</span>
+          <Ruler size={16} />
+          <span>Kích cỡ món ({sizes.length})</span>
         </button>
       </div>
 
-      {/* --- TAB 1: MÓN & ĐỊNH LƯỢNG --- */}
-      {activeMainTab === 'products' && (
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)' }}>
+          Đang tải dữ liệu thực đơn...
+        </div>
+      )}
+
+      {/* --- TAB 1: MÓN & GIÁ BÁN --- */}
+      {!loading && activeMainTab === 'products' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Lọc theo danh mục */}
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
@@ -654,7 +820,7 @@ export const ProductsScreen: React.FC = () => {
               type="button"
               onClick={() => setActiveCategoryFilter('ALL')}
               style={{
-                height: 44,
+                height: 40,
                 padding: '0 14px',
                 borderRadius: 'var(--radius-pill)',
                 border: 'none',
@@ -665,7 +831,7 @@ export const ProductsScreen: React.FC = () => {
                 boxShadow: 'var(--shadow-card)',
               }}
             >
-              Tất cả ({productsWithDetails.length})
+              Tất cả ({products.length})
             </button>
             {categories.map((cat) => (
               <button
@@ -673,7 +839,7 @@ export const ProductsScreen: React.FC = () => {
                 type="button"
                 onClick={() => setActiveCategoryFilter(cat.id)}
                 style={{
-                  height: 44,
+                  height: 40,
                   padding: '0 14px',
                   borderRadius: 'var(--radius-pill)',
                   border: 'none',
@@ -691,9 +857,7 @@ export const ProductsScreen: React.FC = () => {
 
           {/* Grid món */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-            {filteredProducts.map(({ product, category, sizes }) => {
-              const hasMissingRecipe = sizes.some((s) => !s.hasRecipe);
-
+            {filteredProducts.map((product) => {
               return (
                 <div
                   key={product.id}
@@ -701,7 +865,7 @@ export const ProductsScreen: React.FC = () => {
                     background: 'var(--color-surface)',
                     border: '1px solid var(--color-border)',
                     borderRadius: 'var(--radius-tile)',
-                    padding: 18,
+                    padding: 16,
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
@@ -709,104 +873,173 @@ export const ProductsScreen: React.FC = () => {
                   }}
                 >
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text)' }}>
-                          {product.name}
-                        </h3>
-                        <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
-                          Danh mục: {category.name}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        {hasMissingRecipe ? (
-                          <Badge variant="warning" size="sm">
-                            Thiếu công thức
-                          </Badge>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      {/* Image container */}
+                      <div
+                        style={{
+                          width: 64,
+                          height: 64,
+                          borderRadius: 8,
+                          background: 'var(--color-neutral-100)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          flexShrink: 0,
+                          border: '1px solid var(--color-border)',
+                        }}
+                      >
+                        {product.imageUrl ? (
+                          <img
+                            src={`${product.imageUrl}?v=${encodeURIComponent(product.updatedAt)}`}
+                            alt={product.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
                         ) : (
-                          <Badge variant="success" size="sm">
-                            Đủ công thức
-                          </Badge>
+                          <ImageIcon size={24} style={{ color: 'var(--color-text-muted)' }} />
                         )}
-                        <Button
-                          variant="text"
-                          size="sm"
-                          style={{ height: 28, padding: '0 4px' }}
-                          onClick={() => handleOpenEditProduct(product)}
-                          title="Sửa thông tin món"
-                        >
-                          <Edit2 size={14} />
-                        </Button>
-                        <Button
-                          variant="text"
-                          size="sm"
-                          style={{ height: 28, padding: '0 4px', color: product.is_active ? 'var(--color-text-muted)' : 'var(--color-danger)' }}
-                          onClick={() => handleToggleProductActive(product)}
-                          title={product.is_active ? 'Ngưng kinh doanh' : 'Mở bán lại'}
-                        >
-                          <Power size={14} />
-                        </Button>
+                      </div>
+
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)' }}>
+                            {product.name}
+                          </h3>
+                          <Badge variant={product.isActive ? 'success' : 'neutral'} size="sm">
+                            {product.isActive ? 'Đang bán' : 'Ngưng bán'}
+                          </Badge>
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                          Nhóm: {product.categoryName}
+                        </div>
+                        {product.description && (
+                          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {product.description}
+                          </p>
+                        )}
                       </div>
                     </div>
 
-                    {product.description && (
-                      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 8 }}>
-                        {product.description}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Các kích cỡ & giá bán */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 12, borderTop: '1px solid var(--color-border)' }}>
-                    {sizes.map((s) => (
-                      <div
-                        key={s.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          fontSize: 14,
-                        }}
+                    {/* Image buttons */}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
+                      <Button
+                        variant="text"
+                        size="sm"
+                        style={{ height: 26, padding: '0 6px', fontSize: 11 }}
+                        icon={<Upload size={12} />}
+                        onClick={() => handleTriggerUpload(product.id)}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontWeight: 600 }}>Size {s.sizeName}:</span>
-                          <span className="money" style={{ color: 'var(--color-brand-600)', fontWeight: 700 }}>
-                            {formatVND(s.price)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenPriceModal(product.name, s.sizeName, s.id, s.price)}
-                            title="Sửa giá bán"
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: 'var(--color-text-muted)',
-                              cursor: 'pointer',
-                              padding: 2,
-                              display: 'inline-flex',
-                            }}
-                          >
-                            <Edit2 size={12} />
-                          </button>
-                        </div>
-
+                        {product.imageUrl ? 'Đổi ảnh' : 'Tải ảnh'}
+                      </Button>
+                      {product.imageUrl && (
                         <Button
                           variant="text"
                           size="sm"
-                          style={{ height: 32, padding: '0 8px', fontSize: 13 }}
-                          icon={<BookOpen size={14} />}
-                          onClick={() =>
-                            setEditingRecipe({
-                              productName: product.name,
-                              sizeName: s.sizeName,
-                              productSizeId: s.id,
-                            })
-                          }
+                          style={{ height: 26, padding: '0 6px', fontSize: 11, color: 'var(--color-danger)' }}
+                          onClick={() => handleDeleteImage(product.id)}
                         >
-                          {s.hasRecipe ? 'Công thức' : 'Cài công thức'}
+                          Gỡ ảnh
                         </Button>
+                      )}
+                      <div style={{ flex: 1 }} />
+                      <Button
+                        variant="text"
+                        size="sm"
+                        style={{ height: 26, padding: '0 6px' }}
+                        onClick={() => handleOpenEditProduct(product)}
+                        title="Sửa thông tin"
+                      >
+                        <Edit2 size={13} />
+                      </Button>
+                      <Button
+                        variant="text"
+                        size="sm"
+                        style={{ height: 26, padding: '0 6px', color: product.isActive ? 'var(--color-text-muted)' : 'var(--color-danger)' }}
+                        onClick={() => handleToggleProductActive(product)}
+                        title={product.isActive ? 'Ngưng bán' : 'Mở bán lại'}
+                      >
+                        <Power size={13} />
+                      </Button>
+                      <Button
+                        variant="text"
+                        size="sm"
+                        style={{ height: 26, padding: '0 6px', color: 'var(--color-danger)' }}
+                        onClick={() => handleDeleteProduct(product)}
+                        title="Xóa món"
+                      >
+                        <Trash2 size={13} />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Kích cỡ & Giá bán */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 10, borderTop: '1px solid var(--color-border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                        CÁC KÍCH CỠ & GIÁ:
+                      </span>
+                      <Button
+                        variant="text"
+                        size="sm"
+                        style={{ height: 24, padding: '0 6px', fontSize: 12 }}
+                        icon={<Plus size={12} />}
+                        onClick={() => handleOpenAddSize(product)}
+                      >
+                        Thêm size
+                      </Button>
+                    </div>
+
+                    {product.sizes.length === 0 ? (
+                      <div style={{ fontSize: 12, color: 'var(--color-warning)', fontStyle: 'italic' }}>
+                        Chưa có kích cỡ và giá (món chưa thể bán tại quầy).
                       </div>
-                    ))}
+                    ) : (
+                      product.sizes.map((s) => (
+                        <div
+                          key={s.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            fontSize: 13,
+                            padding: '3px 0',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontWeight: 600 }}>Size {s.sizeName}:</span>
+                            <span className="money" style={{ color: 'var(--color-brand-600)', fontWeight: 700 }}>
+                              {formatVND(BigInt(s.price))}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPriceModal(product.name, s.sizeName, s.id, s.price)}
+                              title="Đổi giá"
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--color-text-muted)',
+                                cursor: 'pointer',
+                                padding: 2,
+                                display: 'inline-flex',
+                              }}
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                          </div>
+
+                          <Button
+                            variant="text"
+                            size="sm"
+                            style={{ height: 24, padding: '0 4px', color: 'var(--color-text-muted)' }}
+                            onClick={() => handleDeleteProductSize(s.id)}
+                            title="Gỡ size này"
+                          >
+                            <Trash2 size={12} />
+                          </Button>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               );
@@ -816,23 +1049,18 @@ export const ProductsScreen: React.FC = () => {
       )}
 
       {/* --- TAB 2: TOPPING & ÁP DỤNG --- */}
-      {activeMainTab === 'toppings' && (
+      {!loading && activeMainTab === 'toppings' && (
         <DataTable columns={toppingColumns} data={toppings} keyExtractor={(t) => t.id} />
       )}
 
       {/* --- TAB 3: DANH MỤC MÓN --- */}
-      {activeMainTab === 'categories' && (
+      {!loading && activeMainTab === 'categories' && (
         <DataTable columns={categoryColumns} data={categories} keyExtractor={(c) => c.id} />
       )}
 
-      {/* --- TAB 4: MÃ KHUYẾN MÃI --- */}
-      {activeMainTab === 'promotions' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-            Mã giảm giá được kiểm tra theo điều kiện đơn tối thiểu và giới hạn số lượt sử dụng khi áp dụng tại quầy thu ngân.
-          </div>
-          <DataTable columns={promoColumns} data={promotions} keyExtractor={(p) => p.id} />
-        </div>
+      {/* --- TAB 4: KÍCH CỠ MÓN --- */}
+      {!loading && activeMainTab === 'sizes' && (
+        <DataTable columns={sizeColumns} data={sizes} keyExtractor={(s) => s.id} />
       )}
 
       {/* Dialog Thêm/Sửa Món */}
@@ -855,9 +1083,9 @@ export const ProductsScreen: React.FC = () => {
               value={productCategoryId}
               onChange={(e) => setProductCategoryId(e.target.value)}
               style={{
-                height: 48,
+                height: 44,
                 width: '100%',
-                padding: '0 14px',
+                padding: '0 12px',
                 borderRadius: 'var(--radius-control)',
                 border: '1px solid var(--color-border-control)',
                 background: 'var(--color-surface)',
@@ -875,7 +1103,7 @@ export const ProductsScreen: React.FC = () => {
 
           <Field
             label="Tên món"
-            placeholder="VD: Trà sen vàng"
+            placeholder="VD: Cà phê sữa tươi"
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
             required
@@ -883,7 +1111,7 @@ export const ProductsScreen: React.FC = () => {
 
           <Field
             label="Mô tả món (tùy chọn)"
-            placeholder="VD: Vị trà ô long thơm bùi hạt sen..."
+            placeholder="VD: Cà phê Robusta thơm béo sữa tươi..."
             value={productDescription}
             onChange={(e) => setProductDescription(e.target.value)}
           />
@@ -899,6 +1127,65 @@ export const ProductsScreen: React.FC = () => {
         </form>
       </Dialog>
 
+      {/* Dialog Thêm Size & Giá cho món */}
+      <Dialog
+        isOpen={addSizeModalOpen}
+        onClose={() => setAddSizeModalOpen(false)}
+        title={`Thêm kích cỡ cho món: ${targetProductForSize?.name}`}
+        maxWidth={420}
+      >
+        <form onSubmit={handleSaveNewProductSize} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label
+              htmlFor="add-size-select"
+              style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-muted)', display: 'block', marginBottom: 6 }}
+            >
+              Kích cỡ
+            </label>
+            <select
+              id="add-size-select"
+              value={selectedSizeId}
+              onChange={(e) => setSelectedSizeId(e.target.value)}
+              style={{
+                height: 44,
+                width: '100%',
+                padding: '0 12px',
+                borderRadius: 'var(--radius-control)',
+                border: '1px solid var(--color-border-control)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text)',
+                fontSize: 14,
+              }}
+            >
+              {sizes
+                .filter((s) => !targetProductForSize?.sizes.some((ps) => ps.sizeId === s.id))
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    Size {s.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <Field
+            label="Giá bán (VND)"
+            placeholder="29000"
+            value={newSizePrice}
+            onChange={(e) => setNewSizePrice(e.target.value)}
+            required
+          />
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <Button variant="secondary" onClick={() => setAddSizeModalOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="primary" type="submit" disabled={!selectedSizeId}>
+              Xác nhận thêm
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
       {/* Dialog Sửa Giá Bán (BR-12) */}
       <Dialog
         isOpen={priceModalOpen}
@@ -908,7 +1195,7 @@ export const ProductsScreen: React.FC = () => {
       >
         <form onSubmit={handleSavePrice} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-            Lưu ý: Thay đổi giá tại đây chỉ áp dụng cho những đơn hàng được thêm sau thời điểm đổi. Đơn cũ giữ nguyên giá snapshot.
+            Lưu ý: Thay đổi giá tại đây chỉ áp dụng cho những đơn hàng được thêm sau thời điểm đổi. Đơn cũ giữ nguyên giá snapshot (BR-12).
           </p>
           <Field
             label="Giá bán mới (VND)"
@@ -925,6 +1212,39 @@ export const ProductsScreen: React.FC = () => {
             </Button>
             <Button variant="primary" type="submit">
               Xác nhận đổi giá
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      {/* Dialog Thêm/Sửa Kích cỡ */}
+      <Dialog
+        isOpen={sizeModalOpen}
+        onClose={() => setSizeModalOpen(false)}
+        title={editingSize ? 'Chỉnh sửa kích cỡ' : 'Thêm kích cỡ mới'}
+        maxWidth={420}
+      >
+        <form onSubmit={handleSaveSize} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Field
+            label="Tên kích cỡ (VD: M, L, XL)"
+            placeholder="M"
+            value={sizeName}
+            onChange={(e) => setSizeName(e.target.value)}
+            required
+          />
+          <Field
+            label="Thứ tự hiển thị"
+            type="number"
+            value={sizeSortOrder}
+            onChange={(e) => setSizeSortOrder(e.target.value)}
+            required
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <Button variant="secondary" onClick={() => setSizeModalOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="primary" type="submit">
+              {editingSize ? 'Lưu thay đổi' : 'Tạo kích cỡ'}
             </Button>
           </div>
         </form>
@@ -972,13 +1292,11 @@ export const ProductsScreen: React.FC = () => {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-            Chọn những danh mục đồ uống có thể gọi thêm topping này tại màn hình POS:
+            Chọn những danh mục đồ uống có thể gọi thêm topping này tại màn hình POS (BR-11):
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {categories.map((cat) => {
-              const isLinked = categoryToppings.some(
-                (ct) => ct.category_id === cat.id && ct.topping_id === mappingTopping?.id
-              );
+              const isLinked = (categoryToppingsMap[cat.id] || []).includes(mappingTopping?.id || '');
               return (
                 <div
                   key={cat.id}
@@ -987,23 +1305,45 @@ export const ProductsScreen: React.FC = () => {
                   tabIndex={0}
                   onClick={async () => {
                     if (!mappingTopping) return;
-                    if (isLinked) {
-                      await productService.unlinkToppingFromCategory(cat.id, mappingTopping.id);
-                    } else {
-                      await productService.linkToppingToCategory(cat.id, mappingTopping.id);
+                    try {
+                      if (isLinked) {
+                        await menuService.unlinkToppingFromCategory(cat.id, mappingTopping.id);
+                        setCategoryToppingsMap((prev) => ({
+                          ...prev,
+                          [cat.id]: (prev[cat.id] || []).filter((id) => id !== mappingTopping.id),
+                        }));
+                      } else {
+                        await menuService.linkToppingToCategory(cat.id, mappingTopping.id);
+                        setCategoryToppingsMap((prev) => ({
+                          ...prev,
+                          [cat.id]: [...(prev[cat.id] || []), mappingTopping.id],
+                        }));
+                      }
+                    } catch (err: any) {
+                      showToast({ type: 'error', message: err?.message || 'Lỗi cập nhật liên kết' });
                     }
-                    refresh();
                   }}
                   onKeyDown={async (e) => {
                     if (e.key === ' ' || e.key === 'Enter') {
                       e.preventDefault();
                       if (!mappingTopping) return;
-                      if (isLinked) {
-                        await productService.unlinkToppingFromCategory(cat.id, mappingTopping.id);
-                      } else {
-                        await productService.linkToppingToCategory(cat.id, mappingTopping.id);
+                      try {
+                        if (isLinked) {
+                          await menuService.unlinkToppingFromCategory(cat.id, mappingTopping.id);
+                          setCategoryToppingsMap((prev) => ({
+                            ...prev,
+                            [cat.id]: (prev[cat.id] || []).filter((id) => id !== mappingTopping.id),
+                          }));
+                        } else {
+                          await menuService.linkToppingToCategory(cat.id, mappingTopping.id);
+                          setCategoryToppingsMap((prev) => ({
+                            ...prev,
+                            [cat.id]: [...(prev[cat.id] || []), mappingTopping.id],
+                          }));
+                        }
+                      } catch (err: any) {
+                        showToast({ type: 'error', message: err?.message || 'Lỗi cập nhật liên kết' });
                       }
-                      refresh();
                     }
                   }}
                   style={{
@@ -1045,10 +1385,16 @@ export const ProductsScreen: React.FC = () => {
         <form onSubmit={handleSaveCategory} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Field
             label="Tên danh mục"
-            placeholder="VD: Trà hoa quả tươi"
+            placeholder="VD: Cà phê phin"
             value={categoryName}
             onChange={(e) => setCategoryName(e.target.value)}
             required
+          />
+          <Field
+            label="Mô tả danh mục (tùy chọn)"
+            placeholder="VD: Cà phê truyền thống Việt Nam..."
+            value={categoryDescription}
+            onChange={(e) => setCategoryDescription(e.target.value)}
           />
           <Field
             label="Thứ tự hiển thị"
@@ -1067,112 +1413,6 @@ export const ProductsScreen: React.FC = () => {
           </div>
         </form>
       </Dialog>
-
-      {/* Dialog Tạo Mã Giảm Giá (BR-36..BR-41) */}
-      <Dialog
-        isOpen={promoModalOpen}
-        onClose={() => setPromoModalOpen(false)}
-        title="Tạo mã khuyến mãi mới"
-        maxWidth={480}
-      >
-        <form onSubmit={handleSavePromo} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Field
-            label="Mã code (viết hoa không dấu)"
-            placeholder="VD: CHAOHAY2026"
-            value={promoCode}
-            onChange={(e) => setPromoCode(e.target.value.toUpperCase().replace(/\s+/g, ''))}
-            required
-          />
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label
-                htmlFor="promo-type-select"
-                style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-muted)', display: 'block', marginBottom: 6, cursor: 'pointer' }}
-              >
-                Loại giảm giá
-              </label>
-              <select
-                id="promo-type-select"
-                value={promoType}
-                onChange={(e) => setPromoType(e.target.value as 'PERCENT' | 'FIXED')}
-                style={{
-                  height: 48,
-                  width: '100%',
-                  padding: '0 12px',
-                  borderRadius: 'var(--radius-control)',
-                  border: '1px solid var(--color-border-control)',
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text)',
-                  fontSize: 14,
-                }}
-              >
-                <option value="PERCENT">Theo phần trăm (%)</option>
-                <option value="FIXED">Số tiền cố định (VND)</option>
-              </select>
-            </div>
-
-            <Field
-              label={promoType === 'PERCENT' ? 'Tỷ lệ giảm (%)' : 'Số tiền giảm (VND)'}
-              placeholder={promoType === 'PERCENT' ? '10' : '20000'}
-              value={promoValue}
-              onChange={(e) => setPromoValue(e.target.value)}
-              required
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Field
-              label="Đơn tối thiểu (VND)"
-              placeholder="50000"
-              value={promoMinOrder}
-              onChange={(e) => setPromoMinOrder(e.target.value)}
-              required
-            />
-            <Field
-              label="Giảm tối đa (VND)"
-              placeholder="30000"
-              value={promoMaxDiscount}
-              onChange={(e) => setPromoMaxDiscount(e.target.value)}
-              required
-            />
-          </div>
-
-          <Field
-            label="Giới hạn tổng lượt sử dụng"
-            type="number"
-            min={1}
-            placeholder="100"
-            value={promoUsageLimit}
-            onChange={(e) => setPromoUsageLimit(e.target.value)}
-            required
-          />
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 6 }}>
-            <Button variant="secondary" onClick={() => setPromoModalOpen(false)}>
-              Hủy
-            </Button>
-            <Button variant="primary" type="submit">
-              Xác nhận tạo mã
-            </Button>
-          </div>
-        </form>
-      </Dialog>
-
-      {/* Recipe Modal */}
-      {editingRecipe && (
-        <RecipeModal
-          isOpen={!!editingRecipe}
-          onClose={() => setEditingRecipe(null)}
-          productName={editingRecipe.productName}
-          sizeName={editingRecipe.sizeName}
-          productSizeId={editingRecipe.productSizeId}
-          toppingName={editingRecipe.toppingName}
-          toppingId={editingRecipe.toppingId}
-          storeId={storeId}
-          onSuccess={refresh}
-        />
-      )}
     </div>
   );
 };

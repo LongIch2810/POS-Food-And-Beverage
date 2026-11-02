@@ -9,6 +9,7 @@ const errors: Record<number, { code: string; message: string }> = {
   403: { code: 'PERMISSION_DENIED', message: 'Bạn không có quyền thực hiện thao tác này.' },
   404: { code: 'NOT_FOUND', message: 'Không tìm thấy tài nguyên.' },
   409: { code: 'CONFLICT', message: 'Dữ liệu đã thay đổi. Vui lòng thử lại.' },
+  413: { code: 'FILE_TOO_LARGE', message: 'Dung lượng file tải lên vượt quá giới hạn cho phép (tối đa 2 MB).' },
   422: { code: 'VALIDATION_ERROR', message: 'Dữ liệu gửi lên không hợp lệ.' },
   429: { code: 'TOO_MANY_REQUESTS', message: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.' },
   503: { code: 'SERVICE_UNAVAILABLE', message: 'Dịch vụ tạm thời chưa sẵn sàng. Vui lòng thử lại sau.' },
