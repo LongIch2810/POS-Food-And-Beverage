@@ -1,0 +1,206 @@
+> pos-ui@0.1.0 test
+> node --experimental-strip-types --test test/*.test.mjs
+
+TAP version 13
+# Subtest: BR-03: proxy errors without JSON show a Vietnamese error
+ok 1 - BR-03: proxy errors without JSON show a Vietnamese error
+  ---
+  duration_ms: 39.3815
+  type: 'test'
+  ...
+# Subtest: locked account and suspended store errors stop session restore without refresh
+ok 2 - locked account and suspended store errors stop session restore without refresh
+  ---
+  duration_ms: 3.88
+  type: 'test'
+  ...
+# Subtest: login sends credentials to same-origin API without bearer
+ok 3 - login sends credentials to same-origin API without bearer
+  ---
+  duration_ms: 2.342
+  type: 'test'
+  ...
+# Subtest: expired access restores csrf and refreshes before fetching identity
+ok 4 - expired access restores csrf and refreshes before fetching identity
+  ---
+  duration_ms: 3.6784
+  type: 'test'
+  ...
+# Subtest: password change sends csrf and no current password for first change
+ok 5 - password change sends csrf and no current password for first change
+  ---
+  duration_ms: 1.3169
+  type: 'test'
+  ...
+# Subtest: real session preserves identity and permissions for existing UI
+ok 6 - real session preserves identity and permissions for existing UI
+  ---
+  duration_ms: 2.503
+  type: 'test'
+  ...
+# Subtest: session logout publishes a notification
+ok 7 - session logout publishes a notification
+  ---
+  duration_ms: 1.0235
+  type: 'test'
+  ...
+# Subtest: Vite proxy reads .env, respects shell overrides and requires a dev target
+ok 8 - Vite proxy reads .env, respects shell overrides and requires a dev target
+  ---
+  duration_ms: 1733.8668
+  type: 'test'
+  ...
+# Subtest: PB13-MENU-HTTP operations preserve endpoints, query params, bodies and CSRF tokens
+ok 9 - PB13-MENU-HTTP operations preserve endpoints, query params, bodies and CSRF tokens
+  ---
+  duration_ms: 51.5313
+  type: 'test'
+  ...
+# Subtest: PB13-MENU-IMAGE upload uses multipart/form-data and includes CSRF token
+ok 10 - PB13-MENU-IMAGE upload uses multipart/form-data and includes CSRF token
+  ---
+  duration_ms: 1.4629
+  type: 'test'
+  ...
+# Subtest: PB13-MENU-ERROR parses backend error response correctly
+ok 11 - PB13-MENU-ERROR parses backend error response correctly
+  ---
+  duration_ms: 2.1953
+  type: 'test'
+  ...
+# Subtest: PB13-NAV OWNER opens settings, permission-only staff entry and platform isolation
+ok 12 - PB13-NAV OWNER opens settings, permission-only staff entry and platform isolation
+  ---
+  duration_ms: 2.6414
+  type: 'test'
+  ...
+# Subtest: PB13-FORM money/capacity boundaries preserve zero/null and reject coercion
+ok 13 - PB13-FORM money/capacity boundaries preserve zero/null and reject coercion
+  ---
+  duration_ms: 16.1277
+  type: 'test'
+  ...
+# Subtest: PB13-RACE old tab success/failure cannot overwrite new rows/cursor/error
+ok 14 - PB13-RACE old tab success/failure cannot overwrite new rows/cursor/error
+  ---
+  duration_ms: 7.324
+  type: 'test'
+  ...
+# Subtest: PB13-RACE clicking the active tab while loading must not strand the request
+ok 15 - PB13-RACE clicking the active tab while loading must not strand the request
+  ---
+  duration_ms: 1.7629
+  type: 'test'
+  ...
+# Subtest: PB13-RACE branch/status/role/page changes bind cursors to current query
+ok 16 - PB13-RACE branch/status/role/page changes bind cursors to current query
+  ---
+  duration_ms: 4.7237
+  type: 'test'
+  ...
+# Subtest: PB13-RACE tab changes never render old staff rows using branch columns
+ok 17 - PB13-RACE tab changes never render old staff rows using branch columns
+  ---
+  duration_ms: 1.7853
+  type: 'test'
+  ...
+# Subtest: PB13-SCOPE MANAGER table creation omits branchId and has no staff/branch tabs
+ok 18 - PB13-SCOPE MANAGER table creation omits branchId and has no staff/branch tabs
+  ---
+  duration_ms: 2.3415
+  type: 'test'
+  ...
+# Subtest: PB13-SECRET issued password survives list refresh failure and requires saved acknowledgement
+ok 19 - PB13-SECRET issued password survives list refresh failure and requires saved acknowledgement
+  ---
+  duration_ms: 2.1928
+  type: 'test'
+  ...
+# Subtest: PB13-MUTATION duplicate submissions are blocked, errors retain editor and map fields
+ok 20 - PB13-MUTATION duplicate submissions are blocked, errors retain editor and map fields
+  ---
+  duration_ms: 2.0228
+  type: 'test'
+  ...
+# Subtest: PB13-RACE unmounted mutation cannot show a password or update next session
+ok 21 - PB13-RACE unmounted mutation cannot show a password or update next session
+  ---
+  duration_ms: 2.3805
+  type: 'test'
+  ...
+# Subtest: PB13-IDENTITY settings key includes current tenant/branch/permissions
+ok 22 - PB13-IDENTITY settings key includes current tenant/branch/permissions
+  ---
+  duration_ms: 3.4504
+  type: 'test'
+  ...
+# Subtest: PB13-ERROR conflict/missing-target/role-unavailable retain editor; only404 reloads list
+ok 23 - PB13-ERROR conflict/missing-target/role-unavailable retain editor; only404 reloads list
+  ---
+  duration_ms: 4.9216
+  type: 'test'
+  ...
+# Subtest: PB13-SECRET self-reset does not reload revoked session before password acknowledgement
+ok 24 - PB13-SECRET self-reset does not reload revoked session before password acknowledgement
+  ---
+  duration_ms: 1.9798
+  type: 'test'
+  ...
+# Subtest: PB13-HTTP ten PB04 operations preserve body types, CSRF and list metadata
+ok 25 - PB13-HTTP ten PB04 operations preserve body types, CSRF and list metadata
+  ---
+  duration_ms: 48.0251
+  type: 'test'
+  ...
+# Subtest: PB13-HTTP network errors never replay create or reset; field errors retain request ID
+ok 26 - PB13-HTTP network errors never replay create or reset; field errors retain request ID
+  ---
+  duration_ms: 2.3694
+  type: 'test'
+  ...
+# Subtest: PB13-HTTP branch choices traverse every cursor including inactive branches
+ok 27 - PB13-HTTP branch choices traverse every cursor including inactive branches
+  ---
+  duration_ms: 1.6083
+  type: 'test'
+  ...
+# Subtest: PB13-HTTP never retries an old mutation under another authenticated store
+ok 28 - PB13-HTTP never retries an old mutation under another authenticated store
+  ---
+  duration_ms: 1.8714
+  type: 'test'
+  ...
+# Subtest: PB-03 late mutation refresh cannot replace OWNER cursor after changing tabs
+ok 29 - PB-03 late mutation refresh cannot replace OWNER cursor after changing tabs
+  ---
+  duration_ms: 8.5185
+  type: 'test'
+  ...
+# Subtest: PB-03 platform request refreshes expired access once and retries
+ok 30 - PB-03 platform request refreshes expired access once and retries
+  ---
+  duration_ms: 40.6284
+  type: 'test'
+  ...
+# Subtest: PB-03 platform request clears revoked session
+ok 31 - PB-03 platform request clears revoked session
+  ---
+  duration_ms: 2.4078
+  type: 'test'
+  ...
+# Subtest: PB13-SHIFT-HTTP operations preserve endpoints, query params, bodies and CSRF tokens
+ok 32 - PB13-SHIFT-HTTP operations preserve endpoints, query params, bodies and CSRF tokens
+  ---
+  duration_ms: 39.6689
+  type: 'test'
+  ...
+1..32
+# tests 32
+# suites 0
+# pass 32
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1832.4987
+

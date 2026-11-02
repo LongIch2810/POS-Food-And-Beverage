@@ -6,7 +6,7 @@
     "build": "node ./node_modules/typescript/bin/tsc -p tsconfig.json",
     "start": "node --env-file-if-exists=.env dist/main.js",
     "migration:run": "npm run build && node --env-file-if-exists=.env ./node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js",
-    "test": "npm run build && node --env-file-if-exists=.env --test \"dist/**/*.test.js\""
+    "test": "npm run build && node --env-file-if-exists=.env --test --test-concurrency=1 \"dist/**/*.test.js\""
   },
   "dependencies": {
     "@nestjs/common": "^11.2.8",

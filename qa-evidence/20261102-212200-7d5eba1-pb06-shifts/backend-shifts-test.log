@@ -1,0 +1,66 @@
+TAP version 13
+# Subtest: PB-06 shifts and cash reconciliation HTTP with PostgreSQL
+    # Subtest: SHIFT-01: Ca nhân viên STAFF vào ca, tan ca, chặn 2 ca mở cùng lúc
+    ok 1 - SHIFT-01: Ca nhân viên STAFF vào ca, tan ca, chặn 2 ca mở cùng lúc
+      ---
+      duration_ms: 94.8985
+      type: 'test'
+      ...
+    # Subtest: SHIFT-02: Ca CASHIER đầu tiên tự lấy initial_cash, sinh đối soát PENDING
+    ok 2 - SHIFT-02: Ca CASHIER đầu tiên tự lấy initial_cash, sinh đối soát PENDING
+      ---
+      duration_ms: 27.3344
+      type: 'test'
+      ...
+    # Subtest: SHIFT-03: Chi nhánh đã có ca thu ngân OPEN thì ca CASHIER thứ 2 bị chặn
+    ok 3 - SHIFT-03: Chi nhánh đã có ca thu ngân OPEN thì ca CASHIER thứ 2 bị chặn
+      ---
+      duration_ms: 16.6697
+      type: 'test'
+      ...
+    # Subtest: SHIFT-04: Đóng ca CASHIER, đếm mù, kiểm tra note khi lệch tiền
+    ok 4 - SHIFT-04: Đóng ca CASHIER, đếm mù, kiểm tra note khi lệch tiền
+      ---
+      duration_ms: 77.3586
+      type: 'test'
+      ...
+    # Subtest: SHIFT-05: Ca CASHIER tiếp theo tự động lấy counted_cash của ca trước làm opening_cash
+    ok 5 - SHIFT-05: Ca CASHIER tiếp theo tự động lấy counted_cash của ca trước làm opening_cash
+      ---
+      duration_ms: 29.2205
+      type: 'test'
+      ...
+    # Subtest: SHIFT-06: Chặn sửa initialCash của chi nhánh sau khi đã phát sinh ca thu ngân
+    ok 6 - SHIFT-06: Chặn sửa initialCash của chi nhánh sau khi đã phát sinh ca thu ngân
+      ---
+      duration_ms: 46.7588
+      type: 'test'
+      ...
+    # Subtest: SHIFT-07: Quản lý đóng cưỡng chế ca (force_close) ghi nhận closed_by và reason
+    ok 7 - SHIFT-07: Quản lý đóng cưỡng chế ca (force_close) ghi nhận closed_by và reason
+      ---
+      duration_ms: 33.0354
+      type: 'test'
+      ...
+    # Subtest: SHIFT-08: Phân quyền, Danh sách ca phân trang và Cô lập Multi-tenant
+    ok 8 - SHIFT-08: Phân quyền, Danh sách ca phân trang và Cô lập Multi-tenant
+      ---
+      duration_ms: 96.378
+      type: 'test'
+      ...
+    1..8
+ok 1 - PB-06 shifts and cash reconciliation HTTP with PostgreSQL
+  ---
+  duration_ms: 5036.7804
+  type: 'test'
+  ...
+1..1
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 6034.4926
+

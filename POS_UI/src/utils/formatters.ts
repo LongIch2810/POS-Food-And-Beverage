@@ -7,9 +7,10 @@ const vndFormatter = new Intl.NumberFormat('vi-VN');
  * Số âm dùng ký tự trừ thực (U+2212) thay cho gạch nối.
  * Đơn vị 'đ' dính liền sau số tiền.
  */
-export function formatVND(amount: bigint): string {
-  const isNegative = amount < 0n;
-  const absVal = isNegative ? -amount : amount;
+export function formatVND(amount: bigint | number): string {
+  const bigVal = typeof amount === 'bigint' ? amount : BigInt(Math.round(amount));
+  const isNegative = bigVal < 0n;
+  const absVal = isNegative ? -bigVal : bigVal;
   const formatted = vndFormatter.format(absVal);
   return (isNegative ? '\u2212' : '') + formatted + 'đ';
 }
