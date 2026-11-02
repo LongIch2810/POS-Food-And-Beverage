@@ -48,7 +48,9 @@ test('MIG-01 PB-04 upgrade preserves organization, permissions, users/sessions a
     };
     await previous.destroy();
     await current.initialize();
-    assert.equal((await current.runMigrations()).length, 1);
+    const applied = await current.runMigrations();
+    assert.ok(applied.length >= 1);
+    assert.ok(applied.some((migration) => migration.name === 'Organization20261030000000'));
     const legacyAfter = {
       users: await current.query('SELECT id,store_id,branch_id,role_id,username,is_active,must_change_password FROM users ORDER BY id'),
       sessions: await current.query('SELECT id,user_id,session_id,expires_at,revoked_at,replaced_at FROM refresh_tokens ORDER BY id'),
