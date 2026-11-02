@@ -4,6 +4,7 @@ import { UserSummary } from '../auth/auth.service';
 import { httpError } from '../http/http-error';
 import { Branch } from './entities/branch.entity';
 import { DiningTable } from './entities/dining-table.entity';
+import { WorkShift } from '../shifts/entities/work-shift.entity';
 import { CreateBranchDto, CreateTableDto, PatchBranchDto, PatchTableDto } from './http/organization.dto';
 import { OrganizationPage, organizationPageResponse } from './organization.pagination';
 
@@ -80,7 +81,15 @@ export class OrganizationService {
       if (input.address !== undefined) branch.address = input.address || null;
       if (input.phone !== undefined) branch.phone = input.phone || null;
       // shortcut: chưa có ca trong PB-04; PB-06 phải kiểm tra lịch sử CASHIER dưới khóa Branch trước khi bật mở ca.
-      if (input.initialCash !== undefined) branch.initial_cash = String(input.initialCash);
+      if (input.initialCash !== undefined) {
+        const hasCashierShift = await manager.getRepository(WorkShift).exist({
+          where: { branch_id: branch.id, shift_type: 'CASHIER' },
+        });
+        if (hasCashierShift) {
+          throw httpError(409, 'INITIAL_CASH_LOCKED', 'Không thể sửa quỹ ban đầu khi chi nhánh đã phát sinh ca thu ngân');
+        }
+        branch.initial_cash = String(input.initialCash);
+      }
       if (input.isActive !== undefined) branch.is_active = input.isActive;
       return branchView(await repo.save(branch));
     }));

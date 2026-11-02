@@ -1,6 +1,6 @@
 // POS-F&B Open Shift Gatekeeper per DESIGN.md §5.5 & BR-16, BR-55
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { shiftService } from '../../services/shiftService';
 import { formatVND } from '../../utils/formatters';
 import { Button } from '../../components/ui/Button';
@@ -11,20 +11,59 @@ import { Lock } from 'lucide-react';
 export interface OpenShiftGateProps {
   branchId: string;
   branchName: string;
+  initialCash?: number;
   onShiftOpened: () => void;
 }
 
-export const OpenShiftGate: React.FC<OpenShiftGateProps> = ({ branchId, branchName, onShiftOpened }) => {
+export const OpenShiftGate: React.FC<OpenShiftGateProps> = ({
+  branchId,
+  branchName,
+  initialCash,
+  onShiftOpened,
+}) => {
   const { showToast } = useToast();
-  const [openingInfo] = useState(() => shiftService.getOpeningCashInfo(branchId));
+  const [openingCash, setOpeningCash] = useState<number | null>(null);
+  const [sourceText, setSourceText] = useState<string>('Đang tính tiền đầu ca...');
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
+
+  // Tải thông tin tiền đầu ca tự động từ API chuyên biệt (BR-55, BR-89)
+  useEffect(() => {
+    let cancelled = false;
+    async function loadOpeningInfo() {
+      try {
+        setInitialLoading(true);
+        const info = await shiftService.getOpeningCashInfo(branchId);
+        if (cancelled) return;
+        setOpeningCash(info.amount);
+        setSourceText(info.sourceText);
+      } catch (err) {
+        if (!cancelled) {
+          setOpeningCash(initialCash ?? 0);
+          setSourceText('Lấy theo cấu hình hệ thống (BR-55)');
+        }
+      } finally {
+        if (!cancelled) setInitialLoading(false);
+      }
+    }
+
+    if (branchId) {
+      loadOpeningInfo();
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [branchId, initialCash]);
 
   const handleOpenShift = async () => {
     setLoading(true);
     try {
-      await shiftService.openShift(branchId);
+      await shiftService.openShift({
+        shiftType: 'CASHIER',
+        branchId,
+      });
       showToast({ type: 'success', message: 'Mở ca thu ngân thành công! Bắt đầu phiên bán hàng.' });
       onShiftOpened();
     } catch (err: any) {
@@ -112,16 +151,22 @@ export const OpenShiftGate: React.FC<OpenShiftGateProps> = ({ branchId, branchNa
             className="money"
             style={{ fontSize: 32, fontWeight: 700, color: 'var(--color-brand-800)' }}
           >
-            {formatVND(openingInfo.amount)}
+            {initialLoading ? '...' : formatVND(openingCash ?? 0)}
           </div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 6 }}>
-            {openingInfo.sourceText}
+            {sourceText}
           </div>
         </div>
 
         {/* Nút Mở ca & Báo lệch tiền giao ca */}
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Button variant="primary" size="lg" fullWidth isLoading={loading} onClick={handleOpenShift}>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            isLoading={loading || initialLoading}
+            onClick={handleOpenShift}
+          >
             Xác nhận mở ca thu ngân
           </Button>
 
@@ -164,37 +209,24 @@ export const OpenShiftGate: React.FC<OpenShiftGateProps> = ({ branchId, branchNa
           </div>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>
-            Nếu két tiền mặt thực tế khác số tiền hệ thống hiển thị ({formatVND(openingInfo.amount)}),
-            hãy nhập số tiền thực tế và lý do để gửi biên bản đến Quản lý chi nhánh xử lý.
-          </p>
-          <div>
-            <label
-              htmlFor="opening-report-reason"
-              style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-muted)', display: 'block', marginBottom: 6, cursor: 'pointer' }}
-            >
-              Nội dung biên bản (bắt buộc)
-            </label>
-            <textarea
-              id="opening-report-reason"
-              rows={4}
-              placeholder="Mô tả số tiền thực tế trong két và nguyên nhân..."
-              value={reportReason}
-              onChange={(e) => setReportReason(e.target.value)}
-              autoFocus
-              style={{
-                width: '100%',
-                padding: 12,
-                borderRadius: 'var(--radius-control)',
-                border: '1px solid var(--color-border-control)',
-                fontSize: 14,
-                fontFamily: 'inherit',
-                background: 'var(--color-surface)',
-                color: 'var(--color-text)',
-              }}
-            />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
+            Nếu số tiền thực tế trong két khác với số tiền hệ thống tính (
+            {formatVND(openingCash ?? 0)}), hãy nhập lý do để Quản lý nắm thông tin.
           </div>
+          <textarea
+            rows={3}
+            placeholder="Mô tả lý do lệch (ví dụ: Thiếu 20.000đ tiền lẻ, két thực tế chỉ có 980.000đ)..."
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-control)',
+              border: '1px solid var(--color-border)',
+              fontSize: 14,
+            }}
+          />
         </div>
       </Dialog>
     </div>

@@ -15,6 +15,8 @@ import { ProductSize } from '../menu/entities/product-size.entity';
 import { Size } from '../menu/entities/size.entity';
 import { Topping } from '../menu/entities/topping.entity';
 import { User } from '../auth/entities/user.entity';
+import { WorkShift } from '../shifts/entities/work-shift.entity';
+import { CashReconciliation } from '../shifts/entities/cash-reconciliation.entity';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is required');
@@ -35,6 +37,8 @@ export const entities = [
   ProductSize,
   Topping,
   CategoryTopping,
+  WorkShift,
+  CashReconciliation,
 ];
 
 export const dataSource = new DataSource({

@@ -1,67 +1,136 @@
-// Shift Service Layer (API Ready)
+import { request } from '../http/client.ts';
+import type { WorkShift, ShiftExpense } from '../types/entities.ts';
 
-import { MockEngine } from '../mock/mockEngine';
-import { mockStorage } from '../mock/mockStorage';
-import { WorkShift, CashReconciliation, ShiftExpense, Invoice } from '../types/entities';
+export interface ShiftReconciliationDto {
+  id: string;
+  workShiftId: string;
+  openingCash: number;
+  cashSalesAmount: number | null;
+  expenseAmount: number | null;
+  expectedCash: number | null;
+  countedCash: number | null;
+  difference: number | null;
+  status: 'PENDING' | 'MATCHED' | 'SHORTAGE' | 'OVERAGE';
+  note: string | null;
+  reconciledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkShiftDto {
+  id: string;
+  branchId: string;
+  branchName?: string;
+  userId: string;
+  userName?: string;
+  shiftType: 'CASHIER' | 'STAFF';
+  startedAt: string;
+  endedAt: string | null;
+  status: 'OPEN' | 'CLOSED';
+  closedBy: string | null;
+  closedByName?: string | null;
+  note: string | null;
+  reconciliation?: ShiftReconciliationDto | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShiftsListResponse {
+  data: WorkShiftDto[];
+  meta: {
+    limit: number;
+    nextCursor: string | null;
+    total: number;
+  };
+}
+
+export interface ShiftQuery {
+  limit?: number;
+  cursor?: string;
+  branchId?: string;
+  userId?: string;
+  status?: 'OPEN' | 'CLOSED';
+  shiftType?: 'CASHIER' | 'STAFF';
+}
 
 export const shiftService = {
-  getMyActiveShift(): WorkShift | undefined {
-    return MockEngine.getMyActiveShift();
+  // Lấy ca đang OPEN của người dùng hiện tại từ API
+  async getCurrentShift(): Promise<WorkShiftDto | null> {
+    return request<WorkShiftDto | null>('work-shifts/current');
   },
 
-  getOpeningCashInfo(branchId: string): { amount: bigint; sourceText: string } {
-    return MockEngine.getExpectedOpeningCash(branchId);
+  // Lấy thông tin tiền đầu ca tự động cho chi nhánh (BR-55, BR-89)
+  async getOpeningCashInfo(branchId?: string): Promise<{
+    amount: number;
+    source: string;
+    sourceText: string;
+  }> {
+    const params = branchId ? `?branchId=${encodeURIComponent(branchId)}` : '';
+    return request(`work-shifts/opening-cash-info${params}`);
   },
 
-  openShift(branchId: string): Promise<WorkShift> {
-    return Promise.resolve(MockEngine.openCashierShift(branchId));
+  // Mở ca làm việc (STAFF hoặc CASHIER)
+  async openShift(input: {
+    shiftType: 'CASHIER' | 'STAFF';
+    branchId?: string;
+    note?: string;
+  }): Promise<WorkShiftDto> {
+    return request<WorkShiftDto>('work-shifts', 'POST', input);
   },
 
-  addExpense(shiftId: string, amount: bigint, reason: string, paidFromDrawer: boolean): Promise<ShiftExpense> {
-    return Promise.resolve(MockEngine.addShiftExpense(shiftId, amount, reason, paidFromDrawer));
-  },
-
-  closeShiftBlind(
+  // Đóng ca tự thân
+  async closeShift(
     shiftId: string,
-    countedCash: bigint,
-    note?: string
-  ): Promise<{ reconciliation: CashReconciliation; shift: WorkShift }> {
-    return Promise.resolve(MockEngine.closeShiftBlind(shiftId, countedCash, note));
+    input: { countedCash?: number; note?: string }
+  ): Promise<WorkShiftDto> {
+    return request<WorkShiftDto>(`work-shifts/${encodeURIComponent(shiftId)}/close`, 'POST', input);
   },
 
-  getOpenInvoicesForShift(shiftId: string): (Invoice & { tableName?: string })[] {
-    return MockEngine.getOpenInvoicesForShift(shiftId);
-  },
-
-  forceCloseShift(
+  // Đóng cưỡng chế (Quản lý / Chủ quán)
+  async forceCloseShift(
     shiftId: string,
-    managerId: string,
-    countedCash: bigint,
-    reason: string
-  ): Promise<{ reconciliation: CashReconciliation; shift: WorkShift }> {
-    return Promise.resolve(MockEngine.forceCloseShift(shiftId, managerId, countedCash, reason));
+    input: { countedCash: number; reason: string; note?: string }
+  ): Promise<WorkShiftDto> {
+    return request<WorkShiftDto>(`work-shifts/${encodeURIComponent(shiftId)}/force-close`, 'POST', input);
   },
 
-  checkInStaffShift(userId: string, branchId: string): Promise<WorkShift> {
-    return Promise.resolve(MockEngine.checkInStaffShift(userId, branchId));
+  // Lấy chi tiết ca
+  async getShiftDetail(shiftId: string): Promise<WorkShiftDto> {
+    return request<WorkShiftDto>(`work-shifts/${encodeURIComponent(shiftId)}`);
   },
 
-  checkOutStaffShift(shiftId: string): Promise<WorkShift> {
-    return Promise.resolve(MockEngine.checkOutStaffShift(shiftId));
-  },
-
-  getShiftHistory(branchId?: string): { shift: WorkShift; reconciliation?: CashReconciliation; expenses: ShiftExpense[] }[] {
-    const state = mockStorage.getState();
-    const effectiveBranch = branchId || MockEngine.getEffectiveBranchId();
-    let shifts = state.workShifts;
-    if (effectiveBranch) {
-      shifts = shifts.filter((s) => s.branch_id === effectiveBranch);
+  // Lấy danh sách ca phân trang
+  async getShifts(query: ShiftQuery = {}): Promise<ShiftsListResponse> {
+    const params = new URLSearchParams({ limit: String(query.limit ?? 20) });
+    for (const [key, value] of Object.entries(query)) {
+      if (key !== 'limit' && value !== undefined && value !== '') {
+        params.set(key, String(value));
+      }
     }
+    return request<ShiftsListResponse>(`work-shifts?${params}`, 'GET', undefined, true, true);
+  },
 
-    return shifts.map((shift) => ({
-      shift,
-      reconciliation: state.cashReconciliations.find((r) => r.work_shift_id === shift.id),
-      expenses: state.shiftExpenses.filter((e) => e.work_shift_id === shift.id),
-    }));
+  // Helper cho nhân viên điểm danh vào ca
+  async checkInStaffShift(branchId?: string): Promise<WorkShiftDto> {
+    return this.openShift({ shiftType: 'STAFF', branchId });
+  },
+
+  // Helper cho nhân viên tan ca
+  async checkOutStaffShift(shiftId: string): Promise<WorkShiftDto> {
+    return this.closeShift(shiftId, {});
+  },
+
+  // Helper cho thu ngân đóng ca đếm mù
+  async closeShiftBlind(shiftId: string, countedCash: number | bigint, note?: string): Promise<WorkShiftDto> {
+    return this.closeShift(shiftId, { countedCash: Number(countedCash), note });
+  },
+
+  // Tương thích ngược với UI demo / các màn chưa nối API
+  getMyActiveShift(): WorkShift | undefined {
+    return undefined;
+  },
+
+  addExpense(_shiftId: string, _amount: bigint, _reason: string, _paidFromDrawer: boolean): Promise<ShiftExpense> {
+    return Promise.resolve({} as ShiftExpense);
   },
 };

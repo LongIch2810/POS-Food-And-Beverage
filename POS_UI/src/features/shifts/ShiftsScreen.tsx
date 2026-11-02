@@ -1,56 +1,65 @@
 // POS-F&B Shifts Management Screen per DESIGN.md §5.5, BR-15, BR-18, BR-19, BR-20, BR-58..60, BR-88
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { shiftService } from '../../services/shiftService';
-import { MockEngine } from '../../mock/mockEngine';
-import { mockStorage } from '../../mock/mockStorage';
+import { WorkShiftDto, shiftService } from '../../services/shiftService';
 import { formatVND, formatDateTimeVN, formatDuration } from '../../utils/formatters';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { DataTable, Column } from '../../components/ui/DataTable';
 import { BlindCountCloseShiftModal } from './BlindCountCloseShiftModal';
-import { AddExpenseModal } from './AddExpenseModal';
 import { ForceCloseShiftModal } from './ForceCloseShiftModal';
-import { WorkShift } from '../../types/entities';
-import { Clock, PlusCircle, LogOut, UserCheck, ShieldAlert, LogIn } from 'lucide-react';
+import { Clock, LogOut, UserCheck, ShieldAlert, LogIn, RefreshCw } from 'lucide-react';
 
 export interface ShiftsScreenProps {
   onNavigateToInvoice?: (invoiceId: string) => void;
 }
 
-export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice }) => {
+export const ShiftsScreen: React.FC<ShiftsScreenProps> = () => {
   const { session } = useAuth();
   const { showToast } = useToast();
-  const effectiveBranchId = MockEngine.getEffectiveBranchId();
 
-  const [shiftsHistory, setShiftsHistory] = useState(() => shiftService.getShiftHistory(effectiveBranchId));
+  const [shiftsHistory, setShiftsHistory] = useState<WorkShiftDto[]>([]);
+  const [currentShift, setCurrentShift] = useState<WorkShiftDto | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
-  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
-  const [forceCloseTargetShift, setForceCloseTargetShift] = useState<WorkShift | null>(null);
+  const [forceCloseTargetShift, setForceCloseTargetShift] = useState<WorkShiftDto | null>(null);
   const [isStaffChecking, setIsStaffChecking] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = mockStorage.subscribe(() => {
-      setShiftsHistory(shiftService.getShiftHistory(effectiveBranchId));
-    });
-    return () => unsubscribe();
-  }, [effectiveBranchId]);
-
-  const myShift = shiftService.getMyActiveShift();
-  const hasOpenShift = !!myShift && myShift.status === 'OPEN';
-  const isCashierShift = hasOpenShift && myShift.shift_type === 'CASHIER';
-  const isStaffShift = hasOpenShift && myShift.shift_type === 'STAFF';
 
   const canForceClose = session.permissions.includes('shift.force_close');
 
-  // Thao tác Check-in ca nhân viên (không gắn két) per BR-15
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [curr, history] = await Promise.all([
+        shiftService.getCurrentShift(),
+        shiftService.getShifts({ limit: 50 }),
+      ]);
+      setCurrentShift(curr);
+      setShiftsHistory(history.data);
+    } catch (err: any) {
+      showToast({ type: 'error', message: err?.message || 'Không thể tải dữ liệu ca làm việc' });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const hasOpenShift = !!currentShift && currentShift.status === 'OPEN';
+  const isCashierShift = hasOpenShift && currentShift.shiftType === 'CASHIER';
+  const isStaffShift = hasOpenShift && currentShift.shiftType === 'STAFF';
+
+  // Check-in ca nhân viên
   const handleCheckInStaff = async () => {
     setIsStaffChecking(true);
     try {
-      await shiftService.checkInStaffShift(MockEngine.getCurrentUser().id, effectiveBranchId);
+      await shiftService.checkInStaffShift();
       showToast({ type: 'success', message: 'Đã check-in bắt đầu ca làm việc nhân viên' });
+      await loadData();
     } catch (err: any) {
       showToast({ type: 'error', message: err?.message || 'Không thể check-in' });
     } finally {
@@ -58,13 +67,14 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
     }
   };
 
-  // Thao tác Check-out ca nhân viên per BR-15
+  // Check-out ca nhân viên
   const handleCheckOutStaff = async () => {
-    if (!myShift) return;
+    if (!currentShift) return;
     setIsStaffChecking(true);
     try {
-      await shiftService.checkOutStaffShift(myShift.id);
+      await shiftService.checkOutStaffShift(currentShift.id);
       showToast({ type: 'success', message: 'Đã check-out kết thúc ca làm việc nhân viên' });
+      await loadData();
     } catch (err: any) {
       showToast({ type: 'error', message: err?.message || 'Không thể check-out' });
     } finally {
@@ -72,36 +82,41 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
     }
   };
 
-  const columns: Column<typeof shiftsHistory[0]>[] = [
+  const columns: Column<WorkShiftDto>[] = [
     {
       key: 'time',
       header: 'Thời gian & Loại ca',
-      render: ({ shift }) => (
+      render: (shift) => (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontWeight: 600 }}>{formatDateTimeVN(shift.started_at)}</span>
-            <Badge variant={shift.shift_type === 'CASHIER' ? 'info' : 'neutral'} size="sm">
-              {shift.shift_type === 'CASHIER' ? 'Thu ngân' : 'Nhân viên'}
+            <span style={{ fontWeight: 600 }}>{formatDateTimeVN(shift.startedAt)}</span>
+            <Badge variant={shift.shiftType === 'CASHIER' ? 'info' : 'neutral'} size="sm">
+              {shift.shiftType === 'CASHIER' ? 'Thu ngân' : 'Nhân viên'}
             </Badge>
           </div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
-            {shift.ended_at ? `Đóng lúc ${formatDateTimeVN(shift.ended_at)}` : 'Đang mở'} &bull;{' '}
-            {formatDuration(shift.started_at, shift.ended_at)}
+            {shift.endedAt ? `Đóng lúc ${formatDateTimeVN(shift.endedAt)}` : 'Đang mở'} &bull;{' '}
+            {formatDuration(shift.startedAt, shift.endedAt ?? undefined)}
           </div>
+          {shift.userName && (
+            <div style={{ fontSize: 12, color: 'var(--color-brand-700)', marginTop: 2 }}>
+              Người làm: {shift.userName}
+            </div>
+          )}
         </div>
       ),
     },
     {
       key: 'status',
       header: 'Trạng thái',
-      render: ({ shift }) => (
+      render: (shift) => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <Badge variant={shift.status === 'OPEN' ? 'info' : 'neutral'} size="sm">
             {shift.status === 'OPEN' ? 'Đang mở' : 'Đã đóng'}
           </Badge>
-          {shift.force_closed_by && (
+          {shift.closedBy && shift.closedBy !== shift.userId && (
             <Badge variant="warning" size="sm">
-              Đóng cưỡng chế
+              Đóng cưỡng chế{shift.closedByName ? ` bởi ${shift.closedByName}` : ''}
             </Badge>
           )}
         </div>
@@ -111,39 +126,23 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
       key: 'opening',
       header: 'Tiền đầu ca',
       align: 'right',
-      render: ({ shift, reconciliation }) => (
+      render: (shift) => (
         <span className="money">
-          {shift.shift_type === 'CASHIER' && reconciliation ? formatVND(reconciliation.opening_cash) : '-'}
+          {shift.shiftType === 'CASHIER' && shift.reconciliation
+            ? formatVND(shift.reconciliation.openingCash)
+            : '-'}
         </span>
       ),
-    },
-    {
-      key: 'sales',
-      header: 'Bán tiền mặt',
-      align: 'right',
-      render: ({ shift, reconciliation }) => (
-        <span className="money">
-          {shift.shift_type === 'CASHIER' && reconciliation ? formatVND(reconciliation.cash_sales_amount) : '-'}
-        </span>
-      ),
-    },
-    {
-      key: 'expenses',
-      header: 'Chi két',
-      align: 'right',
-      render: ({ shift, expenses }) => {
-        if (shift.shift_type !== 'CASHIER') return <span>-</span>;
-        const totalExp = expenses.filter((e) => e.paid_from_drawer).reduce((s, e) => s + e.amount, 0n);
-        return <span className="money">{totalExp > 0n ? formatVND(totalExp) : '0đ'}</span>;
-      },
     },
     {
       key: 'expected',
       header: 'Tiền kỳ vọng',
       align: 'right',
-      render: ({ shift, reconciliation }) => (
+      render: (shift) => (
         <span className="money">
-          {shift.shift_type === 'CASHIER' && reconciliation ? formatVND(reconciliation.expected_cash) : '-'}
+          {shift.shiftType === 'CASHIER' && shift.reconciliation?.expectedCash != null
+            ? formatVND(shift.reconciliation.expectedCash)
+            : '-'}
         </span>
       ),
     },
@@ -151,9 +150,11 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
       key: 'counted',
       header: 'Tiền thực đếm',
       align: 'right',
-      render: ({ shift, reconciliation }) => (
+      render: (shift) => (
         <span className="money" style={{ fontWeight: 700 }}>
-          {shift.shift_type === 'CASHIER' && reconciliation ? formatVND(reconciliation.counted_cash) : '-'}
+          {shift.shiftType === 'CASHIER' && shift.reconciliation?.countedCash != null
+            ? formatVND(shift.reconciliation.countedCash)
+            : '-'}
         </span>
       ),
     },
@@ -161,15 +162,17 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
       key: 'diff',
       header: 'Chênh lệch',
       align: 'center',
-      render: ({ shift, reconciliation }) => {
-        if (shift.shift_type !== 'CASHIER' || !reconciliation) return <span>-</span>;
-        const status = reconciliation.status;
+      render: (shift) => {
+        if (shift.shiftType !== 'CASHIER' || !shift.reconciliation || shift.reconciliation.difference == null) {
+          return <span>-</span>;
+        }
+        const status = shift.reconciliation.status;
         return (
           <Badge
             variant={status === 'MATCHED' ? 'success' : status === 'SHORTAGE' ? 'danger' : 'warning'}
             size="sm"
           >
-            {formatVND(reconciliation.difference)}
+            {formatVND(shift.reconciliation.difference)}
           </Badge>
         );
       },
@@ -178,8 +181,8 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
       key: 'actions',
       header: 'Thao tác',
       align: 'right',
-      render: ({ shift }) => {
-        if (shift.status === 'OPEN' && canForceClose && shift.id !== myShift?.id) {
+      render: (shift) => {
+        if (shift.status === 'OPEN' && canForceClose && shift.id !== currentShift?.id) {
           return (
             <Button
               variant="danger"
@@ -213,12 +216,22 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
             Quản lý Ca làm việc & Đối soát tiền mặt
           </h1>
           <p style={{ fontSize: 14, color: 'var(--color-text-muted)', marginTop: 4 }}>
-            Theo dõi ca thu ngân, ghi nhận chi phí két, điểm danh nhân viên và đối soát đếm mù
+            Theo dõi ca thu ngân, điểm danh nhân viên và đối soát đếm mù
           </p>
         </div>
 
         {/* Nút thao tác nhanh trên Header */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Button
+            variant="secondary"
+            size="md"
+            icon={<RefreshCw size={16} />}
+            onClick={loadData}
+            isLoading={isLoading}
+          >
+            Làm mới
+          </Button>
+
           {!hasOpenShift && (
             <Button
               variant="secondary"
@@ -232,24 +245,14 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
           )}
 
           {isCashierShift && (
-            <>
-              <Button
-                variant="secondary"
-                size="md"
-                icon={<PlusCircle size={18} />}
-                onClick={() => setIsExpenseModalOpen(true)}
-              >
-                Ghi chi phí ca
-              </Button>
-              <Button
-                variant="primary"
-                size="md"
-                icon={<LogOut size={18} />}
-                onClick={() => setIsCloseModalOpen(true)}
-              >
-                Đóng ca (Đếm mù)
-              </Button>
-            </>
+            <Button
+              variant="primary"
+              size="md"
+              icon={<LogOut size={18} />}
+              onClick={() => setIsCloseModalOpen(true)}
+            >
+              Đóng ca (Đếm mù)
+            </Button>
           )}
 
           {isStaffShift && (
@@ -267,7 +270,7 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
       </div>
 
       {/* Thẻ ca thu ngân hiện tại nếu đang mở */}
-      {isCashierShift && (
+      {isCashierShift && currentShift && (
         <div
           style={{
             background: 'var(--color-surface)',
@@ -286,11 +289,11 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
                 Ca thu ngân (Gắn két tiền) đang mở
               </span>
               <Badge variant="success" size="sm">
-                Bắt đầu lúc {formatDateTimeVN(myShift.started_at)}
+                Bắt đầu lúc {formatDateTimeVN(currentShift.startedAt)}
               </Badge>
             </div>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-brand-800)' }}>
-              Đã làm: {formatDuration(myShift.started_at)}
+              Đã làm: {formatDuration(currentShift.startedAt)}
             </div>
           </div>
 
@@ -306,7 +309,7 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
             <div>
               <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Tiền đầu ca (Chỉ đọc)</div>
               <div className="money" style={{ fontSize: 18, fontWeight: 700 }}>
-                {formatVND(shiftService.getOpeningCashInfo(myShift.branch_id).amount)}
+                {formatVND(currentShift.reconciliation?.openingCash ?? 0)}
               </div>
             </div>
             <div>
@@ -315,14 +318,14 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
             </div>
             <div>
               <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Chi nhánh</div>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>{session.branch_name}</div>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>{currentShift.branchName || session.branch_name}</div>
             </div>
           </div>
         </div>
       )}
 
       {/* Thẻ ca làm việc nhân viên nếu đang mở */}
-      {isStaffShift && (
+      {isStaffShift && currentShift && (
         <div
           style={{
             background: 'var(--color-surface)',
@@ -341,11 +344,11 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
                 Ca làm việc nhân viên (Pha chế / Phục vụ) đang mở
               </span>
               <Badge variant="info" size="sm">
-                Bắt đầu lúc {formatDateTimeVN(myShift.started_at)}
+                Bắt đầu lúc {formatDateTimeVN(currentShift.startedAt)}
               </Badge>
             </div>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-info)' }}>
-              Đã làm: {formatDuration(myShift.started_at)}
+              Đã làm: {formatDuration(currentShift.startedAt)}
             </div>
           </div>
 
@@ -364,7 +367,7 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
             </div>
             <div>
               <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Chi nhánh</div>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>{session.branch_name}</div>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>{currentShift.branchName || session.branch_name}</div>
             </div>
             <div>
               <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Két tiền</div>
@@ -382,32 +385,19 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
         <DataTable
           columns={columns}
           data={shiftsHistory}
-          keyExtractor={(item) => item.shift.id}
-          emptyMessage="Chưa có dữ liệu ca làm việc nào"
+          keyExtractor={(item) => item.id}
+          emptyMessage={isLoading ? 'Đang tải dữ liệu...' : 'Chưa có dữ liệu ca làm việc nào'}
         />
       </div>
 
       {/* Modal Đóng ca đếm mù */}
-      {isCashierShift && (
-        <>
-          <BlindCountCloseShiftModal
-            isOpen={isCloseModalOpen}
-            onClose={() => setIsCloseModalOpen(false)}
-            shift={myShift}
-            onSuccess={() => {
-              setShiftsHistory(shiftService.getShiftHistory(effectiveBranchId));
-            }}
-            onOpenInvoice={onNavigateToInvoice}
-          />
-          <AddExpenseModal
-            isOpen={isExpenseModalOpen}
-            onClose={() => setIsExpenseModalOpen(false)}
-            shiftId={myShift.id}
-            onSuccess={() => {
-              setShiftsHistory(shiftService.getShiftHistory(effectiveBranchId));
-            }}
-          />
-        </>
+      {isCashierShift && currentShift && (
+        <BlindCountCloseShiftModal
+          isOpen={isCloseModalOpen}
+          onClose={() => setIsCloseModalOpen(false)}
+          shift={currentShift}
+          onSuccess={loadData}
+        />
       )}
 
       {/* Modal Đóng ca cưỡng chế (Quản lý) */}
@@ -416,10 +406,7 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = ({ onNavigateToInvoice 
           isOpen={!!forceCloseTargetShift}
           onClose={() => setForceCloseTargetShift(null)}
           shift={forceCloseTargetShift}
-          onSuccess={() => {
-            setShiftsHistory(shiftService.getShiftHistory(effectiveBranchId));
-          }}
-          onOpenInvoice={onNavigateToInvoice}
+          onSuccess={loadData}
         />
       )}
     </div>

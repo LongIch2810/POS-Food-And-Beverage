@@ -47,3 +47,9 @@
 - Áp dụng: Tạo fixture / seed dữ liệu PostgreSQL cho user, store, session liên quan xác thực JWT.
 - Bài học: `AccessGuard` và `AuthService.authenticateAccess` dùng regex kiểm tra claims UUID chuẩn RFC 4122 Variant 1 (`[89ab][0-9a-f]{3}` ở nhóm 4). Nếu tự viết UUID bằng tay có nhóm 4 bắt đầu bằng ký tự khác (như `0`, `4`), token JWT sẽ bị từ chối và văng 401 UNAUTHENTICATED ngay sau khi login 200. Khi seed, luôn dùng `gen_random_uuid()` của PostgreSQL hoặc hàm sinh UUID v4 chuẩn.
 - Căn cứ: Debug và fix lỗi `GET /api/v1/auth/me 401` trong `run-e2e.mjs` tại `qa-evidence/20261102-e2e-chrome-docker-sprints-1-4/run.md`.
+
+## Tránh FOR UPDATE trên outer join và chạy test integration tuần tự
+
+- Áp dụng: Lấy khóa bi quan (pessimistic write) trong PostgreSQL và chạy bộ test tích hợp backend.
+- Bài học: (1) PostgreSQL cấm `FOR UPDATE` trên nullable side của `LEFT JOIN`. Luôn tách thành câu lệnh khóa base entity (`innerJoin`) với `.setLock('pessimistic_write', undefined, ['alias'])`, rồi đọc quan hệ nullable ở câu lệnh tiếp theo trong cùng transaction. (2) Runner `node --test` mặc định chạy song song các file test; khi nhiều integration test cùng chạy trên một DB PostgreSQL có khóa dòng dài sẽ gây nghẽn `statement_timeout (57014)`. Cần chỉ định `--test-concurrency=1` để chạy tuần tự các suite kiểm thử cơ sở dữ liệu.
+- Căn cứ: Sửa lỗi 500 đóng ca trong `shifts.service.ts` (SHIFT-01) và cấu hình `--test-concurrency=1` trong `POS_API/package.json` tại Sprint 5. Xác minh qua 65/65 pass toàn bộ 15 test suites `npm --prefix POS_API test`.

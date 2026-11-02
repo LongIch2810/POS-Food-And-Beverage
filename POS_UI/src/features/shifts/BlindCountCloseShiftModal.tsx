@@ -1,21 +1,20 @@
 // POS-F&B Blind Cash Reconciliation Close Shift Modal per DESIGN.md §5.5 & BR-58, BR-60, BR-19
 
 import React, { useState } from 'react';
-import { WorkShift, CashReconciliation } from '../../types/entities';
+import { WorkShiftDto } from '../../services/shiftService';
 import { Dialog } from '../../components/ui/Dialog';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { formatVND } from '../../utils/formatters';
-import { mockStorage } from '../../mock/mockStorage';
 import { shiftService } from '../../services/shiftService';
-import { AlertTriangle } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export interface BlindCountCloseShiftModalProps {
   isOpen: boolean;
   onClose: () => void;
-  shift: WorkShift;
+  shift: WorkShiftDto;
   onSuccess: () => void;
-  onOpenInvoice?: (invoiceId: string) => void;
 }
 
 const DENOMINATIONS = [500000n, 200000n, 100000n, 50000n, 20000n, 10000n, 5000n, 2000n, 1000n];
@@ -25,22 +24,18 @@ export const BlindCountCloseShiftModal: React.FC<BlindCountCloseShiftModalProps>
   onClose,
   shift,
   onSuccess,
-  onOpenInvoice,
 }) => {
+  const { showToast } = useToast();
   const [step, setStep] = useState<1 | 2>(1);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [directCountInput, setDirectCountInput] = useState<string>('');
   const [useDenominations, setUseDenominations] = useState<boolean>(true);
   const [note, setNote] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
-  const [reconciliationResult, setReconciliationResult] = useState<CashReconciliation | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [closeResult, setCloseResult] = useState<WorkShiftDto | null>(null);
 
   if (!isOpen) return null;
-
-  // Kiểm tra: Còn hóa đơn OPEN thì chặn đóng ca
-  const state = mockStorage.getState();
-  const openInvoices = state.invoices.filter((inv) => inv.work_shift_id === shift.id && inv.status === 'OPEN');
 
   // Tính tổng tiền đếm theo từng mệnh giá
   const denominationTotal = Object.entries(counts).reduce((sum, [denomStr, qty]) => {
@@ -49,7 +44,12 @@ export const BlindCountCloseShiftModal: React.FC<BlindCountCloseShiftModalProps>
 
   const totalCounted = useDenominations
     ? denominationTotal
-    : directCountInput ? BigInt(directCountInput) : 0n;
+    : directCountInput
+    ? (() => {
+        const sanitized = directCountInput.replace(/[,.\s]/g, '');
+        return /^\d+$/.test(sanitized) ? BigInt(sanitized) : 0n;
+      })()
+    : 0n;
 
   const handleDenomChange = (denom: bigint, delta: number) => {
     const key = denom.toString();
@@ -58,68 +58,22 @@ export const BlindCountCloseShiftModal: React.FC<BlindCountCloseShiftModalProps>
     setCounts((prev) => ({ ...prev, [key]: next }));
   };
 
-  // Bước 1 -> Bước 2: Xác nhận số tiền đếm để hệ thống trả tiền kỳ vọng
-  const handleProceedToStep2 = () => {
+  // Xác nhận số tiền đếm để gửi lên server đối soát
+  const handleSubmitCloseShift = async () => {
     setErrorMsg('');
-    if (openInvoices.length > 0) {
-      setErrorMsg(`Còn ${openInvoices.length} đơn chưa thanh toán. Vui lòng thanh toán hoặc hủy trước khi đóng ca`);
-      return;
-    }
-
-    try {
-      // Mô phỏng tính tiền kỳ vọng và chênh lệch từ mockEngine
-      const opening = shiftService.getOpeningCashInfo(shift.branch_id).amount;
-      const paidInvoices = state.invoices.filter((inv) => inv.work_shift_id === shift.id && inv.status === 'PAID');
-      let cashSales = 0n;
-      paidInvoices.forEach((inv) => {
-        inv.payments.forEach((p) => {
-          if (p.method === 'CASH') cashSales += p.amount;
-        });
-      });
-      const expenses = state.shiftExpenses.filter((e) => e.work_shift_id === shift.id && e.paid_from_drawer);
-      const expenseAmount = expenses.reduce((s, e) => s + e.amount, 0n);
-      const expectedCash = opening + cashSales - expenseAmount;
-      const difference = totalCounted - expectedCash;
-
-      let status: CashReconciliation['status'] = 'MATCHED';
-      if (difference < 0n) status = 'SHORTAGE';
-      else if (difference > 0n) status = 'OVERAGE';
-
-      setReconciliationResult({
-        id: 'preview',
-        work_shift_id: shift.id,
-        opening_cash: opening,
-        cash_sales_amount: cashSales,
-        expense_amount: expenseAmount,
-        expected_cash: expectedCash,
-        counted_cash: totalCounted,
-        difference,
-        status,
-        note: '',
-        created_at: new Date().toISOString(),
-      });
-
-      setStep(2);
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Có lỗi khi kiểm tra số tiền');
-    }
-  };
-
-  // Hoàn tất đóng ca
-  const handleFinalCloseShift = async () => {
-    if (!reconciliationResult) return;
-    if (reconciliationResult.difference !== 0n && !note.trim()) {
-      setErrorMsg('Ca có chênh lệch tiền mặt, bắt buộc phải nhập ghi chú giải trình');
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      await shiftService.closeShiftBlind(shift.id, reconciliationResult.counted_cash, note);
+      const result = await shiftService.closeShiftBlind(shift.id, totalCounted, note.trim() || undefined);
+      setCloseResult(result);
+      setStep(2);
+      showToast({ type: 'success', message: 'Đóng ca thu ngân và đối soát thành công!' });
       onSuccess();
-      onClose();
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Có lỗi khi đóng ca');
+      if (err?.code === 'RECONCILIATION_NOTE_REQUIRED') {
+        setErrorMsg('Ca có chênh lệch tiền mặt so với kỳ vọng. Bắt buộc phải nhập ghi chú giải trình.');
+      } else {
+        setErrorMsg(err?.message || 'Có lỗi khi đóng ca làm việc');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -130,413 +84,298 @@ export const BlindCountCloseShiftModal: React.FC<BlindCountCloseShiftModalProps>
       isOpen={isOpen}
       onClose={onClose}
       title={
-        openInvoices.length > 0
-          ? 'Chưa thể đóng ca (Còn đơn chưa hoàn tất)'
-          : step === 1
-          ? 'Đóng ca: Bước 1 - Đếm tiền trong két (Đếm mù)'
-          : 'Đóng ca: Bước 2 - Kết quả đối soát'
+        step === 1
+          ? 'Đóng ca: Đếm tiền trong két (Đếm mù)'
+          : 'Kết quả đối soát ca thu ngân'
       }
       maxWidth={540}
       disableClose={isSubmitting}
       footer={
-        openInvoices.length > 0 ? (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
-            <Button variant="secondary" onClick={onClose}>
-              Đóng hộp thoại
-            </Button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <Button variant="secondary" onClick={step === 1 ? onClose : () => setStep(1)} disabled={isSubmitting}>
-              {step === 1 ? 'Hủy' : 'Đếm lại'}
-            </Button>
-
-            {step === 1 ? (
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={handleProceedToStep2}
-              >
-                Xác nhận số tiền đã đếm &bull; {formatVND(totalCounted)}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          {step === 1 ? (
+            <>
+              <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
+                Hủy
               </Button>
-            ) : (
               <Button
                 variant="primary"
                 size="lg"
-                onClick={handleFinalCloseShift}
+                onClick={handleSubmitCloseShift}
                 isLoading={isSubmitting}
               >
-                Hoàn tất đóng ca
+                Xác nhận đóng ca &bull; {formatVND(totalCounted)}
               </Button>
-            )}
-          </div>
-        )
+            </>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={onClose}
+              >
+                Hoàn tất & Đóng
+              </Button>
+            </div>
+          )}
+        </div>
       }
     >
-      {/* TRƯỜNG HỢP 1: CÒN ĐƠN MỞ -> CHỈ HIỆN KHỐI CHẶN VÀ LỐI TẮT, ẨN BIỂU MẪU ĐẾM TIỀN */}
-      {openInvoices.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {step === 1 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div
             style={{
-              padding: 14,
+              padding: 12,
+              background: 'var(--color-surface-sunken)',
               borderRadius: 'var(--radius-control)',
-              background: 'var(--color-danger-bg)',
-              border: '1px solid var(--color-danger)',
-              color: 'var(--color-danger)',
+              fontSize: 13,
+              color: 'var(--color-text-muted)',
+              lineHeight: 1.5,
             }}
           >
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <AlertTriangle size={20} />
-              <span>Không thể đóng ca: Còn {openInvoices.length} đơn chưa thanh toán</span>
-            </div>
-            <p style={{ fontSize: 13, margin: 0, color: 'var(--color-text)' }}>
-              Theo quy định vận hành, tất cả đơn hàng thuộc ca phải được thanh toán hoặc hủy trước khi thu ngân kiểm đếm két và đóng ca.
-            </p>
+            <strong>Quy tắc đếm mù (BR-58):</strong> Thu ngân kiểm đếm toàn bộ tiền mặt thực tế đang có trong két và nhập vào hệ thống. Hệ thống sẽ đối soát tự động với tiền đầu ca và doanh thu.
           </div>
 
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)' }}>
-            Danh sách đơn hàng cần xử lý ({openInvoices.length} đơn):
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 240, overflowY: 'auto' }}>
-            {openInvoices.map((inv) => {
-              const tableName = inv.dining_table_id
-                ? state.tables.find((t) => t.id === inv.dining_table_id)?.name || 'Bàn'
-                : 'Mang đi';
-              return (
-                <div
-                  key={inv.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 14px',
-                    background: 'var(--color-surface)',
-                    borderRadius: 'var(--radius-control)',
-                    border: '1px solid var(--color-border)',
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>
-                      #{inv.invoice_code} &bull; {tableName}
-                    </div>
-                    <div className="money" style={{ fontSize: 13, color: 'var(--color-brand-700)', fontWeight: 600, marginTop: 2 }}>
-                      {formatVND(inv.total_amount)}
-                    </div>
-                  </div>
-                  {onOpenInvoice && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        onClose();
-                        onOpenInvoice(inv.id);
-                      }}
-                    >
-                      Mở đơn thanh toán
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* BƯỚC 1: ĐẾM MÙ (KHÔNG HIỆN TIỀN KỲ VỌNG per DESIGN.md §5.5 & BR-58) */}
-          {step === 1 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
-                  Nhập số tiền thực tế có trong két:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setUseDenominations(!useDenominations)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--color-brand-600)',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {useDenominations ? 'Nhập thẳng tổng tiền' : 'Đếm theo số tờ mệnh giá'}
-                </button>
-              </div>
-
-              {useDenominations ? (
-                /* Đếm theo từng mệnh giá */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto' }}>
-                  {DENOMINATIONS.map((denom) => {
-                    const count = counts[denom.toString()] || 0;
-                    const sub = denom * BigInt(count);
-                    return (
-                      <div
-                        key={denom.toString()}
-                        style={{
-                          height: 48,
-                          padding: '0 12px',
-                          background: 'var(--color-surface)',
-                          border: '1px solid var(--color-border)',
-                          borderRadius: 'var(--radius-control)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                        }}
-                      >
-                        <span className="money" style={{ width: 90, fontWeight: 600, fontSize: 15 }}>
-                          {formatVND(denom)}
-                        </span>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <button
-                            type="button"
-                            aria-label={`Bớt 1 tờ ${formatVND(denom)}`}
-                            onClick={() => handleDenomChange(denom, -1)}
-                            className="touch-press"
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 'var(--radius-control)',
-                              border: '1px solid var(--color-border-control)',
-                              background: 'var(--color-surface)',
-                              fontSize: 20,
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            &minus;
-                          </button>
-                          <span className="num" style={{ width: 36, textAlign: 'center', fontWeight: 700, fontSize: 16 }}>
-                            {count}
-                          </span>
-                          <button
-                            type="button"
-                            aria-label={`Thêm 1 tờ ${formatVND(denom)}`}
-                            onClick={() => handleDenomChange(denom, 1)}
-                            className="touch-press"
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 'var(--radius-control)',
-                              border: '1px solid var(--color-border-control)',
-                              background: 'var(--color-surface)',
-                              fontSize: 20,
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            +
-                          </button>
-                        </div>
-
-                        <span className="money" style={{ width: 110, textAlign: 'right', fontWeight: 700, color: 'var(--color-text)' }}>
-                          {formatVND(sub)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                /* Nhập thẳng số tiền */
-                <div>
-                  <label htmlFor="blind-direct-count-input" className="sr-only">
-                    Tổng tiền thực đếm trong két
-                  </label>
-                  <input
-                    id="blind-direct-count-input"
-                    type="number"
-                    placeholder="Nhập tổng tiền thực đếm trong két..."
-                    value={directCountInput}
-                    onChange={(e) => setDirectCountInput(e.target.value)}
-                    style={{
-                      height: 48,
-                      width: '100%',
-                      padding: '0 16px',
-                      borderRadius: 'var(--radius-control)',
-                      border: '1px solid var(--color-border-control)',
-                      fontSize: 18,
-                      fontWeight: 700,
-                      textAlign: 'right',
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* Tổng tiền đã đếm */}
-              <div
-                style={{
-                  padding: '16px 20px',
-                  background: 'var(--color-surface-sunken)',
-                  borderRadius: 'var(--radius-control)',
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-muted)' }}>
-                  Tổng tiền đã đếm:
-                </span>
-                <span className="money" style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-brand-800)' }}>
-                  {formatVND(totalCounted)}
-                </span>
-              </div>
+          {errorMsg && (
+            <div
+              style={{
+                padding: 12,
+                borderRadius: 'var(--radius-control)',
+                background: 'var(--color-danger-100)',
+                color: 'var(--color-danger-700)',
+                fontSize: 14,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <AlertTriangle size={18} />
+              <span>{errorMsg}</span>
             </div>
           )}
 
-          {/* BƯỚC 2: KẾT QUẢ ĐỐI SOÁT (HIỂN THỊ TIỀN KỲ VỌNG & CHÊNH LỆCH per DESIGN.md §5.5) */}
-          {step === 2 && reconciliationResult && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div
-                style={{
-                  padding: 16,
-                  background: 'var(--color-surface-sunken)',
-                  borderRadius: 'var(--radius-control)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
-                  fontSize: 14,
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)' }}>
-                  <span>Tiền đầu ca</span>
-                  <span className="money">{formatVND(reconciliationResult.opening_cash)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)' }}>
-                  <span>Doanh thu tiền mặt bán được</span>
-                  <span className="money">+{formatVND(reconciliationResult.cash_sales_amount)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-danger)' }}>
-                  <span>Chi từ két trong ca</span>
-                  <span className="money">&minus;{formatVND(reconciliationResult.expense_amount)}</span>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    paddingTop: 8,
-                    borderTop: '1px solid var(--color-border)',
-                    fontWeight: 600,
-                  }}
-                >
-                  <span>Tiền kỳ vọng trong két</span>
-                  <span className="money">{formatVND(reconciliationResult.expected_cash)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                  <span>Tiền thực đếm</span>
-                  <span className="money">{formatVND(reconciliationResult.counted_cash)}</span>
-                </div>
-              </div>
+          {/* Chọn phương thức nhập: Từng mệnh giá hoặc Nhập thẳng */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Button
+              variant={useDenominations ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => setUseDenominations(true)}
+            >
+              Đếm theo tờ tiền
+            </Button>
+            <Button
+              variant={!useDenominations ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => setUseDenominations(false)}
+            >
+              Nhập nhanh tổng tiền
+            </Button>
+          </div>
 
-              {/* Dòng chênh lệch: text-3xl, dấu trừ thực, nhãn trạng thái */}
-              <div
-                style={{
-                  padding: '16px 20px',
-                  borderRadius: 'var(--radius-control)',
-                  border: `1px solid ${
-                    reconciliationResult.status === 'MATCHED'
-                      ? 'var(--color-success)'
-                      : reconciliationResult.status === 'SHORTAGE'
-                      ? 'var(--color-danger)'
-                      : 'var(--color-warning)'
-                  }`,
-                  background:
-                    reconciliationResult.status === 'MATCHED'
-                      ? 'var(--color-success-bg)'
-                      : reconciliationResult.status === 'SHORTAGE'
-                      ? 'var(--color-danger-bg)'
-                      : 'var(--color-warning-bg)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 13, color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                    Chênh lệch đối soát:
-                  </div>
+          {useDenominations ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto', paddingRight: 4 }}>
+              {DENOMINATIONS.map((denom) => {
+                const key = denom.toString();
+                const qty = counts[key] || 0;
+                return (
                   <div
-                    className="money"
+                    key={key}
                     style={{
-                      fontSize: 28,
-                      fontWeight: 700,
-                      color:
-                        reconciliationResult.status === 'MATCHED'
-                          ? 'var(--color-success)'
-                          : reconciliationResult.status === 'SHORTAGE'
-                          ? 'var(--color-danger)'
-                          : 'var(--color-warning)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-control)',
                     }}
                   >
-                    {formatVND(reconciliationResult.difference)}
+                    <span style={{ fontWeight: 600, width: 100 }}>{formatVND(denom)}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => handleDenomChange(denom, -1)}
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 6,
+                          border: '1px solid var(--color-border)',
+                          background: 'var(--color-surface)',
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                        }}
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="0"
+                        value={qty}
+                        onChange={(e) => {
+                          const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                          setCounts((prev) => ({ ...prev, [key]: val }));
+                        }}
+                        style={{
+                          width: 60,
+                          textAlign: 'center',
+                          padding: '4px 6px',
+                          borderRadius: 6,
+                          border: '1px solid var(--color-border)',
+                          fontWeight: 600,
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleDenomChange(denom, 1)}
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 6,
+                          border: '1px solid var(--color-border)',
+                          background: 'var(--color-surface)',
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <span style={{ minWidth: 90, textAlign: 'right', fontWeight: 600 }}>
+                      {formatVND(denom * BigInt(qty))}
+                    </span>
                   </div>
-                </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 6 }}>
+                Tổng tiền mặt thực tế trong két (VND)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                placeholder="Ví dụ: 1000000"
+                value={directCountInput}
+                onChange={(e) => setDirectCountInput(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-control)',
+                  border: '1px solid var(--color-border)',
+                  fontSize: 18,
+                  fontWeight: 700,
+                }}
+              />
+            </div>
+          )}
 
+          {/* Ghi chú khi đóng ca */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
+              Ghi chú đóng ca (Bắt buộc nếu tiền thực tế bị lệch)
+            </label>
+            <input
+              type="text"
+              placeholder="Nhập ghi chú nếu có chênh lệch tiền mặt..."
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-control)',
+                border: '1px solid var(--color-border)',
+                fontSize: 14,
+              }}
+            />
+          </div>
+        </div>
+      ) : (
+        /* Bước 2: Hiển thị kết quả đối soát */
+        closeResult && closeResult.reconciliation && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: 12,
+                borderRadius: 'var(--radius-control)',
+                background:
+                  closeResult.reconciliation.status === 'MATCHED'
+                    ? 'var(--color-success-100)'
+                    : 'var(--color-warning-100)',
+                color:
+                  closeResult.reconciliation.status === 'MATCHED'
+                    ? 'var(--color-success-800)'
+                    : 'var(--color-warning-800)',
+              }}
+            >
+              <CheckCircle2 size={24} />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>
+                  {closeResult.reconciliation.status === 'MATCHED'
+                    ? 'Đối soát tiền mặt khớp hoàn hảo!'
+                    : closeResult.reconciliation.status === 'SHORTAGE'
+                    ? 'Phát hiện thiếu tiền mặt trong két'
+                    : 'Phát hiện thừa tiền mặt trong két'}
+                </div>
+                <div style={{ fontSize: 13 }}>
+                  Ca làm việc đã được đóng thành công.
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: 'var(--color-surface-sunken)',
+                borderRadius: 'var(--radius-control)',
+                padding: 16,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Tiền đầu ca:</span>
+                <span style={{ fontWeight: 600 }}>{formatVND(closeResult.reconciliation.openingCash)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Tiền hệ thống tính (Kỳ vọng):</span>
+                <span style={{ fontWeight: 600 }}>{formatVND(closeResult.reconciliation.expectedCash ?? 0)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Tiền thực tế đã đếm:</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-brand-800)' }}>
+                  {formatVND(closeResult.reconciliation.countedCash ?? 0)}
+                </span>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  paddingTop: 8,
+                  borderTop: '1px solid var(--color-border)',
+                }}
+              >
+                <span style={{ fontWeight: 600 }}>Chênh lệch:</span>
                 <Badge
                   variant={
-                    reconciliationResult.status === 'MATCHED'
+                    closeResult.reconciliation.status === 'MATCHED'
                       ? 'success'
-                      : reconciliationResult.status === 'SHORTAGE'
+                      : closeResult.reconciliation.status === 'SHORTAGE'
                       ? 'danger'
                       : 'warning'
                   }
                   size="md"
                 >
-                  {reconciliationResult.status === 'MATCHED'
-                    ? 'Khớp tiền'
-                    : reconciliationResult.status === 'SHORTAGE'
-                    ? 'Thiếu tiền'
-                    : 'Thừa tiền'}
+                  {formatVND(closeResult.reconciliation.difference ?? 0)}
                 </Badge>
               </div>
-
-              {/* Ô ghi chú (bắt buộc khi lệch tiền per BR-60) */}
-              <div>
-                <label
-                  htmlFor="close-shift-reconciliation-note"
-                  style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', display: 'block', marginBottom: 6 }}
-                >
-                  Ghi chú {reconciliationResult.difference !== 0n ? '(Bắt buộc khi lệch tiền)' : '(Không bắt buộc)'}:
-                </label>
-                <textarea
-                  id="close-shift-reconciliation-note"
-                  rows={3}
-                  placeholder="Giải trình nguyên nhân thừa hoặc thiếu tiền mặt trong ca..."
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: 12,
-                    borderRadius: 'var(--radius-control)',
-                    border: `1px solid ${
-                      reconciliationResult.difference !== 0n && !note.trim()
-                        ? 'var(--color-danger)'
-                        : 'var(--color-border-control)'
-                    }`,
-                    fontSize: 14,
-                    fontFamily: 'inherit',
-                  }}
-                />
-              </div>
-
-              {errorMsg && (
-                <div role="alert" style={{ color: 'var(--color-danger)', fontSize: 13, fontWeight: 500 }}>
-                  {errorMsg}
-                </div>
-              )}
             </div>
-          )}
-        </>
+          </div>
+        )
       )}
     </Dialog>
   );
 };
-
