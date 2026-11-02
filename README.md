@@ -14,7 +14,7 @@ Các luồng bán hàng và quản lý kho trong tài liệu là **phạm vi s�
 
 [Sprint 2 đã kết thúc ngày 30/10/2026](sprints/sprint-02/SPRINT.md#kết-luận-sprint-2--2026-10-30): PB-03 và lát cắt PB-13 quản trị nền tảng được nghiệm thu local; CI backend/frontend thành công trên master `9cc3299`. Browser E2E vẫn là bằng chứng local, chưa xác nhận production.
 
-[Sprint 3 đã kết thúc ngày 01/11/2026](sprints/sprint-03/SPRINT.md#kết-luận-sprint-3--2026-11-01): PB-04 và PB-13 tổ chức được Product Owner nghiệm thu local sau [đối chiếu QA](qa-evidence/20261101-203100-9ce75dd-pb13-final/acceptance-readiness.md). Ngày02/11 đã tách commit API, UI và bằng chứng trên nhánh `feat/pb13-organization-ui`; kết quả push/CI ghi trong task commit-push Sprint 3. Chưa merge hoặc xác nhận production. Quy tắc khóa sửa quỹ sau ca đầu tiên được tích hợp ở PB-06 trước khi bật API mở ca.
+[Sprint 3 đã kết thúc ngày 01/11/2026](sprints/sprint-03/SPRINT.md#kết-luận-sprint-3--2026-11-01): PB-04 và PB-13 tổ chức được Product Owner nghiệm thu local sau [đối chiếu QA](qa-evidence/20261101-203100-9ce75dd-pb13-final/acceptance-readiness.md). Ngày02/11 đã tách commit và push lên nhánh `feat/pb13-organization-ui`; [CI backend/frontend thành công tại dafd0b5](https://github.com/LongIch2810/POS-Food-And-Beverage/actions/runs/41379713471). Chưa merge hoặc xác nhận production. Quy tắc khóa sửa quỹ sau ca đầu tiên được tích hợp ở PB-06 trước khi bật API mở ca.
 
 ## Chạy local với Docker Compose
 

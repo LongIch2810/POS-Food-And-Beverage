@@ -45,6 +45,6 @@ PB-03 và PB-13 quản trị nền tảng đã nghiệm thu trong phạm vi đã
 | Khóa sửa quỹ sau ca CASHIER đầu tiên | PB-06 | Tích hợp kiểm tra lịch sử ca dưới cùng khóa Branch với mở ca, trước khi bật API mở ca; chưa nghiệm thu hành vi sau ca. |
 | API vận hành và UI còn dùng mock | PB-06..PB-12 + PB-13 | Triển khai và kiểm tra từng endpoint thật theo dependency; chưa nằm trong nghiệm thu Sprint 3. |
 | Timeout cleanup DB QA lần đầu | [Error record](../errors/2026-11-01-pb13-api-qa-cleanup-timeout.md) | Lượt chạy lại qua48/48; nguyên nhân sâu chưa xác minh, giữ log để theo dõi. |
-| Tích hợp Git, CI và production | Quy trình Git; PB-14 | Ngày02/11 đã tách commit API/UI/bằng chứng theo yêu cầu PO; push/CI theo task commit-push Sprint 3. Chưa merge; nghiệm thu local không thay thế CI, triển khai, sao lưu hoặc khôi phục. |
+| Tích hợp Git, CI và production | Quy trình Git; PB-14 | Ngày02/11 đã tách commit và push theo yêu cầu PO; [CI tại dafd0b5 thành công](https://github.com/LongIch2810/POS-Food-And-Beverage/actions/runs/41379713471). Chưa merge; chưa xác minh triển khai, sao lưu hoặc khôi phục production. |
 
 Hồ sơ sprint: [Sprint 1 (đã kết thúc)](../sprints/sprint-01/SPRINT.md), [Sprint 2 (đã kết thúc)](../sprints/sprint-02/SPRINT.md), [Sprint 3 (đã kết thúc, nghiệm thu local)](../sprints/sprint-03/SPRINT.md).
