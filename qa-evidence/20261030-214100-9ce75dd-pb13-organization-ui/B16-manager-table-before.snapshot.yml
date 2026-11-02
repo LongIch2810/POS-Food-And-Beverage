@@ -1,0 +1,39 @@
+- navigation "Điều hướng chính":
+  - img "Logo Phin Cà Phê"
+  - button "Sơ đồ bàn"
+  - button "Cài đặt"
+- banner:
+  - text: Cài đặt cửa hàng QA Manager Quản lý
+  - button "Đăng xuất"
+- main:
+  - region "Cài đặt tổ chức":
+    - heading "Cài đặt cửa hàng" [level=1]
+    - paragraph: Quản lý chi nhánh, bàn và tài khoản nhân viên.
+    - tablist "Cài đặt":
+      - tab "Bàn" [selected]
+    - paragraph: QA Phố mới
+    - text: Trạng thái
+    - combobox "Trạng thái":
+      - option "Tất cả trạng thái" [selected]
+      - option "Hoạt động"
+      - option "Ngưng hoạt động"
+    - button "Thêm bàn"
+    - paragraph: Chưa có bàn phù hợp.
+    - button "Trang trước" [disabled]
+    - text: Trang 1 · 0 bản ghi
+    - button "Trang sau" [disabled]
+    - dialog "Thêm Bàn":
+      - heading "Thêm Bàn" [level=2]
+      - button "Đóng hộp thoại"
+      - text: Tên bàn
+      - textbox "Tên bàn": QA Manager Table
+      - text: Khu vực (không bắt buộc)
+      - textbox "Khu vực (không bắt buộc)"
+      - text: Số chỗ (không bắt buộc)
+      - textbox "Số chỗ (không bắt buộc)"
+      - text: Để trống nếu chưa xác định số chỗ.
+      - button "Hủy"
+      - button "Tạo mới"
+- status:
+  - text: Đổi mật khẩu thành công. Vui lòng đăng nhập lại.
+  - button "Đóng thông báo"

@@ -1,0 +1,46 @@
+{
+  "viewport": 768,
+  "documentWidth": 768,
+  "controls": [
+    {
+      "text": "Đăng xuất",
+      "height": 48
+    },
+    {
+      "text": "Chi nhánh",
+      "height": 48
+    },
+    {
+      "text": "Bàn",
+      "height": 48
+    },
+    {
+      "text": "Tài khoản",
+      "height": 48
+    },
+    {
+      "text": "Cấp tài khoản",
+      "height": 56
+    },
+    {
+      "text": "Đổi vai trò",
+      "height": 48
+    },
+    {
+      "text": "Đặt lại mật khẩu",
+      "height": 48
+    },
+    {
+      "text": "Khóa",
+      "height": 48
+    },
+    {
+      "text": "Trang trước",
+      "height": 48
+    },
+    {
+      "text": "Trang sau",
+      "height": 48
+    }
+  ]
+}

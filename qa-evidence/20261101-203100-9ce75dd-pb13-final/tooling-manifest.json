@@ -1,0 +1,14 @@
+[
+  {
+    "path": "qa-evidence/20261101-203100-9ce75dd-pb13-final/browser-final.cjs",
+    "sha256": "d9d8f307b644299a8ffe9ecabe3b3a94c99f1692f3745bcd4800f4b2de1032b9"
+  },
+  {
+    "path": "qa-evidence/20261101-203100-9ce75dd-pb13-final/resume-api.cjs",
+    "sha256": "41d8ae614f77782c4b457b4e2c70160e2294f13b9b8bd3f8b1f17b249d4b4042"
+  },
+  {
+    "path": "qa-evidence/20261101-203100-9ce75dd-pb13-final/snapshot-final.cjs",
+    "sha256": "49c96bc86e193b1950f6bf12d5f838ff159a502fa08fc208ecc0e485208001af"
+  }
+]

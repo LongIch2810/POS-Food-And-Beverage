@@ -1,0 +1,12 @@
+﻿START 2026-11-01T20:31:27.0644016+07:00 npm test; npm run typecheck; npm run build
+END 2026-11-01T20:32:09.5364936+07:00 test=0 typecheck=0 build=0
+START 2026-11-01T20:35:30.0885204+07:00 node --env-file-if-exists=.env ../qa-evidence/20261101-203100-9ce75dd-pb13-final/browser-final.cjs (browser-1 local Chrome)
+START 2026-11-01T20:35:41.1455271+07:00 npm test (final API regression)
+END 2026-11-01T20:36:09.4601697+07:00 browser_exit=0
+START 2026-11-01T20:37:24.2092302+07:00 npm test; npm run typecheck; npm run build (final with error handling assertions)
+END 2026-11-01T20:37:44.1077641+07:00 test=0 typecheck=0 build=0
+END 2026-11-01T20:38:41.9720874+07:00 api_exit=1
+START 2026-11-01T20:40:44.7453429+07:00 npm test (retry after browser closed; previous DROP DATABASE timeout retained)
+END 2026-11-01T20:43:07.4939125+07:00 api_exit=0
+START 2026-11-01T20:43:09.5845075+07:00 node --env-file-if-exists=.env ../qa-evidence/20261101-203100-9ce75dd-pb13-final/snapshot-final.cjs
+END 2026-11-01T20:43:09.7694001+07:00 snapshot_exit=0

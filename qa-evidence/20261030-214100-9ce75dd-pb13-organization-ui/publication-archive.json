@@ -1,0 +1,9 @@
+{
+  "rawPath": "qa-evidence/20261030-214100-9ce75dd-pb13-organization-ui/api-tests-1.log",
+  "rawBytes": 23572644,
+  "rawSha256": "ed6ed2fe2b89ab750bdd0582e430bde0054a986c6c1ebe4a8e2e2cbf9b1bf6a0",
+  "archivePath": "qa-evidence/20261030-214100-9ce75dd-pb13-organization-ui/api-tests-1.log.gz",
+  "archiveBytes": 964602,
+  "archiveSha256": "faa41700b92867c854d80bd66b16876f41f35efa3f3b4235e7e00530bb6af142",
+  "purpose": "Lossless publication of existing local QA output; no test rerun or artifact content changes"
+}

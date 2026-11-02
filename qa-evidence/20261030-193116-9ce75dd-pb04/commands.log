@@ -1,0 +1,42 @@
+﻿START 2026-10-30T19:31:41.1638217+07:00 npm run build; node --env-file-if-exists=.env --test dist/organization/tests/organization.integration.test.js
+END 2026-10-30T19:32:40.0649424+07:00 build_exit=0 test_exit=1
+START 2026-10-30T19:35:25.3141347+07:00 npm run build; node --env-file-if-exists=.env --test dist/organization/tests/organization.integration.test.js
+END 2026-10-30T19:35:27.9817562+07:00 build_exit=2 test_exit=not-run
+START 2026-10-30T19:35:43.4497365+07:00 npm run build; node --env-file-if-exists=.env --test dist/organization/tests/organization.integration.test.js
+END 2026-10-30T19:35:55.0492047+07:00 build_exit=0 test_exit=1
+START 2026-10-30T19:36:44.2992561+07:00 npm test
+END 2026-10-30T19:37:06.1585862+07:00 npm_test_exit=1
+START 2026-10-30T19:38:27.5348137+07:00 npm test
+END 2026-10-30T19:38:59.2738950+07:00 npm_test_exit=0
+START 2026-10-30T19:39:43.8533621+07:00 npm run build; node --env-file-if-exists=.env --test dist/organization/tests/organization.integration.test.js (ORG-05 red)
+END 2026-10-30T19:40:17.2881590+07:00 test_exit=1
+START 2026-10-30T19:40:51.6415415+07:00 npm run build; node --env-file-if-exists=.env --test dist/organization/tests/organization.integration.test.js (review regression red)
+END 2026-10-30T19:41:02.5954447+07:00 test_exit=1
+START 2026-10-30T19:41:34.1167395+07:00 npm test (review fixes)
+END 2026-10-30T19:41:53.9431880+07:00 npm_test_exit=0
+START 2026-10-30T19:42:22.9897393+07:00 npm run build; node --env-file-if-exists=.env --test dist/organization/tests/organization.integration.test.js (UUID self red)
+END 2026-10-30T19:42:31.6688896+07:00 test_exit=1
+START 2026-10-30T19:44:40.6903005+07:00 npm test (final)
+END 2026-10-30T19:45:00.4929681+07:00 npm_test_exit=0
+START 2026-10-30T19:45:00.5001566+07:00 node --env-file-if-exists=.env ../qa-evidence/20261030-193116-9ce75dd-pb04/migration-check.cjs
+END 2026-10-30T19:45:02.7891113+07:00 migration_exit=0
+START 2026-10-30T19:46:32.0914767+07:00 npm test (final measured diagnostics)
+END 2026-10-30T19:46:54.5579129+07:00 npm_test_exit=0
+START 2026-10-30T19:48:50.4464090+07:00 npm run build; node --env-file-if-exists=.env --test dist/organization/tests/organization.openapi.test.js (OpenAPI red)
+END 2026-10-30T19:48:52.7294796+07:00 test_exit=
+START 2026-10-30T19:49:11.6570763+07:00 npm run build; node --env-file-if-exists=.env --test dist/organization/tests/organization.openapi.test.js (OpenAPI red-2)
+END 2026-10-30T19:49:14.0156031+07:00 test_exit=
+START 2026-10-30T19:49:47.0880690+07:00 npm run build; node --env-file-if-exists=.env --test dist/organization/tests/organization.openapi.test.js (OpenAPI red-3)
+END 2026-10-30T19:49:49.3524579+07:00 test_exit=
+START 2026-10-30T19:49:58.9017372+07:00 npm run build; node --env-file-if-exists=.env --test dist/organization/tests/organization.openapi.test.js (OpenAPI red-4)
+END 2026-10-30T19:50:02.1425207+07:00 test_exit=1
+START 2026-10-30T19:50:36.4796342+07:00 npm run build; node --env-file-if-exists=.env --test dist/organization/tests/organization.openapi.test.js (OpenAPI green)
+END 2026-10-30T19:50:39.6140434+07:00 build_exit=0 test_exit=0
+START 2026-10-30T19:51:10.0207086+07:00 npm test (source final including OpenAPI)
+END 2026-10-30T19:51:28.6314964+07:00 npm_test_exit=0
+START 2026-10-30T19:53:39.3710425+07:00 npm run build; node --env-file-if-exists=.env --test dist/organization/tests/organization.openapi.test.js (empty list red)
+END 2026-10-30T19:53:42.5539788+07:00 test_exit=1
+START 2026-10-30T19:54:07.8267090+07:00 npm run build; node --env-file-if-exists=.env --test dist/organization/tests/organization.openapi.test.js (nullable schema red)
+END 2026-10-30T19:54:11.0058538+07:00 test_exit=1
+START 2026-10-30T19:54:23.5898064+07:00 npm test (final approved OpenAPI)
+END 2026-10-30T19:54:42.5971111+07:00 npm_test_exit=0

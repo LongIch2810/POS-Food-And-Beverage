@@ -1,0 +1,6 @@
+# Preserve original QA output bytes so archived artifact checksums remain valid.
+qa-evidence/20261030-193116-9ce75dd-pb04/** -text
+qa-evidence/20261030-200921-9ce75dd-pb04-evidence-audit/** -text
+qa-evidence/20261030-202325-9ce75dd-pb04-gap-fix/** -text
+qa-evidence/20261030-214100-9ce75dd-pb13-organization-ui/** -text
+qa-evidence/20261101-203100-9ce75dd-pb13-final/** -text

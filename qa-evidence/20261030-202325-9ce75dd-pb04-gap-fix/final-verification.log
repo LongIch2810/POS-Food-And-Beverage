@@ -1,0 +1,17 @@
+{
+  "start": "2026-10-30T21:30:45.626586+07:00",
+  "end": "2026-10-30T21:30:46.034354+07:00",
+  "exitCode": 0,
+  "manifests": {
+    "source-manifest.json": 66,
+    "runtime-manifest.json": 64,
+    "contract-manifest.json": 9
+  },
+  "gzipVerified": 7,
+  "testRunnerNodes": 48,
+  "failures": 0,
+  "linksVerified": 22,
+  "gitDiffCheck": 0,
+  "taskAndPlan": "completed",
+  "kind": "local verification by agent"
+}
