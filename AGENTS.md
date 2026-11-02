@@ -28,7 +28,8 @@ Mọi đường dẫn dưới đây tính từ **gốc repository** (thư mục 
 | `docs/architecture/TECH_STACK.md` | Công nghệ/framework/thư viện **đang dùng** theo backend, frontend và hạ tầng; đọc trước khi chọn hoặc thêm dependency. |
 | `DESIGN.md` | Giao diện POS, component, tương tác, ngôn ngữ và thiết bị. |
 | `rules/` | Quy tắc làm việc chung; chọn file phù hợp theo bảng bên dưới. |
-| `.codex/agents/` | Cấu hình `explorer` để định vị code, `code-reviewer` để review và `qa` để kiểm thử/báo lỗi; các agent không sửa source theo chỉ dẫn. |
+| `.agents/subagents/` | Cấu hình subagent `explorer`, `code-reviewer` và `qa` cho Antigravity; định nghĩa quyền hạn và prompt. |
+| `.codex/agents/` | Cấu hình `explorer` để khám phá cấu trúc dự án và định vị code khi có task, `code-reviewer` để review và `qa` để kiểm thử/báo lỗi; các agent không sửa source theo chỉ dẫn. |
 | `qa-evidence/` | Dấu vết các lần chạy QA và kiểm tra thủ công; chỉ tạo khi có lần chạy thật. |
 | `POS_UI/`, `POS_API/`, `POS_INFRA/` | Mã UI, backend và hạ tầng; kiểm tra mã thực tế trước khi nói tính năng đã chạy. |
 | `MEMORY.md` | Bài học có thể tái sử dụng qua các phiên; đầu task lướt tiêu đề và chỉ đọc mục liên quan. |

@@ -31,7 +31,7 @@ export class JsonBodyGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
     // Content-Type phải được kiểm tra trước parameter pipes của DTO.
-    if (request.method !== 'GET' && request.method !== 'HEAD') jsonInput(request, request.method === 'PATCH');
+    if (request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'DELETE') jsonInput(request, request.method === 'PATCH');
     return true;
   }
 }

@@ -10,9 +10,10 @@ import { HealthController } from './http/health.controller';
 import { PlatformModule } from './platform/platform.module';
 import { OrganizationModule } from './organization/organization.module';
 import { UsersModule } from './users/users.module';
+import { MenuModule } from './menu/menu.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, PlatformModule, OrganizationModule, UsersModule],
+  imports: [DatabaseModule, AuthModule, PlatformModule, OrganizationModule, UsersModule, MenuModule],
   controllers: [HealthController],
   providers: [{ provide: APP_FILTER, useClass: ApiErrorFilter }],
 })

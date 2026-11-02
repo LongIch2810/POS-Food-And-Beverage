@@ -1,7 +1,7 @@
 import { AuthError, restoreSession } from '../auth/client.ts';
 import { getRequestIdentity, notifySessionChange, requestIdentityKey } from '../auth/session-events.ts';
 
-export async function request<T>(path: string, method = 'GET', body?: object, retry = true, list = false): Promise<T> {
+export async function request<T>(path: string, method = 'GET', body?: object | FormData, retry = true, list = false): Promise<T> {
   const context = getRequestIdentity();
   const changedSession = () => new AuthError('SESSION_CHANGED', 'Tài khoản hoặc phạm vi đã thay đổi. Hãy mở lại chức năng trước khi thao tác.');
   const headers: Record<string, string> = {};
@@ -10,12 +10,17 @@ export async function request<T>(path: string, method = 'GET', body?: object, re
     const csrf = document.cookie.split('; ').find(item => item.startsWith('__Host-pos_csrf='))?.slice('__Host-pos_csrf='.length);
     if (csrf) headers['X-CSRF-Token'] = decodeURIComponent(csrf);
   }
-  if (body) headers['Content-Type'] = 'application/json';
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+  if (body && !isFormData) headers['Content-Type'] = 'application/json';
   if (method !== 'GET' && context.epoch !== getRequestIdentity().epoch) throw changedSession();
   let response: Response;
   try {
-    response = await fetch(`/api/v1/${path}`, { method, headers, credentials: 'same-origin',
-      ...(body ? { body: JSON.stringify(body) } : {}) });
+    response = await fetch(`/api/v1/${path}`, {
+      method,
+      headers,
+      credentials: 'same-origin',
+      ...(body ? { body: isFormData ? body : JSON.stringify(body) } : {}),
+    });
   } catch { throw new AuthError('NETWORK_ERROR', 'Chưa xác nhận được kết quả. Kiểm tra kết nối và tải lại danh sách trước khi thử lại.'); }
   if (response.status === 401 && retry) {
     try {
@@ -33,6 +38,7 @@ export async function request<T>(path: string, method = 'GET', body?: object, re
     notifySessionChange('revoked');
     throw new AuthError('UNAUTHENTICATED', 'Phiên đã hết hiệu lực. Vui lòng đăng nhập lại.');
   }
+  if (response.status === 204) return undefined as T;
   let json;
   try { json = await response.json(); } catch { throw new AuthError('UNKNOWN', 'Chưa đọc được kết quả. Tải lại danh sách trước khi thử lại.'); }
   if (!response.ok) {

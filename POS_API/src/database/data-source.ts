@@ -8,6 +8,12 @@ import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { Role } from '../auth/entities/role.entity';
 import { RolePermission } from '../auth/entities/role-permission.entity';
 import { Store } from '../platform/entities/store.entity';
+import { Category } from '../menu/entities/category.entity';
+import { CategoryTopping } from '../menu/entities/category-topping.entity';
+import { Product } from '../menu/entities/product.entity';
+import { ProductSize } from '../menu/entities/product-size.entity';
+import { Size } from '../menu/entities/size.entity';
+import { Topping } from '../menu/entities/topping.entity';
 import { User } from '../auth/entities/user.entity';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -23,6 +29,12 @@ export const entities = [
   User,
   RefreshToken,
   AuthRateEvent,
+  Category,
+  Size,
+  Product,
+  ProductSize,
+  Topping,
+  CategoryTopping,
 ];
 
 export const dataSource = new DataSource({
@@ -35,4 +47,3 @@ export const dataSource = new DataSource({
   entities,
   migrations: [__dirname + '/migrations/*.js'],
 });
-

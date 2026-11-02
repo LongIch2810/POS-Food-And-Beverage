@@ -16,6 +16,8 @@ export type PermissionCode =
   | 'user.manage'
   | 'branch.manage' // Quản lý chi nhánh & nhân viên
   | 'table.manage' // Quản lý bàn
+  | 'menu.read' // Xem danh mục, kích cỡ, món, topping
+  | 'menu.manage' // Quản lý danh mục, kích cỡ, món, topping, ảnh
   | 'product.manage' // Quản lý menu, size, topping, công thức, mã giảm giá
   | 'shift.open_close' // Mở và đóng ca của mình
   | 'shift.force_close' // Đóng cưỡng chế ca của người khác (MANAGER, OWNER)

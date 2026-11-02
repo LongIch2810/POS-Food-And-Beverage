@@ -1,0 +1,188 @@
+TAP version 13
+# Subtest: PB-04 organization and staff HTTP with PostgreSQL
+    # Subtest: ORG-01 BR-55/76/103 create branches, money and immutable code
+    ok 1 - ORG-01 BR-55/76/103 create branches, money and immutable code
+      ---
+      duration_ms: 566.2731
+      type: 'test'
+      ...
+    # Subtest: ORG-02 BR-70/71/95/99 table schema, scope and nullable fields
+    ok 2 - ORG-02 BR-70/71/95/99 table schema, scope and nullable fields
+      ---
+      duration_ms: 418.9413
+      type: 'test'
+      ...
+    # Subtest: USR-01 BR-01/70/83/84/97 create staff and change password first
+    ok 3 - USR-01 BR-01/70/83/84/97 create staff and change password first
+      ---
+      duration_ms: 6609.7798
+      type: 'test'
+      ...
+    # Subtest: ORG-03 BR-05/71/81 real endpoint permissions and manager branch boundary
+    ok 4 - ORG-03 BR-05/71/81 real endpoint permissions and manager branch boundary
+      ---
+      duration_ms: 317.3625
+      type: 'test'
+      ...
+    # Subtest: USR-HIER BR-06/83 misplaced permission cannot grant peer role or disable/demote self
+    ok 5 - USR-HIER BR-06/83 misplaced permission cannot grant peer role or disable/demote self
+      ---
+      duration_ms: 1006.1626
+      type: 'test'
+      ...
+    # Subtest: USR-02 BR-02/03/06 role change and lock revoke all sessions; reset retains lock
+    ok 6 - USR-02 BR-02/03/06 role change and lock revoke all sessions; reset retains lock
+      ---
+      duration_ms: 5011.8306
+      type: 'test'
+      ...
+    # Subtest: USR-03 transaction rollback keeps user and sessions unchanged
+    ok 7 - USR-03 transaction rollback keeps user and sessions unchanged
+      ---
+      duration_ms: 340.2375
+      type: 'test'
+      ...
+    # Subtest: ORG-04 stable cursor, filters, malformed input and schema replay
+    ok 8 - ORG-04 stable cursor, filters, malformed input and schema replay
+      ---
+      duration_ms: 120.5029
+      type: 'test'
+      ...
+    # Subtest: USR-04 login/refresh racing role change cannot retain old privileges
+    ok 9 - USR-04 login/refresh racing role change cannot retain old privileges
+      ---
+      duration_ms: 825.1565
+      type: 'test'
+      ...
+    # Subtest: ORG-05 unsupported JSON Content-Type returns 400 before DTO validation
+    ok 10 - ORG-05 unsupported JSON Content-Type returns 400 before DTO validation
+      ---
+      duration_ms: 47.2317
+      type: 'test'
+      ...
+    1..10
+ok 1 - PB-04 organization and staff HTTP with PostgreSQL
+  ---
+  duration_ms: 20330.2384
+  type: 'test'
+  ...
+# {"kind":"HTTP","method":"POST","path":"/platform/stores","status":201,"requestId":"e555493f-d205-45ed-9772-b005d98cb8a1"}
+# {"kind":"HTTP","method":"POST","path":"/platform/stores","status":201,"requestId":"f25dd4aa-12c1-41e6-b8ab-be90422b52d5"}
+# {"kind":"HTTP","method":"POST","path":"/branches","status":201,"requestId":"4b4a124e-b08f-409b-873c-3f6a3f373e16","resourceId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true}
+# {"case":"ORG-01","db":"branches count before/after create","before":0,"after":1}
+# {"kind":"HTTP","method":"POST","path":"/branches","status":201,"requestId":"4001d37a-acf9-479c-920e-9c378bcd3e4b","resourceId":"3e3b3739-83d0-47f8-a3b7-788b7f197e5b","isActive":true}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":422,"requestId":"52862b5f-eed7-4f9a-96d8-fad9a56b1370","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":422,"requestId":"871c4719-df98-4597-91ac-ef58061e1ed5","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":422,"requestId":"d89910e6-e49d-4cbf-8162-314f59400772","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":422,"requestId":"66326936-e5b2-4531-a41b-5b54b434e0e7","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":422,"requestId":"8e23f6e2-a685-4da0-96fb-c9664f87f707","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":200,"requestId":"e80e2859-af86-4f5f-a3c3-ffd20d3871b4","resourceId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true}
+# {"case":"ORG-01","db":"initial_cash before/after patch","before":"0","after":"1000000000000"}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":422,"requestId":"c2f833aa-8415-4fd4-89d1-42ba10034641","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":422,"requestId":"193d18b8-9c9a-4c26-ace7-c9b886b32ef3","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":422,"requestId":"55b60de5-f094-4e27-9cb5-b214393629d0","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":422,"requestId":"3a71486f-253c-4d95-a0c4-de7536879577","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":422,"requestId":"c5717111-1340-4b50-aaee-7b0099f2098f","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/3e3b3739-83d0-47f8-a3b7-788b7f197e5b","status":404,"requestId":"21cd9ca1-68f4-4023-9ea5-f7cff8c09942","errorCode":"NOT_FOUND"}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":200,"requestId":"e035c5e7-a836-46ec-8e04-5ef45b203e54","resourceId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":200,"requestId":"a132b7ce-5d6b-4e4a-ac3f-93bb72a23fb9","resourceId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true}
+# {"kind":"HTTP","method":"POST","path":"/branches","status":201,"requestId":"089c2034-e81e-4a30-82e7-7f3b05039b1e","resourceId":"f801d9ac-813d-4d2e-a6ee-7b463e74a7eb","isActive":true}
+# {"kind":"HTTP","method":"POST","path":"/branches","status":409,"requestId":"9a52448f-ff07-41f0-922a-e7898b5eed9b","errorCode":"CONFLICT"}
+# {"kind":"HTTP","method":"POST","path":"/branches","status":201,"requestId":"b4102f2e-82ad-4980-8f0e-ed27ea5cbbd4","resourceId":"9e42491b-d047-4889-b8a4-14dbed795123","isActive":true}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":200,"requestId":"c86c9608-05c1-4bc1-8fa2-a29d3df979a7","resourceId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":false}
+# {"kind":"HTTP","method":"POST","path":"/dining-tables","status":201,"requestId":"4cb65419-cab5-4230-a993-63f04c8bbdd4","resourceId":"6c3da389-4e5e-4aa2-8831-a50857046399","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true}
+# {"case":"ORG-02","db":"dining_tables columns","columns":[{"column_name":"id"},{"column_name":"branch_id"},{"column_name":"name"},{"column_name":"area"},{"column_name":"capacity"},{"column_name":"is_active"},{"column_name":"created_at"},{"column_name":"updated_at"}]}
+# {"kind":"HTTP","method":"PATCH","path":"/dining-tables/6c3da389-4e5e-4aa2-8831-a50857046399","status":422,"requestId":"1f8090b5-df95-4a07-884b-15c8de5004c6","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/dining-tables/6c3da389-4e5e-4aa2-8831-a50857046399","status":422,"requestId":"26a04e04-fc1c-436d-9330-8fb29331a0c5","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/dining-tables/6c3da389-4e5e-4aa2-8831-a50857046399","status":422,"requestId":"6bd16896-2701-4d16-b8fc-db127e4e61a1","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/dining-tables/6c3da389-4e5e-4aa2-8831-a50857046399","status":422,"requestId":"7a55c03c-e44a-4584-bd4a-223c331fac8c","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/dining-tables/6c3da389-4e5e-4aa2-8831-a50857046399","status":422,"requestId":"23835174-0388-4cdf-96b3-127e587de516","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/dining-tables/6c3da389-4e5e-4aa2-8831-a50857046399","status":200,"requestId":"a986f31e-008e-4bc8-a652-76598f03127b","resourceId":"6c3da389-4e5e-4aa2-8831-a50857046399","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true}
+# {"kind":"HTTP","method":"PATCH","path":"/dining-tables/6c3da389-4e5e-4aa2-8831-a50857046399","status":200,"requestId":"4e7d3928-b7ed-47c3-9869-7e1f2dc498a6","resourceId":"6c3da389-4e5e-4aa2-8831-a50857046399","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true}
+# {"kind":"HTTP","method":"PATCH","path":"/dining-tables/6c3da389-4e5e-4aa2-8831-a50857046399","status":422,"requestId":"5a9e1c34-84f1-42e1-9270-2d007ce9754c","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"POST","path":"/dining-tables","status":404,"requestId":"da4f9688-40e8-4235-b16e-b9817e71b654","errorCode":"NOT_FOUND"}
+# {"kind":"HTTP","method":"PATCH","path":"/dining-tables/6c3da389-4e5e-4aa2-8831-a50857046399","status":404,"requestId":"d8233b3b-8129-45ee-9a41-02810eee9959","errorCode":"NOT_FOUND"}
+# {"kind":"HTTP","method":"POST","path":"/dining-tables","status":409,"requestId":"5b897a40-2302-4d8e-b16a-17119b22f21a","errorCode":"CONFLICT"}
+# {"kind":"HTTP","method":"POST","path":"/dining-tables","status":201,"requestId":"707de4e5-5fbd-421c-8371-df1cd9baefd3","resourceId":"6ac07778-6248-4f99-9c9c-aa35b41c07f5","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true}
+# {"kind":"HTTP","method":"POST","path":"/dining-tables","status":409,"requestId":"9d4bdf08-a4de-4f92-9f21-a02a1db1a5f0","errorCode":"CONFLICT"}
+# {"kind":"HTTP","method":"POST","path":"/users","status":201,"requestId":"d916f2dd-a56e-40e9-a948-b1d63f452fc8","resourceId":"cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","role":"MANAGER","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true,"mustChangePassword":true}
+# {"case":"USR-01","passwordStoredAsHash":true,"temporaryPasswordMatchesHash":true}
+# {"kind":"HTTP","method":"GET","path":"/dining-tables","status":403,"requestId":"e29e6053-d37c-4fb3-85ce-961d2088e700","errorCode":"PASSWORD_CHANGE_REQUIRED"}
+# {"kind":"HTTP","method":"POST","path":"/auth/change-password","status":204,"requestId":"1e436330-6e55-4f67-a469-ab6e837ad1bc"}
+# {"kind":"HTTP","method":"GET","path":"/auth/me","status":401,"requestId":"27442b0e-8a1e-41d9-b523-edafb9e1e23e","errorCode":"UNAUTHENTICATED"}
+# {"kind":"HTTP","method":"POST","path":"/users","status":422,"requestId":"74578188-94b8-4383-8b22-980621cde981","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"POST","path":"/users","status":422,"requestId":"5bb36e08-851a-4f0c-822c-21953fbf2c10","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"POST","path":"/users","status":404,"requestId":"72357461-0bb3-4262-96bb-3765eddf795b","errorCode":"NOT_FOUND"}
+# {"kind":"HTTP","method":"POST","path":"/users","status":201,"requestId":"d0dd4b93-b679-4610-8648-2e5ec40fcf78","resourceId":"27210c13-4138-4868-a7f1-3f5fce0a5858","role":"CASHIER","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true,"mustChangePassword":true}
+# {"kind":"HTTP","method":"POST","path":"/users","status":409,"requestId":"fe3298a6-eaa7-4e51-ba17-c812713a4d33","errorCode":"USERNAME_EXISTS"}
+# {"kind":"HTTP","method":"GET","path":"/branches","status":200,"requestId":"7b29edf3-e143-46cf-a6e0-df8c25dd14a4","count":1,"meta":{"limit":20,"nextCursor":null,"total":1}}
+# {"kind":"HTTP","method":"GET","path":"/dining-tables?branchId=invalid","status":200,"requestId":"62fd9a8a-a51d-4e2a-a667-cf4181a1cb8b","count":2,"meta":{"limit":20,"nextCursor":null,"total":2}}
+# {"kind":"HTTP","method":"POST","path":"/dining-tables","status":201,"requestId":"a5d4bfa8-b12d-460a-a5d2-385d09d3c59b","resourceId":"4a74f182-46fc-4f6b-a847-ca8fc4d02f12","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true}
+# {"kind":"HTTP","method":"POST","path":"/dining-tables","status":422,"requestId":"1b87042d-1c37-4eac-9b1b-f84554fcee7a","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"POST","path":"/dining-tables","status":201,"requestId":"a7164e5d-f988-40b1-afd2-4e4d56b8013d","resourceId":"33e9103c-44c5-4533-92dc-c1ac93ba490b","branchId":"3e3b3739-83d0-47f8-a3b7-788b7f197e5b","isActive":true}
+# {"kind":"HTTP","method":"PATCH","path":"/dining-tables/33e9103c-44c5-4533-92dc-c1ac93ba490b","status":404,"requestId":"fbb23976-e0ec-46f9-8924-b1a5c73f7829","errorCode":"NOT_FOUND"}
+# {"kind":"HTTP","method":"GET","path":"/users","status":403,"requestId":"bd602342-a448-4fdd-9a97-644d2015e96a","errorCode":"PERMISSION_DENIED"}
+# {"kind":"HTTP","method":"GET","path":"/branches","status":403,"requestId":"67c12bc4-4a41-4c78-9dc0-1975caaca87d","errorCode":"PERMISSION_DENIED"}
+# {"kind":"HTTP","method":"GET","path":"/dining-tables","status":403,"requestId":"9258afdf-60b5-43aa-84fd-ebcbb7541d49","errorCode":"PERMISSION_DENIED"}
+# {"kind":"HTTP","method":"POST","path":"/users/cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab/reset-password","status":404,"requestId":"3fe1666a-07d3-485a-bbc5-3fbe94038e87","errorCode":"NOT_FOUND"}
+# {"kind":"HTTP","method":"PATCH","path":"/users/72b81a84-3d3e-4076-a558-2bb5d12b066f","status":404,"requestId":"521d3510-94de-4591-a0c8-7dded6531a75","errorCode":"NOT_FOUND"}
+# {"kind":"HTTP","method":"GET","path":"/users?role=OWNER","status":422,"requestId":"db4aeb17-1fd8-48ff-b8ba-4ecd66e821c5","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"POST","path":"/users","status":403,"requestId":"b4797590-45f0-4ffa-9878-5f43846f2031","errorCode":"PERMISSION_DENIED"}
+# {"kind":"HTTP","method":"PATCH","path":"/users/cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","status":403,"requestId":"d82efacb-18cd-4832-b61c-350bf071d2eb","errorCode":"PERMISSION_DENIED"}
+# {"kind":"HTTP","method":"PATCH","path":"/users/cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","status":403,"requestId":"1ee9419b-64a9-4148-9c40-f661d1178839","errorCode":"PERMISSION_DENIED"}
+# {"kind":"HTTP","method":"PATCH","path":"/users/CAFC2C3B-04A6-40A2-B4D7-AFBE6E9217AB","status":403,"requestId":"657719ca-5454-4acf-9f86-1622325f922f","errorCode":"PERMISSION_DENIED"}
+# {"kind":"HTTP","method":"PATCH","path":"/users/CAFC2C3B-04A6-40A2-B4D7-AFBE6E9217AB","status":403,"requestId":"b06f77bc-344e-4a24-ab4e-18b131f049de","errorCode":"PERMISSION_DENIED"}
+# {"kind":"HTTP","method":"PATCH","path":"/users/27210c13-4138-4868-a7f1-3f5fce0a5858","status":403,"requestId":"e5645382-7cf2-46cf-a7e9-08d8d646b00f","errorCode":"PERMISSION_DENIED"}
+# {"kind":"HTTP","method":"PATCH","path":"/users/cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","status":200,"requestId":"03de167f-83d4-4f30-abb8-df8b3c1421e2","resourceId":"cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","role":"CASHIER","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true,"mustChangePassword":false}
+# {"case":"USR-02","db":"before/after role change","before":{"role_id":"af493610-358b-4f01-b654-f0b585cfb4c2","is_active":true,"must_change_password":false,"sessions":4},"after":{"role_id":"bf16aab6-af0e-417e-8bb3-c2ede4601e2c","is_active":true,"must_change_password":false,"sessions":0}}
+# {"kind":"HTTP","method":"GET","path":"/auth/me","status":401,"requestId":"40b3dcb8-171a-467c-9684-b7d61cb698d3","errorCode":"UNAUTHENTICATED"}
+# {"kind":"HTTP","method":"GET","path":"/auth/me","status":401,"requestId":"1faee42b-6899-4c2b-8c27-5889d06d5152","errorCode":"UNAUTHENTICATED"}
+# {"kind":"HTTP","method":"GET","path":"/dining-tables","status":403,"requestId":"ea82ad35-4b85-4451-af28-caea0f3b94b4","errorCode":"PERMISSION_DENIED"}
+# {"kind":"HTTP","method":"PATCH","path":"/users/cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","status":200,"requestId":"42557e19-0b96-4c94-bf62-5ca95ec8694d","resourceId":"cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","role":"CASHIER","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true,"mustChangePassword":false}
+# {"kind":"HTTP","method":"GET","path":"/auth/me","status":200,"requestId":"db96afe1-db6d-4f2b-a96e-dabb62525716","resourceId":"cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","role":"CASHIER","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","mustChangePassword":false}
+# {"kind":"HTTP","method":"PATCH","path":"/users/cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","status":200,"requestId":"17cba083-d4ca-40e8-b800-db324d495f0b","resourceId":"cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","role":"CASHIER","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":false,"mustChangePassword":false}
+# {"kind":"HTTP","method":"GET","path":"/auth/me","status":401,"requestId":"ae0ccd9e-bfe9-4a2e-88ee-79b09037ecc2","errorCode":"UNAUTHENTICATED"}
+# {"kind":"HTTP","method":"POST","path":"/users/cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab/reset-password","status":200,"requestId":"9e160579-08f5-4504-b4d9-82c04c033784","resourceId":"cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","role":"CASHIER","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":false,"mustChangePassword":true}
+# {"kind":"HTTP","method":"PATCH","path":"/users/cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","status":200,"requestId":"f2f06e69-b473-4350-bc5a-6125714e34c5","resourceId":"cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","role":"CASHIER","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true,"mustChangePassword":true}
+# {"kind":"HTTP","method":"GET","path":"/auth/me","status":401,"requestId":"c50da123-257f-4b72-8c19-5ebc3152147d","errorCode":"UNAUTHENTICATED"}
+# {"kind":"HTTP","method":"GET","path":"/dining-tables","status":403,"requestId":"71c802d5-e743-42dd-9464-2b1afa9fb39c","errorCode":"PASSWORD_CHANGE_REQUIRED"}
+# {"kind":"HTTP","method":"GET","path":"/auth/me","status":200,"requestId":"a362c9ab-b801-4d3e-9bc4-31d1eef4b00a","resourceId":"72b81a84-3d3e-4076-a558-2bb5d12b066f","role":"OWNER","branchId":null,"mustChangePassword":false}
+# {"kind":"HTTP","method":"PATCH","path":"/users/cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","status":500,"requestId":"be543445-ad36-4b58-80b9-a690291b65b4","errorCode":"INTERNAL_ERROR"}
+# {"case":"USR-03","db":"rollback preserves user/sessions","before":{"role_id":"bf16aab6-af0e-417e-8bb3-c2ede4601e2c","is_active":true,"must_change_password":true,"sessions":1},"after":{"role_id":"bf16aab6-af0e-417e-8bb3-c2ede4601e2c","is_active":true,"must_change_password":true,"sessions":1}}
+# {"kind":"HTTP","method":"POST","path":"/users/cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab/reset-password","status":500,"requestId":"2f3b91fa-2563-4a9f-8351-2aa8fe84452f","errorCode":"INTERNAL_ERROR"}
+# {"kind":"HTTP","method":"GET","path":"/branches?limit=1","status":200,"requestId":"5cecd820-f664-4611-9187-f6522730f087","count":1,"meta":{"limit":1,"nextCursor":"eyJzY29wZSI6IltcImJyYW5jaGVzXCIsXCJmYTA3M2U0MS0zOTJhLTQwMmMtYjJjMi00ZjkwNjJlYTI3MmNcIixudWxsLG51bGwsbnVsbF0iLCJjcmVhdGVkQXQiOiIyMDI2LTExLTAyVDExOjQ4OjUwLjA1MjE2MVoiLCJpZCI6IjllNDI0OTFiLWQwNDctNDg4OS1iOGE0LTE0ZGJlZDc5NTEyMyJ9","total":3}}
+# {"kind":"HTTP","method":"GET","path":"/branches?limit=1&cursor=eyJzY29wZSI6IltcImJyYW5jaGVzXCIsXCJmYTA3M2U0MS0zOTJhLTQwMmMtYjJjMi00ZjkwNjJlYTI3MmNcIixudWxsLG51bGwsbnVsbF0iLCJjcmVhdGVkQXQiOiIyMDI2LTExLTAyVDExOjQ4OjUwLjA1MjE2MVoiLCJpZCI6IjllNDI0OTFiLWQwNDctNDg4OS1iOGE0LTE0ZGJlZDc5NTEyMyJ9","status":200,"requestId":"4582de88-2a70-4b21-b192-7b15fc7eed03","count":1,"meta":{"limit":1,"nextCursor":"eyJzY29wZSI6IltcImJyYW5jaGVzXCIsXCJmYTA3M2U0MS0zOTJhLTQwMmMtYjJjMi00ZjkwNjJlYTI3MmNcIixudWxsLG51bGwsbnVsbF0iLCJjcmVhdGVkQXQiOiIyMDI2LTExLTAyVDExOjQ4OjUwLjAwOTgyNVoiLCJpZCI6ImY4MDFkOWFjLTgxM2QtNGQyZS1hNmVlLTdiNDYzZTc0YTdlYiJ9","total":3}}
+# {"kind":"HTTP","method":"GET","path":"/branches?cursor=eyJzY29wZSI6IltcImJyYW5jaGVzXCIsXCJmYTA3M2U0MS0zOTJhLTQwMmMtYjJjMi00ZjkwNjJlYTI3MmNcIixudWxsLG51bGwsbnVsbF0iLCJjcmVhdGVkQXQiOiIyMDI2LTExLTAyVDExOjQ4OjUwLjA1MjE2MVoiLCJpZCI6IjllNDI0OTFiLWQwNDctNDg4OS1iOGE0LTE0ZGJlZDc5NTEyMyJ9","status":422,"requestId":"08b22c89-9f07-42ff-b0e1-1c284745e7b4","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"GET","path":"/branches?isActive=true&cursor=eyJzY29wZSI6IltcImJyYW5jaGVzXCIsXCJmYTA3M2U0MS0zOTJhLTQwMmMtYjJjMi00ZjkwNjJlYTI3MmNcIixudWxsLG51bGwsbnVsbF0iLCJjcmVhdGVkQXQiOiIyMDI2LTExLTAyVDExOjQ4OjUwLjA1MjE2MVoiLCJpZCI6IjllNDI0OTFiLWQwNDctNDg4OS1iOGE0LTE0ZGJlZDc5NTEyMyJ9","status":422,"requestId":"368c5dd6-9b17-4a27-9161-f7abf4c89a58","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"GET","path":"/branches?limit=0","status":422,"requestId":"9516028e-6d83-47ab-a06c-8bd87ce87ead","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"GET","path":"/branches?cursor=","status":422,"requestId":"6224f360-a372-44c3-b071-0ac791fc7261","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"GET","path":"/branches?sort=name","status":422,"requestId":"bba964fd-355d-4253-bfa0-a2ce78a1d267","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"GET","path":"/branches?page=1","status":422,"requestId":"defe5780-b221-4ae4-b11c-9b5c71b415a1","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"GET","path":"/branches?isActive=1","status":422,"requestId":"34dc129e-8bb0-4c52-848c-1c5d65960afa","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"GET","path":"/dining-tables?branchId=3e3b3739-83d0-47f8-a3b7-788b7f197e5b","status":404,"requestId":"34bb650a-bd87-4a9e-8195-b8c59e4b5e17","errorCode":"NOT_FOUND"}
+# {"kind":"HTTP","method":"POST","path":"/branches","status":400,"requestId":"bd049715-eb9f-447f-aa3a-277a6e3459ca","errorCode":"BAD_REQUEST"}
+# {"kind":"HTTP","method":"POST","path":"/branches","status":422,"requestId":"6a72337f-116b-43f5-aa3b-409838915d3b","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"POST","path":"/branches","status":422,"requestId":"e5066293-ab90-4a97-98ae-d9c1899beca6","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"POST","path":"/branches","status":422,"requestId":"706e7ee6-547f-45e4-adf7-f303ef17e767","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"PATCH","path":"/branches/bad","status":422,"requestId":"65353dc9-fa49-41cf-a3d4-bd6a97c59ba5","errorCode":"VALIDATION_ERROR"}
+# {"kind":"HTTP","method":"GET","path":"/users","status":200,"requestId":"43d13c0e-5a7f-4208-9c09-fae75deb4ab3","count":2,"meta":{"limit":20,"nextCursor":null,"total":2}}
+# {"kind":"HTTP","method":"PATCH","path":"/users/cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","status":200,"requestId":"88aff2c7-1354-4376-89f0-c2a1e99fe054","resourceId":"cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","role":"MANAGER","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":true,"mustChangePassword":false}
+# {"kind":"HTTP","method":"POST","path":"/auth/refresh","status":401,"requestId":"66c06f8d-50a3-4a8c-80c2-6063b5f226bb","errorCode":"UNAUTHENTICATED"}
+# {"kind":"HTTP","method":"GET","path":"/auth/me","status":401,"requestId":"1175256f-db40-45a3-a179-7b62eb88e878","errorCode":"UNAUTHENTICATED"}
+# {"case":"USR-04","race":"refresh/role change","refreshStatus":401,"rolePatchStatus":200,"db":{"role_id":"af493610-358b-4f01-b654-f0b585cfb4c2","is_active":true,"must_change_password":false,"sessions":0}}
+# {"kind":"HTTP","method":"PATCH","path":"/users/cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","status":200,"requestId":"9d0a0b6e-642e-4ac4-a8c1-10edf6699ac9","resourceId":"cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","role":"MANAGER","branchId":"1236e77f-9546-4bff-ba2b-85727455891d","isActive":false,"mustChangePassword":false}
+# {"case":"ORG-05","method":"POST","path":"/branches","status":400,"errorCode":"BAD_REQUEST","requestId":"833f7313-19b0-48de-8120-02b21fb9942d"}
+# {"case":"ORG-05","method":"PATCH","path":"/branches/1236e77f-9546-4bff-ba2b-85727455891d","status":400,"errorCode":"BAD_REQUEST","requestId":"a720bd5a-15b0-4a63-bdff-cae42e202a27"}
+# {"case":"ORG-05","method":"POST","path":"/dining-tables","status":400,"errorCode":"BAD_REQUEST","requestId":"f9f7ac93-7870-434d-876a-5ae74b33ec5d"}
+# {"case":"ORG-05","method":"PATCH","path":"/dining-tables/6c3da389-4e5e-4aa2-8831-a50857046399","status":400,"errorCode":"BAD_REQUEST","requestId":"d641833b-5ab4-4204-8acf-8c84619f152a"}
+# {"case":"ORG-05","method":"POST","path":"/users","status":400,"errorCode":"BAD_REQUEST","requestId":"8e64c370-1e22-46fa-a2a6-83ab367b0331"}
+# {"case":"ORG-05","method":"PATCH","path":"/users/cafc2c3b-04a6-40a2-b4d7-afbe6e9217ab","status":400,"errorCode":"BAD_REQUEST","requestId":"8a3d8456-d620-4f1f-a7c1-87d8d7f826ea"}
+1..1
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 21777.9241
