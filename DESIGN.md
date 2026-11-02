@@ -428,6 +428,8 @@ Cửa hàng mới thì trang đầu của chủ cửa hàng hiện danh sách vi
 
 ### 5.10 Cài đặt cửa hàng
 
+Lát cắt PB-13 tổ chức chốt ngày30/10/2026: giữ ba tab Chi nhánh/Bàn/Tài khoản theo permission; OWNER vào Cài đặt sau đăng nhập. Bộ lọc chi nhánh thật nằm trong Cài đặt; thanh trên tại đây không hiển thị chi nhánh/ca demo. Checklist thiết lập mục5.9 và Mã giảm giá chưa thuộc lát cắt này. Bàn chỉ hiển thị thông tin cấu hình, không lấy trạng thái phục vụ từ mock; tên vai trò/field/giới hạn theo spec organization/users đã chốt. Mật khẩu tạm chỉ state hộp thoại, xác nhận đã lưu mới đóng. Bảng dùng cursor và cuộn ngang trong vùng riêng trên tablet768/1024px.
+
 **Tab Chi nhánh** (chủ cửa hàng):
 
 | Ô nhập                             | Ghi chú giao diện                                                                                                                  |

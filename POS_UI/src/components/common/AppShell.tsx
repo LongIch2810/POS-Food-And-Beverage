@@ -6,6 +6,7 @@ import { MockEngine } from '../../mock/mockEngine';
 import { shiftService } from '../../services/shiftService';
 import { formatDuration } from '../../utils/formatters';
 import { Badge } from '../ui/Badge';
+import { canOpenSettings } from '../../app/navigation';
 import {
   ShoppingBag,
   LayoutGrid,
@@ -48,11 +49,12 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
   const perms = session.permissions || [];
   const has = (p: string) => perms.includes(p as any);
   const isPlatformAdmin = user.role_code === 'PLATFORM_ADMIN';
+  const isDemo = !isPlatformAdmin && currentTab !== 'settings';
   const canSwitchBranch = has('branch.access_all');
 
   const [activeShiftDuration, setActiveShiftDuration] = useState<string>('');
-  const [accessibleBranches, setAccessibleBranches] = useState(() => MockEngine.getAccessibleBranches());
-  const [selectedBranchId, setSelectedBranchId] = useState(() => MockEngine.getEffectiveBranchId());
+  const [accessibleBranches, setAccessibleBranches] = useState(() => isDemo ? MockEngine.getAccessibleBranches() : []);
+  const [selectedBranchId, setSelectedBranchId] = useState(() => isDemo ? MockEngine.getEffectiveBranchId() : '');
   const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
@@ -70,6 +72,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
 
   // Cập nhật thông tin ca làm việc
   useEffect(() => {
+    if (!isDemo) { setBranchDropdownOpen(false); return; }
     const updateShiftTime = () => {
       const shift = shiftService.getMyActiveShift();
       if (shift && shift.status === 'OPEN') {
@@ -84,9 +87,9 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
     updateShiftTime();
     const timer = setInterval(updateShiftTime, 30000); // 30s update
     return () => clearInterval(timer);
-  }, [user]);
+  }, [user, isDemo]);
 
-  const myShift = shiftService.getMyActiveShift();
+  const myShift = isDemo ? shiftService.getMyActiveShift() : null;
   const hasOpenShift = myShift && myShift.status === 'OPEN';
 
   // Danh sách Navigation Items theo quyền động (BR-05)
@@ -103,7 +106,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
     { id: 'inventory', label: 'Kho hàng', icon: <Boxes size={24} />, visible: !isPlatformAdmin && has('inventory.view') },
     { id: 'reports', label: 'Báo cáo', icon: <BarChart3 size={24} />, visible: !isPlatformAdmin && (has('report.view_branch') || has('report.view_all')) },
     { id: 'products', label: 'Thực đơn', icon: <UtensilsCrossed size={24} />, visible: !isPlatformAdmin && has('product.manage') },
-    { id: 'settings', label: 'Cài đặt', icon: <Settings size={24} />, visible: !isPlatformAdmin && (has('branch.manage') || has('table.manage')) },
+    { id: 'settings', label: 'Cài đặt', icon: <Settings size={24} />, visible: !isPlatformAdmin && canOpenSettings(perms) },
   ];
 
   const navItems = allNavItems.filter((item) => item.visible);
@@ -311,7 +314,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
                 {user.role_code === 'PLATFORM_ADMIN'
                   ? 'Quản trị nền tảng'
                   : user.role_code === 'OWNER'
-                  ? 'Chủ chuỗi'
+                  ? 'Chủ cửa hàng'
                   : user.role_code === 'MANAGER'
                   ? 'Quản lý chi nhánh'
                   : 'Thu ngân'}
@@ -444,9 +447,9 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
               </button>
             )}
 
-            {isPlatformAdmin ? (
+            {isPlatformAdmin || currentTab === 'settings' ? (
               <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                Quản trị Nền tảng
+                {isPlatformAdmin ? 'Quản trị nền tảng' : 'Cài đặt cửa hàng'}
               </span>
             ) : canSwitchBranch ? (
               /* Người có quyền branch.access_all có dropdown đổi chi nhánh (BR-71b) */
@@ -536,7 +539,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
           </div>
 
           {/* Ở giữa: Chip trạng thái ca làm việc (tự thu gọn trên mobile) */}
-          {!isPlatformAdmin && (
+          {isDemo && (
             <div style={{ flexShrink: 0 }}>
               {hasOpenShift ? (
                 <Badge variant="success" size="sm">
@@ -572,7 +575,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
                   {user.role_code === 'PLATFORM_ADMIN'
                     ? 'Quản trị'
                     : user.role_code === 'OWNER'
-                    ? 'Chủ chuỗi'
+                    ? 'Chủ cửa hàng'
                     : user.role_code === 'MANAGER'
                     ? 'Quản lý'
                     : 'Thu ngân'}
@@ -586,7 +589,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
               title="Đăng xuất khỏi tài khoản"
               className="touch-press"
               style={{
-                height: 44,
+                height: 48,
                 padding: isMobile ? '0 10px' : '0 14px',
                 borderRadius: 'var(--radius-control)',
                 border: '1px solid var(--color-border)',

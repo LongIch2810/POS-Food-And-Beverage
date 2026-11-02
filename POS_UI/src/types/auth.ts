@@ -12,6 +12,8 @@ export type PermissionCode =
   | 'store.manage' // Quản lý tạo/khóa store (chỉ PLATFORM_ADMIN)
   | 'role.manage_permissions' // Chỉnh sửa quyền dùng chung (chỉ PLATFORM_ADMIN)
   | 'branch.access_all' // Xem toàn bộ chi nhánh của store (chỉ OWNER)
+  | 'branch.read'
+  | 'user.manage'
   | 'branch.manage' // Quản lý chi nhánh & nhân viên
   | 'table.manage' // Quản lý bàn
   | 'product.manage' // Quản lý menu, size, topping, công thức, mã giảm giá

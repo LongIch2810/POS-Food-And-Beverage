@@ -16,6 +16,7 @@ import { InventoryScreen } from '../features/inventory/InventoryScreen';
 import { DailyReportScreen } from '../features/reports/DailyReportScreen';
 import { SettingsScreen } from '../features/settings/SettingsScreen';
 import { PlatformAdminScreen } from '../features/platform/PlatformAdminScreen';
+import { accessibleTabs, canOpenSettings } from './navigation';
 
 const AccessDenied: React.FC<{ message?: string }> = ({ message }) => (
   <div style={{ flex: 1, padding: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -46,11 +47,11 @@ const MainRouter: React.FC = () => {
 
 const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
   const { session } = useAuth();
-  const isPlatformAdmin = session.user.role_code === 'PLATFORM_ADMIN';
+  const availableTabs = accessibleTabs(session);
 
   // Quản trị nền tảng chỉ vào tab platform
   const [currentTab, setCurrentTab] = useState<NavTab>(
-    isPlatformAdmin ? 'platform_stores' : 'pos'
+    availableTabs[0] ?? 'settings'
   );
   const [targetInvoiceId, setTargetInvoiceId] = useState<string | null>(null);
 
@@ -60,22 +61,8 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
   };
 
   useEffect(() => {
-    if (isPlatformAdmin) {
-      if (
-        currentTab !== 'platform_stores' &&
-        currentTab !== 'platform_owners'
-      ) {
-        setCurrentTab('platform_stores');
-      }
-    } else {
-      if (
-        currentTab === 'platform_stores' ||
-        currentTab === 'platform_owners'
-      ) {
-        setCurrentTab('pos');
-      }
-    }
-  }, [isPlatformAdmin]);
+    if (!availableTabs.includes(currentTab)) setCurrentTab(availableTabs[0] ?? 'settings');
+  }, [JSON.stringify(availableTabs), currentTab]);
 
   const perms = session?.permissions || [];
   const has = (p: string) => perms.includes(p as any);
@@ -124,8 +111,8 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
         }
         return <DailyReportScreen />;
       case 'settings':
-        if (!has('branch.manage') && !has('table.manage')) {
-          return <AccessDenied message="Yêu cầu quyền cài đặt (branch.manage hoặc table.manage)." />;
+        if (session.user.role_code === 'PLATFORM_ADMIN' || !canOpenSettings(perms)) {
+          return <AccessDenied message="Bạn chưa có quyền quản lý chi nhánh, bàn hoặc tài khoản." />;
         }
         return <SettingsScreen />;
       case 'platform_stores':
@@ -161,7 +148,7 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div role="status" style={{ background: "#fcebc8", color: "#43291a", padding: "8px 16px", textAlign: "center" }}>Các chức năng nghiệp vụ hiện dùng dữ liệu mẫu, chưa kết nối API.</div>
+      {currentTab !== 'settings' && !currentTab.startsWith('platform_') && <div role="status" style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning)', padding: '8px 16px', textAlign: 'center' }}>Màn hình này dùng dữ liệu mẫu, chưa kết nối API.</div>}
       {error && <div role="alert">{error}</div>}
 
       <AppShell currentTab={currentTab} onSelectTab={setCurrentTab}>
