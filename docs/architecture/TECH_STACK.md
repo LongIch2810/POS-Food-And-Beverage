@@ -23,6 +23,7 @@ File này ghi **công nghệ đã có trong mã hoặc cấu hình repository**;
 | React 18, React DOM 18, TypeScript 5 | UI xác thực, quản trị nền tảng và Cài đặt tổ chức dùng API thật; POS/ca/thực đơn/kho/báo cáo còn mô phỏng |
 | Vite 6, plugin React | Dev server và build UI |
 | `lucide-react` | Icon giao diện |
+| `puppeteer-core` | Thư viện dev điều khiển Chrome/CDP phục vụ kiểm thử E2E trực quan |
 
 PB-13 đã nối xác thực PB-02, quản trị nền tảng PB-03 và Cài đặt tổ chức PB-04 với API. Cài đặt dùng branch/table/staff DTO riêng, shared HTTP cookie/CSRF/refresh và bộ lọc chi nhánh thật riêng; không dùng dữ liệu demo cho lát cắt này. Không thêm dependency frontend cho PB-13 tổ chức.
 

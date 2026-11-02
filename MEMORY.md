@@ -41,3 +41,9 @@
 - Áp dụng: API Guard validate Content-Type application/json và Frontend fetch client xử lý response status.
 - Bài học: Request `DELETE` thông thường không có body; `JsonBodyGuard` phải bỏ qua kiểm tra Content-Type cho `DELETE` để không trả 400 sai. Phía client UI `request()` phải kiểm tra `response.status === 204` để trả về `undefined` thay vì parse JSON `response.json()` gây crash `UNKNOWN` error.
 - Căn cứ: Sửa `JsonBodyGuard` trong `POS_API/src/http/request-validation.ts` và `request()` trong `POS_UI/src/http/client.ts`; xác minh qua `menu.integration.test.ts` (MENU-01, MENU-02) và `menu-service.test.mjs` (PB13-MENU-HTTP).
+
+## Luôn dùng UUID v4 chuẩn RFC 4122 khi seed dữ liệu
+
+- Áp dụng: Tạo fixture / seed dữ liệu PostgreSQL cho user, store, session liên quan xác thực JWT.
+- Bài học: `AccessGuard` và `AuthService.authenticateAccess` dùng regex kiểm tra claims UUID chuẩn RFC 4122 Variant 1 (`[89ab][0-9a-f]{3}` ở nhóm 4). Nếu tự viết UUID bằng tay có nhóm 4 bắt đầu bằng ký tự khác (như `0`, `4`), token JWT sẽ bị từ chối và văng 401 UNAUTHENTICATED ngay sau khi login 200. Khi seed, luôn dùng `gen_random_uuid()` của PostgreSQL hoặc hàm sinh UUID v4 chuẩn.
+- Căn cứ: Debug và fix lỗi `GET /api/v1/auth/me 401` trong `run-e2e.mjs` tại `qa-evidence/20261102-e2e-chrome-docker-sprints-1-4/run.md`.
