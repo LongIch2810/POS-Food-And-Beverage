@@ -1,0 +1,28 @@
+- navigation "Điều hướng chính":
+  - img "Logo Phin Cà Phê"
+  - button "Sơ đồ bàn"
+  - button "Cài đặt"
+- banner:
+  - text: Cài đặt cửa hàng QA Owner b Chủ cửa hàng
+  - button "Đăng xuất"
+- main:
+  - region "Cài đặt tổ chức":
+    - heading "Cài đặt cửa hàng" [level=1]
+    - paragraph: Quản lý chi nhánh, bàn và tài khoản nhân viên.
+    - tablist "Cài đặt":
+      - tab "Chi nhánh" [selected]
+      - tab "Bàn"
+      - tab "Tài khoản"
+    - text: Trạng thái
+    - combobox "Trạng thái":
+      - option "Tất cả trạng thái" [selected]
+      - option "Hoạt động"
+      - option "Ngưng hoạt động"
+    - button "Thêm chi nhánh"
+    - paragraph: Chưa có chi nhánh phù hợp.
+    - button "Trang trước" [disabled]
+    - text: Trang 1 · 0 bản ghi
+    - button "Trang sau" [disabled]
+- status:
+  - text: Đổi mật khẩu thành công. Vui lòng đăng nhập lại.
+  - button "Đóng thông báo"

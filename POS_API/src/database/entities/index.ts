@@ -1,1 +1,1 @@
-export * from './branch.entity';
+export * from '../../organization/entities/branch.entity';

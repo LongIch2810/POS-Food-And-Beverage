@@ -21,6 +21,8 @@ export interface UserSummary {
   mustChangePassword: boolean;
 }
 
+export type AccessPermission = string | { platform: string; store: string };
+
 type AccessClaims = jwt.JwtPayload & { sub: string; sid: string };
 
 export const tokenHash = (token: string): string => createHash('sha256').update(token).digest('hex');
@@ -109,12 +111,17 @@ export class AuthService {
       await this.checkRate(manager, 'login_ip', keys[0], 5, 900);
       await this.checkRate(manager, 'login_username', keys[1], 5, 900);
 
-      const user = await manager.getRepository(User).createQueryBuilder('u')
+      const identity = await manager.getRepository(User).createQueryBuilder('u')
+        .select('u.id')
+        .where('u.username = :username', { username: normalized })
+        .setLock('pessimistic_write')
+        .getOne();
+      // Đọc quan hệ sau khi lấy khóa để role đổi trong lúc chờ không làm JOIN dùng snapshot cũ.
+      const user = identity ? await manager.getRepository(User).createQueryBuilder('u')
         .innerJoinAndSelect('u.role', 'r')
         .leftJoinAndSelect('u.store', 's')
-        .where('u.username = :username', { username: normalized })
-        .setLock('pessimistic_write', undefined, ['u'])
-        .getOne();
+        .where('u.id = :id', { id: identity.id })
+        .getOne() : null;
 
       const matches = !bcrypt.truncates(password) && await bcrypt.compare(
         password,
@@ -188,16 +195,18 @@ export class AuthService {
     return this.summary(user);
   }
 
-  async authorizeAccess(token: string | undefined, permission: string, csrfHeader?: string, csrfCookie?: string): Promise<UserSummary> {
+  async authorizeAccess(token: string | undefined, permission: AccessPermission, csrfHeader?: string, csrfCookie?: string): Promise<UserSummary> {
     const { user, claims } = await this.authenticateAccess(token);
     if (csrfHeader !== undefined || csrfCookie !== undefined) this.checkCsrf(claims.sid, csrfHeader, csrfCookie);
     if (user.must_change_password) throw httpError(403, 'PASSWORD_CHANGE_REQUIRED', 'Bạn cần đổi mật khẩu trước khi tiếp tục.');
     const summary = await this.summary(user);
+    const required = typeof permission === 'string' ? permission
+      : summary.storeId === null ? permission.platform : permission.store;
     const platformPermissions = new Set(['store.read', 'store.create', 'store.suspend',
       'user.read_owner', 'user.create_owner', 'user.reset_owner_password']);
-    if ((summary.storeId === null && !platformPermissions.has(permission))
-      || (summary.storeId !== null && platformPermissions.has(permission))
-      || !summary.permissions.includes(permission)) {
+    if ((summary.storeId === null && !platformPermissions.has(required))
+      || (summary.storeId !== null && platformPermissions.has(required))
+      || !summary.permissions.includes(required)) {
       throw httpError(403, 'PERMISSION_DENIED', 'Bạn không có quyền thực hiện thao tác này.');
     }
     return summary;

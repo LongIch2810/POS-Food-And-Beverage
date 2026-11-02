@@ -1,0 +1,11 @@
+- dialog "Đổi mật khẩu lần đầu":
+  - heading "Đổi mật khẩu lần đầu" [level=2]
+  - paragraph: Vì lý do an toàn bảo mật, tài khoản mới khởi tạo cần thiết lập mật khẩu cá nhân trước khi bắt đầu làm việc.
+  - text: Mật khẩu mới (tối thiểu 12 ký tự)
+  - textbox "Mật khẩu mới (tối thiểu 12 ký tự)":
+    - /placeholder: Nhập mật khẩu mới...
+  - text: Xác nhận mật khẩu mới
+  - textbox "Xác nhận mật khẩu mới":
+    - /placeholder: Nhập lại mật khẩu mới...
+  - button "Đăng xuất"
+  - button "Xác nhận đổi mật khẩu"

@@ -1,0 +1,30 @@
+- navigation "Điều hướng chính":
+  - button "Cửa hàng"
+  - button "Chủ quán"
+- banner:
+  - text: Quản trị nền tảng QA Platform Quản trị
+  - button "Đăng xuất"
+- main:
+  - heading "Quản trị nền tảng" [level=1]
+  - paragraph: Quản lý cửa hàng và tài khoản chủ. Dữ liệu vận hành thuộc riêng từng cửa hàng.
+  - button "Cửa hàng"
+  - button "Chủ cửa hàng"
+  - button "Tạo cửa hàng và OWNER"
+  - strong: PB13 QA Store b
+  - text: Hoạt động Chưa có số điện thoại · Chưa có địa chỉ · Tạo 30/10/2026 21:54
+  - button "Tạm khóa"
+  - button "Cấp OWNER"
+  - strong: PB13 QA Store a
+  - text: Hoạt động Chưa có số điện thoại · Chưa có địa chỉ · Tạo 30/10/2026 21:54
+  - button "Tạm khóa"
+  - button "Cấp OWNER"
+  - button "Trang trước" [disabled]
+  - text: Trang 1
+  - button "Trang sau" [disabled]
+  - dialog "Tạm khóa PB13 QA Store b":
+    - heading "Tạm khóa PB13 QA Store b" [level=2]
+    - button "Đóng hộp thoại"
+    - paragraph: Mọi người dùng của cửa hàng sẽ bị đăng xuất và không đăng nhập được. Dữ liệu được giữ nguyên.
+    - text: Lý do tạm khóa
+    - textbox "Lý do tạm khóa": QA final suspension
+    - button "Xác nhận tạm khóa"

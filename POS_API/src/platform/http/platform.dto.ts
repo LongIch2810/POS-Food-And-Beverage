@@ -62,6 +62,20 @@ export class SuspendStoreDto {
   reason!: string;
 }
 
+export class OwnerOutputDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty({ format: 'uuid' }) storeId!: string;
+  @ApiProperty() username!: string;
+  @ApiProperty() fullName!: string;
+  @ApiProperty() isActive!: boolean;
+  @ApiProperty() mustChangePassword!: boolean;
+  @ApiProperty({ format: 'date-time' }) createdAt!: string;
+}
+
+export class OwnerListItemDto extends OwnerOutputDto {
+  @ApiProperty() storeName!: string;
+}
+
 export const platformValidationPipe = new ValidationPipe({
   whitelist: true,
   forbidNonWhitelisted: true,

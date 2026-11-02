@@ -261,3 +261,15 @@ html, body {
 .animate-mobile-nav {
   animation: mobileNavSlideIn 220ms var(--ease-out-expo) forwards;
 }
+/* PB-13 organization settings */
+.organization-settings { padding: 24px; display: flex; flex-direction: column; gap: 20px; min-width: 0; width: 100%; }
+.organization-settings h1 { font-size: 24px; line-height: 32px; }
+.organization-settings p { color: var(--color-text-muted); }
+.organization-filters { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.organization-filters > div { flex: 1 1 180px; max-width: 320px; }
+.organization-pagination { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.organization-settings th, .organization-settings td { white-space: nowrap; }
+.organization-settings td { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.organization-skeleton { display: grid; gap: 12px; }
+.organization-skeleton span { height: 48px; border-radius: var(--radius-control); background: var(--color-surface-sunken); }
+@media (max-width: 1023px) { .organization-settings { padding: 16px; } }

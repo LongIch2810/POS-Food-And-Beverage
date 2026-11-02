@@ -1,3 +1,5 @@
+import { rememberRequestIdentity } from './session-events.ts';
+
 export interface AuthUser {
   id: string; username: string; fullName: string; role: string;
   storeId: string | null; branchId: string | null; permissions: string[]; mustChangePassword: boolean;
@@ -5,7 +7,14 @@ export interface AuthUser {
 
 export class AuthError extends Error {
   code: string;
-  constructor(code: string, message: string) { super(message); this.code = code; }
+  status?: number;
+  requestId?: string;
+  details: { location?: string; field?: string; message?: string }[];
+  constructor(code: string, message: string, metadata: { status?: number; requestId?: string;
+    details?: { location?: string; field?: string; message?: string }[] } = {}) {
+    super(message); this.code = code; this.status = metadata.status;
+    this.requestId = metadata.requestId; this.details = metadata.details ?? [];
+  }
 }
 
 async function request<T>(path: string, method = 'GET', body?: object, csrf = false): Promise<T> {
@@ -33,9 +42,12 @@ async function request<T>(path: string, method = 'GET', body?: object, csrf = fa
 }
 
 export async function login(username: string, password: string): Promise<AuthUser> {
-  return (await request<{ user: AuthUser }>('login', 'POST', { username, password })).user;
+  const user = (await request<{ user: AuthUser }>('login', 'POST', { username, password })).user;
+  rememberRequestIdentity(user); return user;
 }
-async function me(): Promise<AuthUser> { return (await request<{ user: AuthUser }>('me')).user; }
+async function me(): Promise<AuthUser> {
+  return (await request<{ user: AuthUser }>('me')).user;
+}
 function canRefresh(error: unknown): boolean {
   return error instanceof AuthError && (error.code === 'UNAUTHENTICATED' || error.code === 'TOKEN_EXPIRED');
 }
@@ -56,8 +68,10 @@ export async function logout(): Promise<void> {
     try { await request('csrf'); } catch (error) { if (!canRefresh(error)) throw error; }
   }
   await request('logout', 'POST', undefined, true);
+  rememberRequestIdentity(null);
 }
 export async function changePassword(newPassword: string): Promise<void> {
   if (!document.cookie.split('; ').some(item => item.startsWith('__Host-pos_csrf='))) await request('csrf');
   await request('change-password', 'POST', { newPassword }, true);
+  rememberRequestIdentity(null);
 }

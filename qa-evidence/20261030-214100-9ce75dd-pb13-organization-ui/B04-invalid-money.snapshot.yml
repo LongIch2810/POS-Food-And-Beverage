@@ -1,0 +1,42 @@
+- navigation "Điều hướng chính":
+  - img "Logo Phin Cà Phê"
+  - button "Sơ đồ bàn"
+  - button "Cài đặt"
+- banner:
+  - text: Cài đặt cửa hàng QA Owner a Chủ chuỗi
+  - button "Đăng xuất"
+- main:
+  - region "Cài đặt tổ chức":
+    - heading "Cài đặt cửa hàng" [level=1]
+    - paragraph: Quản lý chi nhánh, bàn và tài khoản nhân viên.
+    - tablist "Cài đặt":
+      - tab "Chi nhánh" [selected]
+      - tab "Bàn"
+      - tab "Tài khoản"
+    - text: Trạng thái
+    - combobox "Trạng thái":
+      - option "Tất cả trạng thái" [selected]
+      - option "Hoạt động"
+      - option "Ngưng hoạt động"
+    - button "Thêm chi nhánh"
+    - paragraph: Chưa có chi nhánh phù hợp.
+    - button "Trang trước" [disabled]
+    - text: Trang 1 · 0 bản ghi
+    - button "Trang sau" [disabled]
+    - dialog "Thêm Chi nhánh":
+      - heading "Thêm Chi nhánh" [level=2]
+      - button "Đóng hộp thoại"
+      - text: Mã chi nhánh
+      - textbox "Mã chi nhánh": aA
+      - text: Tên chi nhánh
+      - textbox "Tên chi nhánh": QA Phố
+      - text: Địa chỉ
+      - textbox "Địa chỉ": QA Địa chỉ
+      - text: Điện thoại
+      - textbox "Điện thoại": "0900000000"
+      - text: Quỹ tiền ban đầu
+      - textbox "Quỹ tiền ban đầu" [invalid]: "-1"
+      - text: đ
+      - alert: Quỹ tiền ban đầu phải là số nguyên từ 0 đến 1.000.000.000.000.
+      - button "Hủy"
+      - button "Tạo mới"

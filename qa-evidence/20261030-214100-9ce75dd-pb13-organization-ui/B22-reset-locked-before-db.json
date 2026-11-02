@@ -1,0 +1,134 @@
+{
+  "branches": [
+    {
+      "id": "0288f4cf-4d74-4cf7-a252-3288d0b8dd15",
+      "store_id": "bcd8ec6b-7db0-4de9-bba8-12c089b8bdb8",
+      "code": "bB",
+      "name": "QA Vườn",
+      "address": null,
+      "phone": null,
+      "initial_cash": "0",
+      "is_active": true
+    },
+    {
+      "id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "store_id": "bcd8ec6b-7db0-4de9-bba8-12c089b8bdb8",
+      "code": "aA",
+      "name": "QA Phố mới",
+      "address": null,
+      "phone": null,
+      "initial_cash": "0",
+      "is_active": true
+    }
+  ],
+  "tables": [
+    {
+      "id": "1650f6b2-a02f-43c2-86ea-e34b26434ff6",
+      "branch_id": "0288f4cf-4d74-4cf7-a252-3288d0b8dd15",
+      "name": "QA Bàn đã sửa",
+      "area": null,
+      "capacity": null,
+      "is_active": true
+    },
+    {
+      "id": "3d9eb7b0-1ff4-4aab-b255-8193dd2f5b16",
+      "branch_id": "0288f4cf-4d74-4cf7-a252-3288d0b8dd15",
+      "name": "QA Bàn",
+      "area": null,
+      "capacity": null,
+      "is_active": true
+    },
+    {
+      "id": "49ff3b73-7c9b-418b-91cb-4dbd8b495650",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "name": "QA Manager Table",
+      "area": null,
+      "capacity": null,
+      "is_active": true
+    }
+  ],
+  "users": [
+    {
+      "id": "22475058-a546-4019-b414-e008db517f03",
+      "store_id": "bcd8ec6b-7db0-4de9-bba8-12c089b8bdb8",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "username": "pb13_qa_manager2",
+      "full_name": "QA Manager 2",
+      "role": "MANAGER",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "3e292904-1d70-407c-9c89-34f544adcb7e",
+      "store_id": "bcd8ec6b-7db0-4de9-bba8-12c089b8bdb8",
+      "branch_id": null,
+      "username": "pb13_qa_owner_a",
+      "full_name": "QA Owner a",
+      "role": "OWNER",
+      "is_active": true,
+      "must_change_password": false
+    },
+    {
+      "id": "49ddc81b-eef5-4c14-a94c-326fa4817ef3",
+      "store_id": "7d35f924-efc6-4460-b350-88f2d32b5ba9",
+      "branch_id": null,
+      "username": "pb13_qa_owner_b",
+      "full_name": "QA Owner b",
+      "role": "OWNER",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "7f14c68f-151f-4aa0-baff-96675a3024bf",
+      "store_id": "bcd8ec6b-7db0-4de9-bba8-12c089b8bdb8",
+      "branch_id": "0288f4cf-4d74-4cf7-a252-3288d0b8dd15",
+      "username": "pb13_qa_cashier",
+      "full_name": "QA Cashier",
+      "role": "CASHIER",
+      "is_active": false,
+      "must_change_password": false
+    },
+    {
+      "id": "8e215865-8899-413e-928a-7432817a74c9",
+      "store_id": null,
+      "branch_id": null,
+      "username": "pb13_qa_admin",
+      "full_name": "QA Platform",
+      "role": "PLATFORM_ADMIN",
+      "is_active": true,
+      "must_change_password": false
+    },
+    {
+      "id": "af3c8454-8111-44e3-b25d-0aa68fbd2ebf",
+      "store_id": "bcd8ec6b-7db0-4de9-bba8-12c089b8bdb8",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "username": "pb13_qa_manager",
+      "full_name": "QA Manager",
+      "role": "MANAGER",
+      "is_active": true,
+      "must_change_password": false
+    }
+  ],
+  "sessions": [
+    {
+      "user_id": "3e292904-1d70-407c-9c89-34f544adcb7e",
+      "total": 2,
+      "active": 1
+    },
+    {
+      "user_id": "7f14c68f-151f-4aa0-baff-96675a3024bf",
+      "total": 2,
+      "active": 0
+    },
+    {
+      "user_id": "8e215865-8899-413e-928a-7432817a74c9",
+      "total": 1,
+      "active": 1
+    },
+    {
+      "user_id": "af3c8454-8111-44e3-b25d-0aa68fbd2ebf",
+      "total": 5,
+      "active": 0
+    }
+  ]
+}

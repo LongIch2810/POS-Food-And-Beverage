@@ -1,0 +1,269 @@
+{
+  "time": "2026-11-01T13:43:09.750Z",
+  "databaseName": "pos_pb13_browser_31b5333d5cbf",
+  "readOnly": true,
+  "stores": [
+    {
+      "id": "7d35f924-efc6-4460-b350-88f2d32b5ba9",
+      "name": "PB13 QA Store b",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "bcd8ec6b-7db0-4de9-bba8-12c089b8bdb8",
+      "name": "PB13 QA Store a",
+      "status": "ACTIVE"
+    }
+  ],
+  "users": [
+    {
+      "id": "14269c2d-2dca-4b46-b2e8-49832146eca9",
+      "username": "pb13_page_17",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "1621b5b2-9c4b-45d9-8683-284a060cb53b",
+      "username": "pb13_final_staff",
+      "branch_id": "be12c48e-7645-4579-99ec-236760ad8b3a",
+      "is_active": true,
+      "must_change_password": false
+    },
+    {
+      "id": "1999be24-0126-4ca7-8127-eb20b5237ca0",
+      "username": "pb13_page_4",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "1ccea944-7246-4eab-8ce3-ba90c1e7df91",
+      "username": "pb13_page_10",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "22475058-a546-4019-b414-e008db517f03",
+      "username": "pb13_qa_manager2",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "3d0afc36-6355-405f-bc5a-d04ca43a8bbf",
+      "username": "pb13_page_2",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "3e292904-1d70-407c-9c89-34f544adcb7e",
+      "username": "pb13_qa_owner_a",
+      "branch_id": null,
+      "is_active": true,
+      "must_change_password": false
+    },
+    {
+      "id": "3ee03f45-9d35-45c0-893c-4217986c46b1",
+      "username": "pb13_page_20",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "491dd5f1-b61b-41d5-876d-b29c1483d21a",
+      "username": "pb13_page_5",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "49ddc81b-eef5-4c14-a94c-326fa4817ef3",
+      "username": "pb13_qa_owner_b",
+      "branch_id": null,
+      "is_active": true,
+      "must_change_password": false
+    },
+    {
+      "id": "695f5258-97cc-47cd-9dcc-998efa60fda5",
+      "username": "pb13_page_21",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "6c84fc63-76b1-4b21-ab6b-e0eca49c8e4d",
+      "username": "pb13_page_23",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "6f982ea9-d1fe-4048-a660-b6546f87c4d4",
+      "username": "pb13_page_25",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "733dd1e5-ba26-4fe4-95e3-c3f1b723f603",
+      "username": "pb13_page_7",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "73cfc270-00fc-4dea-8117-2d3c1377ae41",
+      "username": "pb13_page_3",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "7c41bda6-6704-45fb-ac68-d43bb2a695e3",
+      "username": "pb13_page_8",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "7f14c68f-151f-4aa0-baff-96675a3024bf",
+      "username": "pb13_qa_cashier",
+      "branch_id": "0288f4cf-4d74-4cf7-a252-3288d0b8dd15",
+      "is_active": true,
+      "must_change_password": false
+    },
+    {
+      "id": "8399714e-dd55-4629-99a7-ff3913f635e7",
+      "username": "pb13_page_15",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "8e215865-8899-413e-928a-7432817a74c9",
+      "username": "pb13_qa_admin",
+      "branch_id": null,
+      "is_active": true,
+      "must_change_password": false
+    },
+    {
+      "id": "8fbef870-d6c0-4c7a-a4b2-b8ad6b463b48",
+      "username": "pb13_page_11",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "90fde3da-483b-4c3a-ab92-406cb681e16a",
+      "username": "pb13_page_18",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "a5c642fa-db6e-45cc-9836-4b041bde2522",
+      "username": "pb13_page_19",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "a8a9c4cf-e655-4535-902f-fac0388d15d1",
+      "username": "pb13_page_9",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "ad454af6-1cdf-4542-9baa-4e3f6045ead1",
+      "username": "pb13_page_12",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "af3c8454-8111-44e3-b25d-0aa68fbd2ebf",
+      "username": "pb13_qa_manager",
+      "branch_id": "0288f4cf-4d74-4cf7-a252-3288d0b8dd15",
+      "is_active": true,
+      "must_change_password": false
+    },
+    {
+      "id": "b8072e02-b54d-4405-89b4-6e51fcc9643b",
+      "username": "pb13_page_16",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "b9cfa761-705a-45db-8cb8-a7c500fb8899",
+      "username": "pb13_page_14",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "b9ffb9e2-ae3f-479e-ae91-52188524ece3",
+      "username": "pb13_page_22",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "be2e4c0a-9a08-4581-a337-90333005489b",
+      "username": "pb13_page_6",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "c927cd77-3418-4029-b0ec-01f54c066328",
+      "username": "pb13_page_24",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "d12fb694-b2b4-48e4-b9e5-b8990c59afea",
+      "username": "pb13_page_13",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    },
+    {
+      "id": "f5b2e83a-24e0-4d7a-90f3-98c227834d0c",
+      "username": "pb13_page_1",
+      "branch_id": "dfe953b8-c976-4ac1-919a-abf2b793d891",
+      "is_active": true,
+      "must_change_password": true
+    }
+  ],
+  "sessions": [
+    {
+      "user_id": "1621b5b2-9c4b-45d9-8683-284a060cb53b",
+      "active": 0
+    },
+    {
+      "user_id": "3e292904-1d70-407c-9c89-34f544adcb7e",
+      "active": 1
+    },
+    {
+      "user_id": "49ddc81b-eef5-4c14-a94c-326fa4817ef3",
+      "active": 1
+    },
+    {
+      "user_id": "7f14c68f-151f-4aa0-baff-96675a3024bf",
+      "active": 1
+    },
+    {
+      "user_id": "8e215865-8899-413e-928a-7432817a74c9",
+      "active": 3
+    },
+    {
+      "user_id": "af3c8454-8111-44e3-b25d-0aa68fbd2ebf",
+      "active": 1
+    }
+  ]
+}

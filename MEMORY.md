@@ -1,5 +1,29 @@
 # Điều cần nhớ qua các phiên
 
+## Gắn dữ liệu render với khóa truy vấn hiện hành
+
+- Áp dụng: UI đổi tab/filter/cursor và tái sử dụng state danh sách với các kiểu row khác nhau.
+- Bài học: Generation guard ở promise callback chưa đủ; render đầu tiên sau đổi tab vẫn có thể nhận rows cũ trước useEffect. Gắn rows với query key và chỉ render bảng khi key khớp, hiện loading trong khoảng chuyển tiếp. Test phải thực thi callback cột, không chỉ stub bảng rồi kiểm props.
+- Căn cứ: `errors/2026-10-30-pb13-tab-row-shape.md`; browser thực crash BigInt(undefined), ui-tests-7 red và ui-tests-8/final28test green; artifact ở hai run PB-13 ngày30/10 và01/11/2026.
+
+## Không replay request qua thay đổi danh tính
+
+- Áp dụng: HTTP client khôi phục cookie/refresh và thử lại request khi nhiều tab có thể đổi tài khoản/store/branch.
+- Bài học: Capture identity và session epoch trước request; sau async CSRF/restore phải đối chiếu trước phát mutation hoặc retry. Broadcast/unmount chỉ chặn setState, không ngăn fetch cũ ghi dữ liệu dưới danh tính mới. Chỉ nhớ identity từ kết quả auth đã qua generation guard.
+- Căn cứ: `errors/2026-10-30-pb13-session-retry-scope.md`; ui-tests-4 red, regression final green và browser B32 old-cookie401/noXS trong `qa-evidence/20261030-214100-9ce75dd-pb13-organization-ui/`.
+
+## Khóa dòng trước khi đọc quan hệ có thể thay đổi
+
+- Áp dụng: PostgreSQL READ COMMITTED, truy vấn JOIN quan hệ mutable cùng FOR UPDATE và phải chờ transaction khác sửa khóa ngoại.
+- Bài học: Lấy khóa dòng gốc trong scope bằng statement riêng, rồi đọc lại quan hệ trong statement sau của cùng transaction; kiểm thử thứ tự chờ khóa thật bằng pg_locks/pg_blocking_pids. JOIN trước khi chờ có thể trả thiếu dòng sau khi khóa ngoại đổi, gây401/404 sai.
+- Căn cứ: `errors/2026-10-30-pb04-login-role-lock-race.md`; acceptance-3.log.gz tái hiện login401 và acceptance-6.log.gz tái hiện reset/disable404; full-2.log.gz xác minh14 lịch khóa sau sửa tại `qa-evidence/20261030-202325-9ce75dd-pb04-gap-fix/`.
+
+## So sánh UUID chuẩn trong kiểm tra quyền
+
+- Áp dụng: Khi so actor với ID tài nguyên, đặc biệt chặn tự khóa/tự hạ quyền.
+- Bài học: So với ID chuẩn đọc từ DB hoặc chuẩn hóa đồng nhất; không so UUID path thô bằng chuỗi JavaScript. PostgreSQL coi UUID viết hoa/thường là một ID, JavaScript so chuỗi thì khác. Thêm tình huống UUID viết hoa cho guard tự thao tác.
+- Căn cứ: `errors/2026-10-30-pb04-staff-authorization.md`, USR-HIER trong `qa-evidence/20261030-193116-9ce75dd-pb04/uuid-red.log` tái hiện200 thay403; `final-approved.log` xác minh UUID thường/hoa đều bị từ chối sau sửa.
+
 ## Nghiệm thu cần chứng cứ gốc đầy đủ
 
 - Áp dụng: Khi kiểm tra hoặc báo hoàn thành tiêu chí nghiệm thu.

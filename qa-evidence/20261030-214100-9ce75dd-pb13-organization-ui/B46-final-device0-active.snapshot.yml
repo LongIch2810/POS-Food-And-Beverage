@@ -1,0 +1,11 @@
+- navigation "Điều hướng chính":
+  - img "Logo Phin Cà Phê"
+- banner:
+  - text: Cài đặt cửa hàng QA Final Staff Thu ngân
+  - button "Đăng xuất"
+- main:
+  - text: Không có quyền truy cập
+  - paragraph: Bạn chưa có quyền quản lý chi nhánh, bàn hoặc tài khoản.
+- status:
+  - text: Đổi mật khẩu thành công. Vui lòng đăng nhập lại.
+  - button "Đóng thông báo"

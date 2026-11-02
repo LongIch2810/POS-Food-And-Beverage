@@ -1,0 +1,8 @@
+{
+  "time": "2026-11-01T21:49:29.986414+07:00",
+  "sourceRuntimeContractToolingEntries": 221,
+  "artifactEntries": 500,
+  "mismatches": 0,
+  "method": "read and SHA256 current files against saved manifests",
+  "execution": "local root verification, not independent CI/test rerun"
+}

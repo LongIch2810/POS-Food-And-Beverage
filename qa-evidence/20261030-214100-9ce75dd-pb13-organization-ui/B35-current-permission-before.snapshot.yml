@@ -1,0 +1,44 @@
+- navigation "Điều hướng chính":
+  - img "Logo Phin Cà Phê"
+  - button "Sơ đồ bàn"
+  - button "Cài đặt"
+- banner:
+  - text: Cài đặt cửa hàng QA Final Staff Quản lý
+  - button "Đăng xuất"
+- main:
+  - region "Cài đặt tổ chức":
+    - heading "Cài đặt cửa hàng" [level=1]
+    - paragraph: Quản lý chi nhánh, bàn và tài khoản nhân viên.
+    - tablist "Cài đặt":
+      - tab "Bàn" [selected]
+      - tab "Tài khoản"
+    - paragraph: QA Final Branch Edited
+    - text: Trạng thái
+    - combobox "Trạng thái":
+      - option "Tất cả trạng thái" [selected]
+      - option "Hoạt động"
+      - option "Ngưng hoạt động"
+    - button "Thêm bàn"
+    - table:
+      - rowgroup:
+        - row "Tên Chi nhánh Khu vực Số chỗ Trạng thái Thao tác":
+          - columnheader "Tên"
+          - columnheader "Chi nhánh"
+          - columnheader "Khu vực"
+          - columnheader "Số chỗ"
+          - columnheader "Trạng thái"
+          - columnheader "Thao tác"
+      - rowgroup:
+        - row "QA Final Table Edited QA Final Branch Edited Sân 2147483647 Hoạt động Sửa Ngưng dùng":
+          - cell "QA Final Table Edited":
+            - strong: QA Final Table Edited
+          - cell "QA Final Branch Edited"
+          - cell "Sân"
+          - cell "2147483647"
+          - cell "Hoạt động"
+          - cell "Sửa Ngưng dùng":
+            - button "Sửa"
+            - button "Ngưng dùng"
+    - button "Trang trước" [disabled]
+    - text: Trang 1 · 1 bản ghi
+    - button "Trang sau" [disabled]

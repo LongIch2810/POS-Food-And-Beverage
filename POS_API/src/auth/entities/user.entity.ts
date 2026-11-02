@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryColumn, UpdateDateColumn } from 'typeorm';
-import { Branch } from '../../database/entities/branch.entity';
+import { Branch } from '../../organization/entities/branch.entity';
 import { RefreshToken } from './refresh-token.entity';
 import { Role } from './role.entity';
 import { Store } from '../../platform/entities/store.entity';

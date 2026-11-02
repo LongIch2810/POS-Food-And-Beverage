@@ -40,6 +40,8 @@ Product Owner ngày 2026-10-30 đã chọn cursor/limit/meta, permission theo BR
 
 ## Endpoint
 
+PB-04 bổ sung context store cho GET/POST `/users` và POST `/users/{id}/reset-password` theo [spec nhân viên](users.md). Hợp đồng bên dưới tiếp tục áp dụng nguyên vẹn cho context platform; controller chọn schema/permission từ danh tính hiện hành, không từ payload. Context store có user.manage được vào luồng staff nhưng storeId/role OWNER trong request vẫn bị từ chối validation; gán nhầm permission platform không cấp ngữ cảnh platform.
+
 ### GET /api/v1/platform/stores
 
 1. **Mô tả:** Liệt kê cửa hàng để quản trị nền tảng.

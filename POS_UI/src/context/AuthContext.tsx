@@ -3,7 +3,7 @@ import { AuthSession } from '../types/auth';
 import { authService, DEMO_ACCOUNTS } from '../services/authService';
 import * as api from '../auth/client';
 import { toUiSession } from '../auth/session';
-import { notifySessionChange } from '../auth/session-events';
+import { notifySessionChange, rememberRequestIdentity } from '../auth/session-events';
 
 interface AuthContextType {
   session: AuthSession;
@@ -27,6 +27,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isOffline, setOffline] = useState(false);
   const generation = useRef(0);
   const applyUser = (user: api.AuthUser) => {
+    rememberRequestIdentity(user);
     const demo = DEMO_ACCOUNTS.find(account => account.role_code === user.role);
     if (demo) void authService.switchDemoUser(demo.id);
     setSession(toUiSession(user)); setAuthenticated(true);
@@ -37,7 +38,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const version = ++generation.current;
       void api.restoreSession().then(user => {
         if (!active || version !== generation.current) return;
-        if (user) applyUser(user); else setAuthenticated(false);
+        if (user) applyUser(user); else { rememberRequestIdentity(null); setSession(null!); setAuthenticated(false); }
         setError('');
       }).catch(e => {
         if (!active || version !== generation.current) return;
@@ -52,6 +53,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('pos-session');
     if (channel) channel.onmessage = (event) => {
       if (event.data === 'logout' || event.data === 'revoked') {
+        rememberRequestIdentity(null);
         generation.current++; setSession(null!); setAuthenticated(false); setLoading(false);
         if (event.data === 'logout') setError('');
       }

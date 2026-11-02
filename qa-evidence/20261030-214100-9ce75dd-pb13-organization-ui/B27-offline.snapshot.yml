@@ -1,0 +1,163 @@
+- navigation "Điều hướng chính":
+  - img "Logo Phin Cà Phê"
+  - button "Sơ đồ bàn"
+  - button "Cài đặt"
+- banner:
+  - text: Cài đặt cửa hàng QA Owner a Chủ cửa hàng
+  - button "Đăng xuất"
+- main:
+  - region "Cài đặt tổ chức":
+    - heading "Cài đặt cửa hàng" [level=1]
+    - paragraph: Quản lý chi nhánh, bàn và tài khoản nhân viên.
+    - alert: Mất kết nối. Thao tác mới sẽ không được lưu cho đến khi có mạng.
+    - tablist "Cài đặt":
+      - tab "Chi nhánh"
+      - tab "Bàn" [selected]
+      - tab "Tài khoản"
+    - text: Chi nhánh
+    - combobox "Chi nhánh":
+      - option "Tất cả chi nhánh"
+      - option "QA Pagination Branch 26"
+      - option "QA Pagination Branch 82"
+      - option "QA Pagination Branch 89"
+      - option "QA Pagination Branch 44"
+      - option "QA Pagination Branch 32"
+      - option "QA Pagination Branch 56"
+      - option "QA Pagination Branch 103"
+      - option "QA Pagination Branch 2"
+      - option "QA Pagination Branch 45"
+      - option "QA Pagination Branch 36"
+      - option "QA Pagination Branch 100"
+      - option "QA Pagination Branch 69"
+      - option "QA Pagination Branch 54"
+      - option "QA Pagination Branch 13"
+      - option "QA Pagination Branch 53"
+      - option "QA Pagination Branch 80"
+      - option "QA Pagination Branch 66"
+      - option "QA Pagination Branch 84"
+      - option "QA Pagination Branch 34"
+      - option "QA Pagination Branch 21"
+      - option "QA Pagination Branch 23"
+      - option "QA Pagination Branch 38"
+      - option "QA Pagination Branch 70"
+      - option "QA Pagination Branch 72"
+      - option "QA Pagination Branch 58"
+      - option "QA Pagination Branch 49"
+      - option "QA Pagination Branch 52"
+      - option "QA Pagination Branch 99"
+      - option "QA Pagination Branch 97"
+      - option "QA Pagination Branch 6"
+      - option "QA Pagination Branch 73"
+      - option "QA Pagination Branch 63"
+      - option "QA Pagination Branch 50"
+      - option "QA Pagination Branch 10"
+      - option "QA Pagination Branch 17"
+      - option "QA Pagination Branch 74"
+      - option "QA Pagination Branch 95"
+      - option "QA Pagination Branch 96"
+      - option "QA Pagination Branch 30"
+      - option "QA Pagination Branch 33"
+      - option "QA Pagination Branch 1"
+      - option "QA Pagination Branch 85"
+      - option "QA Pagination Branch 42"
+      - option "QA Pagination Branch 9"
+      - option "QA Pagination Branch 47"
+      - option "QA Pagination Branch 81"
+      - option "QA Pagination Branch 31"
+      - option "QA Pagination Branch 37"
+      - option "QA Pagination Branch 15"
+      - option "QA Pagination Branch 65"
+      - option "QA Pagination Branch 27"
+      - option "QA Pagination Branch 92"
+      - option "QA Pagination Branch 40"
+      - option "QA Pagination Branch 20"
+      - option "QA Pagination Branch 77"
+      - option "QA Pagination Branch 101"
+      - option "QA Pagination Branch 88"
+      - option "QA Pagination Branch 90"
+      - option "QA Pagination Branch 41"
+      - option "QA Pagination Branch 48"
+      - option "QA Pagination Branch 43"
+      - option "QA Pagination Branch 35"
+      - option "QA Pagination Branch 61"
+      - option "QA Pagination Branch 51"
+      - option "QA Pagination Branch 7"
+      - option "QA Pagination Branch 98"
+      - option "QA Pagination Branch 76"
+      - option "QA Pagination Branch 5"
+      - option "QA Pagination Branch 94"
+      - option "QA Pagination Branch 57"
+      - option "QA Pagination Branch 71"
+      - option "QA Pagination Branch 25"
+      - option "QA Pagination Branch 14"
+      - option "QA Pagination Branch 79"
+      - option "QA Pagination Branch 60"
+      - option "QA Pagination Branch 39"
+      - option "QA Pagination Branch 19"
+      - option "QA Pagination Branch 28"
+      - option "QA Pagination Branch 59"
+      - option "QA Pagination Branch 12"
+      - option "QA Pagination Branch 64"
+      - option "QA Pagination Branch 93"
+      - option "QA Pagination Branch 46"
+      - option "QA Pagination Branch 22"
+      - option "QA Pagination Branch 78"
+      - option "QA Pagination Branch 86"
+      - option "QA Pagination Branch 83"
+      - option "QA Pagination Branch 62"
+      - option "QA Pagination Branch 24"
+      - option "QA Pagination Branch 8"
+      - option "QA Pagination Branch 18"
+      - option "QA Pagination Branch 102"
+      - option "QA Pagination Branch 87"
+      - option "QA Pagination Branch 4"
+      - option "QA Pagination Branch 3"
+      - option "QA Pagination Branch 29"
+      - option "QA Pagination Branch 75"
+      - option "QA Pagination Branch 55"
+      - option "QA Pagination Branch 16"
+      - option "QA Pagination Branch 68"
+      - option "QA Pagination Branch 11"
+      - option "QA Pagination Branch 91"
+      - option "QA Pagination Branch 67"
+      - option "QA Vườn" [selected]
+      - option "QA Phố mới"
+    - text: Trạng thái
+    - combobox "Trạng thái":
+      - option "Tất cả trạng thái" [selected]
+      - option "Hoạt động"
+      - option "Ngưng hoạt động"
+    - button "Thêm bàn" [disabled]
+    - table:
+      - rowgroup:
+        - row "Tên Chi nhánh Khu vực Số chỗ Trạng thái Thao tác":
+          - columnheader "Tên"
+          - columnheader "Chi nhánh"
+          - columnheader "Khu vực"
+          - columnheader "Số chỗ"
+          - columnheader "Trạng thái"
+          - columnheader "Thao tác"
+      - rowgroup:
+        - row "QA Bàn đã sửa QA Vườn — Chưa xác định Hoạt động Sửa Ngưng dùng":
+          - cell "QA Bàn đã sửa":
+            - strong: QA Bàn đã sửa
+          - cell "QA Vườn"
+          - cell "—"
+          - cell "Chưa xác định"
+          - cell "Hoạt động"
+          - cell "Sửa Ngưng dùng":
+            - button "Sửa" [disabled]
+            - button "Ngưng dùng" [disabled]
+        - row "QA Bàn QA Vườn — Chưa xác định Hoạt động Sửa Ngưng dùng":
+          - cell "QA Bàn":
+            - strong: QA Bàn
+          - cell "QA Vườn"
+          - cell "—"
+          - cell "Chưa xác định"
+          - cell "Hoạt động"
+          - cell "Sửa Ngưng dùng":
+            - button "Sửa" [disabled]
+            - button "Ngưng dùng" [disabled]
+    - button "Trang trước" [disabled]
+    - text: Trang 1 · 2 bản ghi
+    - button "Trang sau" [disabled]

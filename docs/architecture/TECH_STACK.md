@@ -20,11 +20,11 @@ File này ghi **công nghệ đã có trong mã hoặc cấu hình repository**;
 
 | Công nghệ | Vai trò hiện tại |
 | --- | --- |
-| React 18, React DOM 18, TypeScript 5 | UI xác thực và quản trị nền tảng dùng API thật; các màn vận hành còn dữ liệu mô phỏng |
+| React 18, React DOM 18, TypeScript 5 | UI xác thực, quản trị nền tảng và Cài đặt tổ chức dùng API thật; POS/ca/thực đơn/kho/báo cáo còn mô phỏng |
 | Vite 6, plugin React | Dev server và build UI |
 | `lucide-react` | Icon giao diện |
 
-PB-13 đã nối luồng xác thực PB-02 và màn quản trị nền tảng PB-03 với API; các lát cắt vận hành khác vẫn là demo.
+PB-13 đã nối xác thực PB-02, quản trị nền tảng PB-03 và Cài đặt tổ chức PB-04 với API. Cài đặt dùng branch/table/staff DTO riêng, shared HTTP cookie/CSRF/refresh và bộ lọc chi nhánh thật riêng; không dùng dữ liệu demo cho lát cắt này. Không thêm dependency frontend cho PB-13 tổ chức.
 
 ## Infrastructure — `POS_INFRA/`
 
@@ -38,4 +38,4 @@ Reverse proxy, TLS, image production, backup và Redis/BullMQ chưa có cấu h�
 
 ## Kiểm thử và công cụ
 
-Backend dùng `node:test`, `@nestjs/testing`, TypeScript build, test HTTP qua `fetch` và database PostgreSQL riêng cho test tích hợp. Frontend dùng Vite build và TypeScript typecheck (`tsc --noEmit`). CI tự động hóa bằng GitHub Actions (`.github/workflows/ci.yml`) chạy kiểm thử độc lập cho cả backend và frontend kèm dịch vụ PostgreSQL container. Dependency được khóa trong `POS_API/package-lock.json` và `POS_UI/package-lock.json`. Bằng chứng các lần chạy nằm trong `qa-evidence/`.
+Backend dùng `node:test`, `@nestjs/testing`, TypeScript build, test HTTP qua `fetch` và database PostgreSQL riêng cho test tích hợp. Frontend dùng `node:test` cho service và regression màn hình với request/thứ tự promise được điều khiển, Vite build và TypeScript typecheck (`tsc --noEmit`); kiểm tra browser bổ sung được lưu riêng trong qa-evidence. CI tự động hóa bằng GitHub Actions (`.github/workflows/ci.yml`) có cấu hình backend/frontend kèm PostgreSQL; bằng chứng local PB-13 không đồng nghĩa đã có CI cho thay đổi chưa commit. Dependency được khóa trong `POS_API/package-lock.json` và `POS_UI/package-lock.json`.

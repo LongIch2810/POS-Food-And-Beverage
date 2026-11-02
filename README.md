@@ -6,13 +6,15 @@ POS và quản lý kho cho quán cà phê, trà sữa và quán ăn nhỏ. Sản
 
 | Thành phần | Đã có trong mã |
 | --- | --- |
-| `POS_API/` | Nền API NestJS, PostgreSQL, migration, bootstrap quản trị viên, health check, API xác thực/phiên và quản trị nền tảng PB-03; auth/platform theo cấu trúc module thống nhất. |
-| `POS_UI/` | Giao diện React; đăng nhập, đổi mật khẩu, phiên và quản trị nền tảng đã nối API thật. Các màn POS, hóa đơn, ca, kho, báo cáo và quản trị vận hành còn lại vẫn dùng dữ liệu mô phỏng. |
+| `POS_API/` | Nền API NestJS, PostgreSQL, migration, bootstrap quản trị viên, health check, API xác thực/phiên, quản trị nền tảng PB-03 và API tổ chức/nhân viên PB-04. |
+| `POS_UI/` | Giao diện React; đăng nhập, đổi mật khẩu, phiên, quản trị nền tảng và Cài đặt chi nhánh/bàn/tài khoản đã nối API thật. Các màn POS, hóa đơn, ca, kho, báo cáo và thực đơn vẫn dùng dữ liệu mô phỏng. |
 | `POS_INFRA/` | Docker Compose để chạy PostgreSQL, API và UI tại máy local. |
 
 Các luồng bán hàng và quản lý kho trong tài liệu là **phạm vi sản phẩm**, chưa phải chức năng backend đã triển khai. Không dùng dữ liệu demo để vận hành cửa hàng thật.
 
 [Sprint 2 đã kết thúc ngày 30/10/2026](sprints/sprint-02/SPRINT.md#kết-luận-sprint-2--2026-10-30): PB-03 và lát cắt PB-13 quản trị nền tảng được nghiệm thu local; CI backend/frontend thành công trên master `9cc3299`. Browser E2E vẫn là bằng chứng local, chưa xác nhận production.
+
+[Sprint 3 đã kết thúc ngày 01/11/2026](sprints/sprint-03/SPRINT.md#kết-luận-sprint-3--2026-11-01): PB-04 và PB-13 tổ chức được Product Owner nghiệm thu local sau [đối chiếu QA](qa-evidence/20261101-203100-9ce75dd-pb13-final/acceptance-readiness.md). Ngày02/11 đã tách commit và push lên nhánh `feat/pb13-organization-ui`; [CI backend/frontend thành công tại dafd0b5](https://github.com/LongIch2810/POS-Food-And-Beverage/actions/runs/41379713471). Chưa merge hoặc xác nhận production. Quy tắc khóa sửa quỹ sau ca đầu tiên được tích hợp ở PB-06 trước khi bật API mở ca.
 
 ## Chạy local với Docker Compose
 
@@ -67,4 +69,4 @@ Sửa `POS_API/.env` với cấu hình DB/auth và `PUBLIC_ORIGIN`; backend tự
 - [`POS_INFRA/`](POS_INFRA/): môi trường Docker local.
 - [Tổng quan sản phẩm](docs/PRODUCT_OVERVIEW.md), [quy tắc nghiệp vụ](docs/BUSINESS_RULES.md), [thiết kế cơ sở dữ liệu](docs/DESIGN_DB_POS_SYSTEM.md).
 - [Quy ước API](docs/api-spec.md), [đặc tả đã chốt](specs/), [kiến trúc mục tiêu](docs/architecture/ARCHITECTURE.md), [tech stack hiện dùng](docs/architecture/TECH_STACK.md).
-- [Thiết kế giao diện](DESIGN.md), [Sprint 1](sprints/sprint-01/SPRINT.md), [Sprint 2](sprints/sprint-02/SPRINT.md), [bằng chứng QA](qa-evidence/).
+- [Thiết kế giao diện](DESIGN.md), [Sprint 1](sprints/sprint-01/SPRINT.md), [Sprint 2](sprints/sprint-02/SPRINT.md), [Sprint 3](sprints/sprint-03/SPRINT.md), [bằng chứng QA](qa-evidence/).

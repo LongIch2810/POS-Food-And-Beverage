@@ -139,8 +139,8 @@ test('PB-03 store, OWNER, suspension, reset and access boundaries', { timeout: 1
       const ownerCrossStore = await fetch(`${base}/users`, { method: 'POST',
         headers: { ...adminHeaders, Cookie: ownerCookie, 'X-CSRF-Token': ownerCsrf },
         body: JSON.stringify({ storeId: anotherStore.store.id, username: 'cross_owner', fullName: 'Chủ sai quyền' }) });
-      assert.equal(ownerCrossStore.status, 403);
-      assert.equal((await ownerCrossStore.json()).error.code, 'PERMISSION_DENIED');
+      assert.equal(ownerCrossStore.status, 422);
+      assert.equal((await ownerCrossStore.json()).error.code, 'VALIDATION_ERROR');
       assert.equal((await db.query("SELECT count(*)::int AS count FROM users WHERE username = 'cross_owner'"))[0].count, 0);
       const suspended = await fetch(`${base}/platform/stores/${first.store.id}/suspend`, { method: 'POST', headers: adminHeaders,
         body: JSON.stringify({ reason: 'Kiểm thử' }) });

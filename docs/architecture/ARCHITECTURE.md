@@ -12,8 +12,8 @@ Nếu các nguồn mâu thuẫn về kết quả nghiệp vụ hoặc bảo mậ
 
 | Thư mục | Hiện trạng khi viết tài liệu | Đích MVP |
 | --- | --- | --- |
-| `POS_UI/` | React/TypeScript/Vite có màn hình demo; `src/services` gọi `src/mock/mockEngine.ts`, dữ liệu mô phỏng nằm trong browser | Thay lớp service mô phỏng bằng lời gọi API, giữ feature/UI phù hợp |
-| `POS_API/` | Đã có nền tảng PB-01, API xác thực/phiên PB-02 và quản trị nền tảng PB-03; auth/platform theo cùng quy ước module | Một ứng dụng NestJS/TypeScript chia module nghiệp vụ |
+| `POS_UI/` | React/TypeScript/Vite: auth, platform và Cài đặt tổ chức dùng API/cookie/CSRF thật; các màn POS/ca/thực đơn/kho/báo cáo còn mock. Cài đặt dùng service/DTO riêng và không đọc mock như nguồn thật | Nối từng lát cắt theo backend đã hoàn thành |
+| `POS_API/` | Đã có nền tảng PB-01, API auth PB-02, platform PB-03 và tổ chức/nhân viên PB-04; UI tổ chức đã nối API | Một ứng dụng NestJS/TypeScript chia module nghiệp vụ |
 | `POS_INFRA/` | Đã có Docker Compose PostgreSQL local; chưa có cấu hình production | Docker Compose, reverse proxy, cấu hình production và sao lưu |
 
 UI demo, kể cả đăng nhập, thanh toán và trạng thái offline, **không phải** bằng chứng backend hoặc bán hàng offline đã được triển khai. MVP không bán hàng offline. Chỉ làm tính năng MVP trong mục 5 của product overview; giai đoạn 2 và tùy chọn cần yêu cầu riêng.
@@ -97,7 +97,8 @@ POS_API/src/
     data-source.ts
     database.module.ts
     migrations/
-    entities/                   # Branch tạm ở đây, chờ module Organization được triển khai
+  organization/                 # Branch, DiningTable, API chi nhánh/bàn và phân trang tổ chức
+  users/                        # API staff và điều phối /users theo context platform/store
   <module-nghiệp-vụ>/           # thêm khi triển khai module tương ứng ở bảng trên
     <module>.module.ts
     <module>.service.ts
@@ -111,7 +112,7 @@ POS_API/src/
 
 Giữ controller, service, DTO, entity và test riêng của một nghiệp vụ gần module sở hữu. Controller xử lý HTTP và gọi service; service giữ nghiệp vụ/transaction và không nhận Express Request/Response. Module chỉ export provider cần cho module khác. DTO có thể nhóm trong một file khi còn nhỏ; chỉ tạo thư mục con có mã thực tế.
 
-`auth/entities/` sở hữu User, Role, Permission, RolePermission, RefreshToken và AuthRateEvent; `platform/entities/` sở hữu Store. Branch tạm ở `database/entities/` đến khi module Organization được triển khai. DataSource đăng ký tập entity tường minh; dùng import trực tiếp và callback TypeORM cho quan hệ, tránh barrel tập hợp entity liên module gây vòng phụ thuộc. Migration vẫn tập trung trong `database/migrations/`; di chuyển entity không phải thay schema hay sửa migration lịch sử.
+`auth/entities/` sở hữu User, Role, Permission, RolePermission, RefreshToken và AuthRateEvent; `platform/entities/` sở hữu Store; `organization/entities/` sở hữu Branch và DiningTable. Module users điều phối các route `/users` theo context hiện hành: platform giữ nghiệp vụ OWNER trong PlatformService, tenant dùng UsersService cho MANAGER/CASHIER. Permission có thể khai báo theo context tại guard; business rule thứ bậc và cấm tự khóa/hạ quyền kiểm tra ở service. DataSource đăng ký entity tường minh, import trực tiếp/callback TypeORM. Migration tập trung trong `database/migrations/`; di chuyển entity không sửa migration lịch sử.
 
 HTTP dùng chung ở `src/http/`; guard và Passport strategy ở `auth/security/`. Helper `httpError` dùng chung tạo lỗi có cấu trúc, không buộc module nghiệp vụ khác import AuthService chỉ để tạo lỗi. `platform.pagination.ts` ở gốc module vì controller và service cùng dùng; chưa trích thành framework phân trang chung. Không bắt buộc repository wrapper, base controller/service hoặc các tầng application/domain/infrastructure cho module mới.
 

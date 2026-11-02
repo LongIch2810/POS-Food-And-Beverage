@@ -1,0 +1,258 @@
+﻿[
+    {
+        "path":  "POS_API\\package.json",
+        "sha256":  "F46884B3E79F59706F7973691FF7425EC805F2F24A0F7D132B5389C92AC8125F"
+    },
+    {
+        "path":  "POS_API\\package-lock.json",
+        "sha256":  "F98780F49B626C4C31C2619AEC7DAE06D5740FFFD9FDEC91058B4E2D07072C2C"
+    },
+    {
+        "path":  "POS_API\\src\\app.module.ts",
+        "sha256":  "4469F42261ABCE9F6415A6A514980DA534FD0CC35777F0F1F790786C4DF83AE7"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\auth.module.ts",
+        "sha256":  "B9CB643C8BF9A94BDAADDE68573988643093FBE6F941003329FF1166F68F69F0"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\auth.service.ts",
+        "sha256":  "74AD98F1680FA3D670A2060584534E725199E8C4BA7286BCC1F408947C3D02F4"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\auth-config.ts",
+        "sha256":  "835E58212FD8EDE2BC2618A700E3A1D62D1448E359BF9FCC58A2EB52148C1D0E"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\entities\\auth-rate-event.entity.ts",
+        "sha256":  "C41E61CC497D7A8FA919A9229255F41AC8C2DCB3504636672900051B5A1C5E2E"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\entities\\permission.entity.ts",
+        "sha256":  "2846CAC3561E04E4C6EA74706A0376DF3E9C44A22C2ABC49FC32308A43DD64A5"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\entities\\refresh-token.entity.ts",
+        "sha256":  "E1F817F772033ED26275607189653146C71A24BAC02A058CB7935A8BAF06266B"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\entities\\role.entity.ts",
+        "sha256":  "DC793690F853F87B76DD43C5C7464B524B2D2BEEC5A31B004018432A131B9B71"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\entities\\role-permission.entity.ts",
+        "sha256":  "35137C7C02F961BD975A520A0834040721C8278E89C2836E8163A3C7531C9F7D"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\entities\\user.entity.ts",
+        "sha256":  "5A63ED7706470451DA13EFC00AA5BA46E66F380F7E99AE347B38C51CE8A50CF2"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\http\\auth.controller.ts",
+        "sha256":  "2667B2D74B5D9D163B0FCCFE4872E786C10E94528DC3BFEC585FB80F439C4074"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\http\\auth.dto.ts",
+        "sha256":  "BBE9298CF41F3927093D8CF84A8EC1A02424B9DB739696D3F03A54AD3CEFEABA"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\http\\auth-cookie.ts",
+        "sha256":  "54CCB115E085315A3B84277BA5B8269650F18F5778AA6E7CA13B08029BB7924E"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\security\\access.guard.ts",
+        "sha256":  "5C925CB324D7EF0F6B9C6C9BEA9FC6205E4F3505BBA1C8682608A2F59FFAFAD6"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\security\\local.strategy.ts",
+        "sha256":  "F3E9E662BAC77BF12E2A374AA061950DC9192F62E022FF72CDB5DECA23CEAC9E"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\security\\local-auth.guard.ts",
+        "sha256":  "A7846829DDA7F2CDB99E3C2D00DFA52D23016FFA049B8257076CBBB23D7E4774"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\tests\\auth.integration.test.ts",
+        "sha256":  "178A63F67E892659F17FB7E1E37DAD0E31D8E9A19B577E7F4BBC451BDC5C5F81"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\tests\\auth.test.ts",
+        "sha256":  "B8DC39556BA61D568D675C82ABFF0CA47145D0CF92CBEB8D5AFC49688CC11F24"
+    },
+    {
+        "path":  "POS_API\\src\\auth\\tests\\auth-config.test.ts",
+        "sha256":  "0D2BE1E2DECE8CB07B81BA1C8EA166351F1CD339EE0DB62DB5E86001366A5FA5"
+    },
+    {
+        "path":  "POS_API\\src\\bootstrap-admin.ts",
+        "sha256":  "1A5FB0B1CCF1C877DE856F6DD9B4412C232D1B655020AA6DA92730480FFA8E93"
+    },
+    {
+        "path":  "POS_API\\src\\database\\database.module.ts",
+        "sha256":  "CED10F34893A48949C01DDFC664D6DB762A23EA9A5BD1896A61C3BD90E71A462"
+    },
+    {
+        "path":  "POS_API\\src\\database\\data-source.ts",
+        "sha256":  "3F57F03D6AFC3DAFE03C371AA0DEDA3581A671B9C30B0D98D09C3616CF6782B7"
+    },
+    {
+        "path":  "POS_API\\src\\database\\entities\\index.ts",
+        "sha256":  "E756728C0F6695CD1BDF30C520C8F2EDAE29AEDEEE9CA2ECA67D469A9E33E490"
+    },
+    {
+        "path":  "POS_API\\src\\database\\migrations\\20261028000000-Foundation.ts",
+        "sha256":  "0DBAFD052F7FC32D54EE854E53162B3E616572C08EC160AC62D6986285BF7132"
+    },
+    {
+        "path":  "POS_API\\src\\database\\migrations\\20261028000001-AuthRateEvents.ts",
+        "sha256":  "B2E119329D55D387BB784A04BD72D76E3B290527316CE5F98A1E29856052114F"
+    },
+    {
+        "path":  "POS_API\\src\\database\\migrations\\20261029000000-PlatformPermissions.ts",
+        "sha256":  "B213D4C22575F45E27AB87EEA8CEA4056427EF10C504EA5C647B6C3DAE7FA82A"
+    },
+    {
+        "path":  "POS_API\\src\\database\\migrations\\20261030000000-Organization.ts",
+        "sha256":  "EF109537B21A89ED705622CD25E08193D4E73F93A0D26571D90B5E88C324DD8F"
+    },
+    {
+        "path":  "POS_API\\src\\foundation.test.ts",
+        "sha256":  "C5F546E32666DA80AA7FE7AA05754254E9CEED18CA3DDFF1519D795632E9945E"
+    },
+    {
+        "path":  "POS_API\\src\\http\\api-error.filter.ts",
+        "sha256":  "813527975F8C731DCF9A6B5932FF28F6379D112A13ADEBEE40AB0C263CDFF2F0"
+    },
+    {
+        "path":  "POS_API\\src\\http\\api-response.ts",
+        "sha256":  "8AFE33BD3A0B65736D5EC99B015145D13589E6EDC4490B51DA22350BCEAB8E46"
+    },
+    {
+        "path":  "POS_API\\src\\http\\health.controller.ts",
+        "sha256":  "F254D39A5B24FE28E349765B38543752430929C6DE053FB52AD59A2E48A3CE18"
+    },
+    {
+        "path":  "POS_API\\src\\http\\http-error.ts",
+        "sha256":  "F1D1FE566069477779E5D884ADECA31ABA1DE501EADE9420D2B9F9B8CABFC582"
+    },
+    {
+        "path":  "POS_API\\src\\http\\request-validation.ts",
+        "sha256":  "BB0C7435F6B7499D8B43AB6AED6718D80DE898BDEA3D8CF116A3D7960CC843DE"
+    },
+    {
+        "path":  "POS_API\\src\\http\\response-docs.ts",
+        "sha256":  "33DF8018CBC7EB4B21B8E685F194E208419F1ED540060C8A4A4D50505A1CA909"
+    },
+    {
+        "path":  "POS_API\\src\\main.ts",
+        "sha256":  "A88CD442A9FC3D0C5280F30A63A7DA091F32B6BBE5A3FE06DB5D4F638FCCBEE5"
+    },
+    {
+        "path":  "POS_API\\src\\organization\\entities\\branch.entity.ts",
+        "sha256":  "3C29E72B58F78B5941818C3CB1099BA7BBEF27B725786C6FD6BF81DB27736D1D"
+    },
+    {
+        "path":  "POS_API\\src\\organization\\entities\\dining-table.entity.ts",
+        "sha256":  "6433FD4C8123B35CE7AFC93C2E290DE2F567C11F0A9336D9D726737EBC85D0E2"
+    },
+    {
+        "path":  "POS_API\\src\\organization\\http\\organization.controller.ts",
+        "sha256":  "975402CD4863112383B1722379D4FBB8CA72CEB1C1CFE5A08FD5580C11F73978"
+    },
+    {
+        "path":  "POS_API\\src\\organization\\http\\organization.dto.ts",
+        "sha256":  "18C8176B2A168B0F5B4D5D0C1B2FEFDF1BEE318A877B6D6A7FD3732ED6B9FFED"
+    },
+    {
+        "path":  "POS_API\\src\\organization\\http\\organization.response.ts",
+        "sha256":  "0EA686A07CAF92A3922BDDE7EE4402C119044A7077979D518F5461732C1C3CC9"
+    },
+    {
+        "path":  "POS_API\\src\\organization\\organization.module.ts",
+        "sha256":  "EBAD70ABBD52A0D8EF6CEFD0DF9BD27EABFCBCA674196689E40512FA0BA220DA"
+    },
+    {
+        "path":  "POS_API\\src\\organization\\organization.pagination.ts",
+        "sha256":  "6201465C8D04D57146A5013E09B339C66DF7B0225548F8DC4D544AE680D1A165"
+    },
+    {
+        "path":  "POS_API\\src\\organization\\organization.service.ts",
+        "sha256":  "132FFBFE53313751EC42E12931DA104EE299B140A83BFF7E89DD4B0101154A30"
+    },
+    {
+        "path":  "POS_API\\src\\organization\\tests\\organization.integration.test.ts",
+        "sha256":  "1BF1293196B3C5523C5A95D93D3E40FA73BA907CEA221B058B75D5A9D40E4E29"
+    },
+    {
+        "path":  "POS_API\\src\\organization\\tests\\organization.migration.test.ts",
+        "sha256":  "44FDA790E371D0CCBD86F76B8C34F26ECB27E1FC0ADC1E1A26B402164844DAC1"
+    },
+    {
+        "path":  "POS_API\\src\\organization\\tests\\organization.openapi.test.ts",
+        "sha256":  "1DA0ABF6CFED172F50807D00083BFD529238763EA874B89DCCCD0135BD51B69E"
+    },
+    {
+        "path":  "POS_API\\src\\organization\\tests\\organization.pagination.test.ts",
+        "sha256":  "58AEF9748CE0C7FC4EC119FCA65BFA43B118B289B3A28343627FC11C68568138"
+    },
+    {
+        "path":  "POS_API\\src\\platform\\entities\\store.entity.ts",
+        "sha256":  "B0EDCFC1492DC289F475BEB81DDFE34BD554E130380CE47C7572FE7755D743A2"
+    },
+    {
+        "path":  "POS_API\\src\\platform\\http\\platform.controller.ts",
+        "sha256":  "25B9128CB864DFC7F38A331979DB79306FC02A2BAA2C30D1C6ECA9ECE98418B6"
+    },
+    {
+        "path":  "POS_API\\src\\platform\\http\\platform.dto.ts",
+        "sha256":  "1D4CE84BF48E2D3769D39DE055AA30A2B9EEB4DD8BAA9C8B77F1BCC25957527A"
+    },
+    {
+        "path":  "POS_API\\src\\platform\\platform.module.ts",
+        "sha256":  "704AA2C480B74EF2167A4B25564598A33E3439B14E9B948474C68E1D94EAA08E"
+    },
+    {
+        "path":  "POS_API\\src\\platform\\platform.pagination.ts",
+        "sha256":  "2031DC4A1C91FE27A12D3F4D10D97D983EE33435242A697D58D7CC8B27BFF93F"
+    },
+    {
+        "path":  "POS_API\\src\\platform\\platform.service.ts",
+        "sha256":  "19034DB07C418FE38E597D1B289867AE1E2085F58767E5F5D574D6C5FAB72C8A"
+    },
+    {
+        "path":  "POS_API\\src\\platform\\tests\\platform.integration.test.ts",
+        "sha256":  "DB1533B9F6E9279965BEF667B5581176F42175CE6E4EFA6D73F02D7D2E433325"
+    },
+    {
+        "path":  "POS_API\\src\\platform\\tests\\platform.pagination.test.ts",
+        "sha256":  "A14D0D84B76A378D0D8E5B3E670E1B553137B3CE81323580128AEACBBFD1C294"
+    },
+    {
+        "path":  "POS_API\\src\\swagger-docs.ts",
+        "sha256":  "490E1C6A36ECDC5E0F7BDE5344C0813D9EB93B169F84ADA5AF2DF7C9005024FF"
+    },
+    {
+        "path":  "POS_API\\src\\users\\http\\users.controller.ts",
+        "sha256":  "1200663CF12FB601754BB324B21812C7B8CCBF5E3E3E5BFF4603AA1ED184CD3B"
+    },
+    {
+        "path":  "POS_API\\src\\users\\http\\users.dto.ts",
+        "sha256":  "99124E538948617CD8619CC3684F97D328AB3E9AC3A915C943BA6F8FD5BBB0F3"
+    },
+    {
+        "path":  "POS_API\\src\\users\\http\\users.response.ts",
+        "sha256":  "0B5519AA5F0F594E8A21DBB06CC1A9BA921FA819C76E56F736B75C0D7996ED00"
+    },
+    {
+        "path":  "POS_API\\src\\users\\users.module.ts",
+        "sha256":  "6A9D229F7E1E10192DAD1D8DE8C5A14A5C2B61B3071EBA54498374E602DD341B"
+    },
+    {
+        "path":  "POS_API\\src\\users\\users.service.ts",
+        "sha256":  "637BC22BEE12785B230B1230A736DB7EEFF55A7A3CCB9D2B4DAC62422343CCB2"
+    },
+    {
+        "path":  "POS_API\\tsconfig.json",
+        "sha256":  "9ACCA87262FCA557E660067A053FF9A810C592C2F50724F2EB06D4C0BF849D84"
+    }
+]

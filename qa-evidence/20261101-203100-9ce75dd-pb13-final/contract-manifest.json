@@ -1,0 +1,50 @@
+[
+  {
+    "path": "DESIGN.md",
+    "sha256": "8c6726d230779813edcb004b9eab736030186459af90a123ad1171d3a5710ceb"
+  },
+  {
+    "path": "docs/api-spec.md",
+    "sha256": "7dddad2991f73b620afe49fc7276a9184825aa119f4ca6ecf1f7a5170e324479"
+  },
+  {
+    "path": "docs/architecture/ARCHITECTURE.md",
+    "sha256": "f8d4506518531eef4eec17c74e0fc5ee0f8af65d409c61b3ea5965a78d8260ab"
+  },
+  {
+    "path": "docs/architecture/TECH_STACK.md",
+    "sha256": "5832d83253fb95c85a0fb7873042e5db3c4c7e3d15c19955da4b60cda90ed89d"
+  },
+  {
+    "path": "docs/BUSINESS_RULES.md",
+    "sha256": "841d47977cc1557c88fa0ddc0cf68822291623e2f049013166e747f774b732ba"
+  },
+  {
+    "path": "docs/DESIGN_DB_POS_SYSTEM.md",
+    "sha256": "ba67c7a9601eaecd9c144ee28127fa6a05e4a04c31434de0707492dbd8855845"
+  },
+  {
+    "path": "docs/PRODUCT_OVERVIEW.md",
+    "sha256": "2b31c535519ca64d5867c2fd15a1963cd7e40c02d6fb088d515dce5e54d401d8"
+  },
+  {
+    "path": "specs/auth.md",
+    "sha256": "34a23f685952fc1d4fff94b2206b09dadbc8536e51e68aef8cdde0092cc1e29f"
+  },
+  {
+    "path": "specs/organization-ui.md",
+    "sha256": "f91f8885a23540238f756d002f10b8cdb57c3760689a0c22f8f35ca9ac491087"
+  },
+  {
+    "path": "specs/organization.md",
+    "sha256": "aea61ca7f9236d440887965cb101123e57037480079b27beda94ed357cb1bdeb"
+  },
+  {
+    "path": "specs/platform.md",
+    "sha256": "b24dd84cec4d5dbba8a56df4179c810924e754616e55450661a88709c68d5ce6"
+  },
+  {
+    "path": "specs/users.md",
+    "sha256": "13e81d9006d7fc05dc11145ba3e813141032d5812f9ef8a03d52f233f69ee2c7"
+  }
+]

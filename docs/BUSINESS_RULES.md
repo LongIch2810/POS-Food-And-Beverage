@@ -117,6 +117,8 @@ Danh sách business rule của hệ thống POS và kho cho quán cà phê (nhi�
 
 ## 8. Đối soát tiền mặt
 
+Quyết định PB-04 ngày 30/10/2026: OWNER chỉ sửa quỹ ban đầu của chi nhánh trước ca CASHIER đầu tiên. PB-06 tích hợp kiểm tra lịch sử ca và khóa Branch chung với mở ca trước khi bật API ca; PB-04 chưa nghiệm thu vế sau ca.
+
 | Mã     | Quy tắc                                                                                                                                                                                                     | GĐ  |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
 | BR-54  | Chỉ **tiền mặt** được đối soát. Chuyển khoản tính vào doanh thu nhưng không nằm trong két.                                                                                                                  | MVP |

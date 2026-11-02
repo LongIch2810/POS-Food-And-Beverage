@@ -8,9 +8,11 @@ import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthController } from './http/health.controller';
 import { PlatformModule } from './platform/platform.module';
+import { OrganizationModule } from './organization/organization.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, PlatformModule],
+  imports: [DatabaseModule, AuthModule, PlatformModule, OrganizationModule, UsersModule],
   controllers: [HealthController],
   providers: [{ provide: APP_FILTER, useClass: ApiErrorFilter }],
 })

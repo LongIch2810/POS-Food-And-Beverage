@@ -147,6 +147,8 @@ Cột `status` thay cho `is_active` ở bảng này, để tránh hai cột cùn
 
 Trạng thái bàn (có khách / trống) **không lưu cột**: bàn đang có khách khi tồn tại hóa đơn `OPEN` của bàn đó.
 
+PB-04 đã triển khai bảng `dining_tables` và API tổ chức; `branches.initial_cash` chỉ được sửa trước ca CASHIER đầu tiên theo quyết định Product Owner ngày 30/10/2026. PB-06 phải bổ sung kiểm tra đã từng có ca trong cùng khóa dòng Branch với mở ca đầu tiên, trước khi bật API mở ca; hiện chưa có bảng/API ca nên vế sau ca chưa được kiểm chứng. Không thêm cờ khóa hoặc bảng ca giả trong PB-04.
+
 ---
 
 ### 2. Danh mục sản phẩm (menu dùng chung toàn cửa hàng)
