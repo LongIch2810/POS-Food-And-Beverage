@@ -1,0 +1,13 @@
+{
+  "storeId": "544b132c-aedd-4aa0-9a30-94907c535644",
+  "branchId": "404f9c48-6e7b-487f-9f7c-ea83813335ac",
+  "shifts": [
+    {
+      "status": "CLOSED",
+      "shift_type": "CASHIER",
+      "counted_cash": "100000",
+      "expected_cash": "100000",
+      "reconciliation_status": "MATCHED"
+    }
+  ]
+}

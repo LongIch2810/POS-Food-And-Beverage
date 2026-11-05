@@ -6,8 +6,8 @@ POS và quản lý kho cho quán cà phê, trà sữa và quán ăn nhỏ. Sản
 
 | Thành phần | Đã có trong mã |
 | --- | --- |
-| `POS_API/` | Nền API NestJS, PostgreSQL, migration, bootstrap quản trị viên, health check, API xác thực/phiên, quản trị nền tảng PB-03 và API tổ chức/nhân viên PB-04. |
-| `POS_UI/` | Giao diện React; đăng nhập, đổi mật khẩu, phiên, quản trị nền tảng và Cài đặt chi nhánh/bàn/tài khoản đã nối API thật. Các màn POS, hóa đơn, ca, kho, báo cáo và thực đơn vẫn dùng dữ liệu mô phỏng. |
+| `POS_API/` | Nền API NestJS/PostgreSQL, xác thực/phiên, quản trị nền tảng PB-03, tổ chức/nhân viên PB-04, thực đơn PB-05 và ca làm PB-06. |
+| `POS_UI/` | Giao diện React; đăng nhập, quản trị nền tảng, tổ chức, thực đơn và màn Ca làm đã nối API thật. Nội dung bán hàng POS sau cổng ca, hóa đơn, kho và báo cáo vẫn dùng dữ liệu mô phỏng. |
 | `POS_INFRA/` | Docker Compose để chạy PostgreSQL, API và UI tại máy local. |
 
 Các luồng bán hàng và quản lý kho trong tài liệu là **phạm vi sản phẩm**, chưa phải chức năng backend đã triển khai. Không dùng dữ liệu demo để vận hành cửa hàng thật.
@@ -15,6 +15,8 @@ Các luồng bán hàng và quản lý kho trong tài liệu là **phạm vi s�
 [Sprint 2 đã kết thúc ngày 30/10/2026](sprints/sprint-02/SPRINT.md#kết-luận-sprint-2--2026-10-30): PB-03 và lát cắt PB-13 quản trị nền tảng được nghiệm thu local; CI backend/frontend thành công trên master `9cc3299`. Browser E2E vẫn là bằng chứng local, chưa xác nhận production.
 
 [Sprint 3 đã kết thúc ngày 01/11/2026](sprints/sprint-03/SPRINT.md#kết-luận-sprint-3--2026-11-01): PB-04 và PB-13 tổ chức được Product Owner nghiệm thu local sau [đối chiếu QA](qa-evidence/20261101-203100-9ce75dd-pb13-final/acceptance-readiness.md). Ngày02/11 đã tách commit và push lên nhánh `feat/pb13-organization-ui`; [CI backend/frontend thành công tại dafd0b5](https://github.com/LongIch2810/POS-Food-And-Beverage/actions/runs/41379713471). Chưa merge hoặc xác nhận production. Quy tắc khóa sửa quỹ sau ca đầu tiên được tích hợp ở PB-06 trước khi bật API mở ca.
+
+[Sprint 5 đã kết thúc ngày 05/11/2026](sprints/sprint-05/SPRINT.md#kết-luận-đóng-sprint-05--05112026): PB-06 và lát cắt PB-13 Ca làm đạt 19/19 tiêu chí theo [QA local độc lập](qa-evidence/20261105-212738-1132f12-sprint05-qa-independent/sprint05-criteria.md). Lượt QA này chạy trên working tree dirty; tình trạng tích hợp và CI sau đó được ghi trong hồ sơ Sprint. Chưa xác nhận production.
 
 ## Chạy local với Docker Compose
 

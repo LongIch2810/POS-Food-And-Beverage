@@ -1,8 +1,8 @@
 # PRODUCT_BACKLOG
 
-**Trạng thái:** Product Backlog còn được refinement. Thứ tự dưới đây là ưu tiên đề xuất cho MVP; [Sprint 2 đã kết thúc ngày 30/10/2026](../sprints/sprint-02/SPRINT.md#kết-luận-sprint-2--2026-10-30). [Sprint 3 đã kết thúc và được Product Owner nghiệm thu local ngày 01/11/2026](../sprints/sprint-03/SPRINT.md#kết-luận-sprint-3--2026-11-01): PB-04 + PB-13 tổ chức. Lịch ban đầu 30/10–05/11/2026 được giữ trong hồ sơ; sprint kết thúc sớm. [Sprint 4](../sprints/sprint-04/SPRINT.md) đã hoàn thành triển khai và kiểm thử PB-05 (Thực đơn) + lát cắt PB-13 thực đơn ngày 02/11/2026, sẵn sàng nghiệm thu. [Sprint 5](../sprints/sprint-05/SPRINT.md) đã hoàn thành triển khai và kiểm thử PB-06 (Ca làm) + lát cắt PB-13 ca làm ngày 03/11/2026, sẵn sàng nghiệm thu. Bảng này không thay thế đặc tả endpoint.
+**Trạng thái:** Product Backlog còn được refinement. Thứ tự dưới đây là ưu tiên đề xuất cho MVP; [Sprint 2 đã kết thúc ngày 30/10/2026](../sprints/sprint-02/SPRINT.md#kết-luận-sprint-2--2026-10-30). [Sprint 3 đã kết thúc và được Product Owner nghiệm thu local ngày 01/11/2026](../sprints/sprint-03/SPRINT.md#kết-luận-sprint-3--2026-11-01): PB-04 + PB-13 tổ chức. Lịch ban đầu 30/10–05/11/2026 được giữ trong hồ sơ; sprint kết thúc sớm. [Sprint 4](../sprints/sprint-04/SPRINT.md) đã hoàn thành triển khai và kiểm thử PB-05 (Thực đơn) + lát cắt PB-13 thực đơn ngày 02/11/2026, sẵn sàng nghiệm thu. [Sprint 5](../sprints/sprint-05/SPRINT.md#kết-luận-đóng-sprint-05--05112026) đã kết thúc và được nghiệm thu local ngày 05/11/2026 cho PB-06 (Ca làm) + lát cắt PB-13 ca làm, 19/19 tiêu chí PASS. Bảng này không thay thế đặc tả endpoint.
 
-Nguồn phạm vi: [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md) mục 5; quy tắc chi tiết ở [BUSINESS_RULES.md](BUSINESS_RULES.md). PB-01, PB-02 và lát cắt xác thực của PB-13 đã được Product Owner nghiệm thu. Ngày30/10/2026, PB-03 và PB-13 lát cắt quản trị nền tảng được nghiệm thu local theo phạm vi và bằng chứng trong [Sprint 2](../sprints/sprint-02/SPRINT.md). Ngày01/11/2026, PB-04 và PB-13 tổ chức được nghiệm thu local trong Sprint 3. UI đăng nhập/quản trị nền tảng/Cài đặt tổ chức dùng API thật; các màn POS, ca, thực đơn, kho và báo cáo vẫn là demo mock. Mỗi item cần refinement và spec đã chốt trong `specs/` trước khi code phần tương ứng.
+Nguồn phạm vi: [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md) mục 5; quy tắc chi tiết ở [BUSINESS_RULES.md](BUSINESS_RULES.md). PB-01, PB-02 và lát cắt xác thực của PB-13 đã được Product Owner nghiệm thu. Ngày30/10/2026, PB-03 và PB-13 lát cắt quản trị nền tảng được nghiệm thu local theo phạm vi và bằng chứng trong [Sprint 2](../sprints/sprint-02/SPRINT.md). Ngày01/11/2026, PB-04 và PB-13 tổ chức được nghiệm thu local trong Sprint 3. UI đăng nhập/quản trị nền tảng/Cài đặt tổ chức, Thực đơn và Ca làm dùng API thật theo các lát cắt đã triển khai; màn bán hàng POS phía sau cổng ca, hóa đơn, kho và báo cáo vẫn dùng dữ liệu demo/mock. Mỗi item cần refinement và spec đã chốt trong `specs/` trước khi code phần tương ứng.
 
 ## Product Backlog MVP
 
@@ -51,7 +51,7 @@ PB-03 và PB-13 quản trị nền tảng đã nghiệm thu trong phạm vi đã
 
 | Việc | Theo dõi tại | Điều kiện tiếp tục |
 | --- | --- | --- |
-| Ca làm và UI tương ứng | PB-06 + PB-13 | Đã hoàn thành triển khai và nghiệm thu kiểm thử trong [Sprint 5](../sprints/sprint-05/SPRINT.md) ngày 03/11/2026. |
+| Ca làm và UI tương ứng | PB-06 + PB-13 | Triển khai ngày 03/11; đã nghiệm thu local 19/19 tiêu chí và đóng [Sprint 5](../sprints/sprint-05/SPRINT.md) ngày 05/11/2026. |
 | Khóa sửa quỹ sau ca CASHIER đầu tiên | PB-06 | Đã hoàn thành và kiểm thử xác minh trong Sprint 5 (409 INITIAL_CASH_LOCKED). |
 | Bán hàng và đơn hàng | PB-07 | Sẵn sàng triển khai trong Sprint 6 sau khi PB-06 đã cung cấp `work_shift_id`. |
 | Màn vận hành còn mock; vận hành production và sao lưu | Các lát cắt PB-13 còn lại; PB-14 | Tiếp tục theo dependency sau PB-06/PB-07. |
@@ -64,4 +64,4 @@ PB-03 và PB-13 quản trị nền tảng đã nghiệm thu trong phạm vi đã
 | Chi phí két & Đối soát tiền mặt chi tiết | PB-10 | Phụ thuộc vào PB-07 (bán hàng) và PB-09 (thanh toán). |
 | Màn vận hành còn mock; vận hành production và sao lưu | Các lát cắt PB-13 còn lại; PB-14 | Tiếp tục theo dependency sau PB-07. |
 
-Hồ sơ sprint: [Sprint 1 (đã kết thúc)](../sprints/sprint-01/SPRINT.md), [Sprint 2 (đã kết thúc)](../sprints/sprint-02/SPRINT.md), [Sprint 3 (đã kết thúc, nghiệm thu local)](../sprints/sprint-03/SPRINT.md), [Sprint 4 (hoàn thành triển khai, sẵn sàng nghiệm thu)](../sprints/sprint-04/SPRINT.md), [Sprint 5 (hoàn thành triển khai, sẵn sàng nghiệm thu)](../sprints/sprint-05/SPRINT.md).
+Hồ sơ sprint: [Sprint 1 (đã kết thúc)](../sprints/sprint-01/SPRINT.md), [Sprint 2 (đã kết thúc)](../sprints/sprint-02/SPRINT.md), [Sprint 3 (đã kết thúc, nghiệm thu local)](../sprints/sprint-03/SPRINT.md), [Sprint 4 (hoàn thành triển khai, sẵn sàng nghiệm thu)](../sprints/sprint-04/SPRINT.md), [Sprint 5 (đã kết thúc, nghiệm thu local)](../sprints/sprint-05/SPRINT.md).

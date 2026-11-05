@@ -1,6 +1,6 @@
-# Sprint 5 — Hoàn thành
+# Sprint 5 — Đã nghiệm thu local
 
-**Trạng thái:** Hoàn thành ngày 03/11/2026 trên nhánh `feat/pb06-shifts`. Kế hoạch triển khai: [plans/completed/2026-11-03-sprint-05-shifts.md](../../plans/completed/2026-11-03-sprint-05-shifts.md). Tiến độ theo dõi tại [tasks/completed/2026-11-03-sprint-05-shifts.md](../../tasks/completed/2026-11-03-sprint-05-shifts.md). Bằng chứng QA: [qa-evidence/20261102-212200-7d5eba1-pb06-shifts/run.md](../../qa-evidence/20261102-212200-7d5eba1-pb06-shifts/run.md).
+**Trạng thái:** Đã đối soát và nghiệm thu 19/19 tiêu chí bằng QA local độc lập ngày 05/11/2026 trên nhánh `feat/pb06-shifts`; working tree còn dirty, chưa có CI cho phiên bản này. Kết luận và artifact từng tiêu chí: [bảng QA Sprint 05](../../qa-evidence/20261105-212738-1132f12-sprint05-qa-independent/sprint05-criteria.md), [browser cuối](../../qa-evidence/20261105-214648-1132f12-sprint05-qa-pos-tab-final/run.md), [test sau fix](../../qa-evidence/20261105-213954-1132f12-sprint05-qa-b09-retest/run.md). Kế hoạch triển khai: [plans/completed/2026-11-03-sprint-05-shifts.md](../../plans/completed/2026-11-03-sprint-05-shifts.md). Nhật ký khắc phục: [task](../../tasks/completed/2026-11-05-sprint-05-acceptance-remediation.md). Hồ sơ 03/11 là lịch sử của bản mã trước lượt khắc phục: [task cũ](../../tasks/completed/2026-11-03-sprint-05-shifts.md), [QA cũ](../../qa-evidence/20261102-212200-7d5eba1-pb06-shifts/run.md).
 
 ## Cơ sở lập kế hoạch
 
@@ -30,16 +30,16 @@ Nhân viên (`STAFF`) và Thu ngân (`CASHIER`) quản lý được ca làm vi�
 - Quản lý chi phí két trong ca (`shift_expenses`), đối soát tiền mặt đếm mù khi có doanh thu bán hàng và đóng cưỡng chế ca khi có hóa đơn sẽ hoàn thiện ở **PB-10**.
 - Tạo đơn bán hàng và gắn hóa đơn với ca thuộc phạm vi **PB-07**.
 
-## Tiêu chí nghiệm thu đã đạt
+## Tiêu chí nghiệm thu — QA local độc lập PASS ngày 05/11/2026
 
 ### 1. Ca nhân viên (`shift_type = STAFF`)
 - [x] Nhân viên có thể ghi nhận giờ vào ca (`started_at`); hệ thống tạo bản ghi `work_shifts` với `status = 'OPEN'`.
 - [x] Nhân viên có thể tan ca; hệ thống cập nhật `ended_at = now()`, chuyển trạng thái `status = 'CLOSED'`. Kiểm tra ràng buộc `ended_at > started_at` (BR-18).
-- [x] Mỗi nhân viên tại một thời điểm chỉ có tối đa một ca đang mở; nếu cố mở ca thứ hai khi ca cũ chưa đóng thì bị từ chối bằng lỗi `409 DUPLICATE_OPEN_SHIFT` (BR-14, chặn bởi partial unique index `(user_id) WHERE status = 'OPEN'`).
+- [x] Mỗi nhân viên tại một thời điểm chỉ có tối đa một ca đang mở; nếu cố mở ca thứ hai khi ca cũ chưa đóng thì bị từ chối bằng lỗi `409 SHIFT_ALREADY_OPEN` (BR-14, chặn bởi partial unique index `(user_id) WHERE status = 'OPEN'`).
 
 ### 2. Ca thu ngân (`shift_type = CASHIER`) & Tiền đầu ca
 - [x] Thu ngân chỉ mở ca tại chi nhánh mình được phân công (`branch_id` khớp với user context). Người có quyền `branch.access_all` (`OWNER`) có thể chỉ định `branch_id` hợp lệ cùng store.
-- [x] Mỗi chi nhánh tại một thời điểm chỉ có tối đa một ca thu ngân đang mở; nếu chi nhánh đã có ca thu ngân đang `OPEN`, yêu cầu mở ca mới bị từ chối `409 BRANCH_HAS_OPEN_CASHIER_SHIFT` (BR-87, chặn bởi partial unique index `(branch_id) WHERE status = 'OPEN' AND shift_type = 'CASHIER'`).
+- [x] Mỗi chi nhánh tại một thời điểm chỉ có tối đa một ca thu ngân đang mở; nếu chi nhánh đã có ca thu ngân đang `OPEN`, yêu cầu mở ca mới bị từ chối `409 BRANCH_CASHIER_SHIFT_OPEN` (BR-87, chặn bởi partial unique index `(branch_id) WHERE status = 'OPEN' AND shift_type = 'CASHIER'`).
 - [x] Tiền đầu ca (`opening_cash`) do hệ thống tự tính và điền, thu ngân không được sửa (BR-55, BR-102):
   - Với ca thu ngân đầu tiên của chi nhánh: `opening_cash = branches.initial_cash`.
   - Với các ca thu ngân tiếp theo: `opening_cash` lấy từ `counted_cash` của ca `CASHIER` đã `CLOSED` gần nhất theo `ended_at` trong cùng chi nhánh (BR-89).
@@ -50,7 +50,7 @@ Nhân viên (`STAFF`) và Thu ngân (`CASHIER`) quản lý được ca làm vi�
 - [x] API lấy ca hiện tại của người dùng (`GET /api/v1/work-shifts/current`): trả về thông tin ca đang mở, loại ca, thời gian bắt đầu, tiền đầu ca (nếu là CASHIER) hoặc `null` nếu chưa vào ca.
 - [x] Thu ngân có thể đóng ca thu ngân của mình: nhập `counted_cash` thực tế trong két để hoàn tất đối soát và đóng ca (tính `expected_cash`, chênh lệch `difference`, cập nhật trạng thái `MATCHED`/`SHORTAGE`/`OVERAGE` và chuyển ca sang `CLOSED`).
 - [x] Quản lý / Chủ quán có thể đóng ca cưỡng chế (`POST /api/v1/work-shifts/:id/force-close`) với `countedCash` và `reason`, ghi nhận `closed_by = manager_id`.
-- [x] Ca đã `CLOSED` không thể mở lại hoặc sửa đổi trực tiếp (BR-17, BR-242).
+- [x] Ca đã `CLOSED` không thể mở lại hoặc sửa đổi trực tiếp (BR-17).
 
 ### 4. Phân quyền & Cô lập dữ liệu (Multi-tenant)
 - [x] `PLATFORM_ADMIN` bị chặn tuyệt đối không được truy cập API ca làm việc (`403 PERMISSION_DENIED` theo BR-81).
@@ -65,10 +65,29 @@ Nhân viên (`STAFF`) và Thu ngân (`CASHIER`) quản lý được ca làm vi�
 
 ---
 
-## Sprint Review & Kết quả Nghiệm thu
+## Sprint Review 03/11/2026 (lịch sử trước khắc phục)
 
 - **Backend Tests:** 15 test suites, 65/65 subtests PASS trên PostgreSQL 17 (bao gồm 8 subtests kiểm thử chi tiết nghiệp vụ ca SHIFT-01..08).
 - **Frontend Tests:** 32/32 tests PASS (bao gồm HTTP client tests cho ca làm việc `PB13-SHIFT-HTTP`).
 - **Production Builds:** Cả backend (`tsc`) và frontend (`tsc && vite build`) hoàn tất sạch sẽ 0 lỗi.
 - **Docker E2E:** 12/12 bước kiểm thử luồng thực tế (Admin tạo store, Owner tạo branch 1.5M, Staff check-in/out, Cashier mở ca lấy 1.5M, lock branch initialCash, đóng ca đếm mù MATCHED, mở ca 2 kế thừa tiền, Manager force close ghi nhận SHORTAGE) đều thành công trên Docker containers `pos_api` và `pos_ui`.
 - **Hồ sơ nghiệm thu QA:** [qa-evidence/20261102-212200-7d5eba1-pb06-shifts/run.md](../../qa-evidence/20261102-212200-7d5eba1-pb06-shifts/run.md).
+
+### Đối soát sau khắc phục ngày 05/11/2026
+
+- **19/19 tiêu chí Sprint PASS local** theo [ma trận tiêu chí → tình huống → artifact](../../qa-evidence/20261105-212738-1132f12-sprint05-qa-independent/sprint05-criteria.md). QA tự chạy lại backend 67/67 và UI 37/37 sau fix, kiểm browser trên Chrome headless và PostgreSQL test riêng; [hồ sơ browser cuối](../../qa-evidence/20261105-214648-1132f12-sprint05-qa-pos-tab-final/run.md) có ảnh trước/sau, network, API current và DB trước/sau. Build API/UI exit 0 trong [run local của agent chính](../../qa-evidence/20261105-181854-1132f12-sprint05-remediation/run.md).
+- Lỗi toast còn sót giữa hai phiên đã tự tái hiện, sửa và QA độc lập chạy lại cùng hồi quy liên quan: [hồ sơ lỗi](../../errors/2026-11-05-toast-leak-between-sessions.md), [run QA sau fix](../../qa-evidence/20261105-213954-1132f12-sprint05-qa-b09-retest/run.md).
+- Fixture `pos.sell` chỉ cấp trong DB sandbox để kiểm cổng POS; phần bán hàng sau cổng vẫn là UI demo/mock, không phải bằng chứng backend bán hàng. Chưa có URL/ID CI hoặc runner độc lập cho working tree chưa commit; kết luận này là **QA local độc lập**, không phải xác nhận production.
+
+## Kết luận đóng Sprint 05 — 05/11/2026
+
+**Sprint Goal đạt trong phạm vi local; Sprint 05 kết thúc ngày 05/11/2026 theo yêu cầu đóng gói của Product Owner.** PB-06 API/DB ca làm và lát cắt PB-13 màn Ca làm đã được đối chiếu 19/19 tiêu chí Sprint, đều PASS bằng QA tự chạy trên PostgreSQL sandbox và browser. [Ma trận tiêu chí](../../qa-evidence/20261105-212738-1132f12-sprint05-qa-independent/sprint05-criteria.md) nối từng kết luận với tình huống và artifact; [run browser cuối](../../qa-evidence/20261105-214648-1132f12-sprint05-qa-pos-tab-final/run.md) kiểm cổng POS, đếm mù, lỗi mạng, chuyển tab và đổi phiên. Đây là quyết định nghiệm thu **local**, không bao gồm CI, merge, production hay backend bán hàng PB-07.
+
+**Phiên bản nghiệm thu:** nhánh `feat/pb06-shifts`, HEAD nền `1132f12a447058e6ace8cb8fb87dc6877763ee5d`, working tree dirty gồm các thay đổi Sprint 05 chưa commit. Log test, ảnh, network và DB phản ánh snapshot local này; HEAD một mình không định danh toàn bộ mã đã nghiệm thu. Danh mục kiểm chứng nằm trong ma trận QA và các run liên kết ở trên. Không commit/push/merge trong lượt đóng sprint này.
+
+### Review và retrospective
+
+- **Đạt:** cơ chế một ca mở mỗi người/mỗi chi nhánh, tiền đầu ca do server tính, khóa quỹ sau ca đầu, đóng ca đếm mù và phạm vi store/branch đã được kiểm bằng API PostgreSQL thật; màn Ca làm và gate dùng API thật. QA cuối chạy backend 67/67, UI 37/37, browser mở/đóng ca trên DB thử riêng; build API/UI exit 0. Bằng chứng theo từng tiêu chí ở ma trận, không chỉ dựa số test pass.
+- **Lỗi và cách khắc phục:** review phát hiện tám finding ở quyền điều hướng, branch thực, trạng thái ca, khóa quỹ UI, đối soát và xung đột mở ca; [task fix review](../../tasks/completed/2026-11-05-fix-sprint-05-review.md) ghi diff và test. QA sau đó tái hiện toast phiên A còn trên màn cửa hàng B; [hồ sơ lỗi](../../errors/2026-11-05-toast-leak-between-sessions.md) ghi nguyên nhân đã xác minh, QA [chạy lại B09 cùng hồi quy](../../qa-evidence/20261105-213954-1132f12-sprint05-qa-b09-retest/run.md) và kết luận PASS. Sprint chỉ được tick sau lượt QA độc lập cuối.
+- **Bài học quy trình:** báo cáo cũ 65/65 và 32/32 là kết quả lịch sử của bản mã trước fix. Việc kiểm từng vế buộc bổ sung assertion sai branch, `openingCash` giả, ca CLOSED, OVERAGE và ảnh gate/trạng thái UI. Lần sau lập ma trận tiêu chí → tình huống → artifact trước khi tuyên bố nghiệm thu; giữ riêng trạng thái task và Sprint.
+- **Theo dõi sau Sprint:** PB-07 mới triển khai bán hàng/đơn hàng thật; PB-10 mới tích hợp chi phí két, doanh thu tiền mặt và các ràng buộc hóa đơn khi đóng ca. Màn POS phía sau gate hiện còn demo/mock. CI cho snapshot đã commit, merge và vận hành production thuộc bước tích hợp riêng; không suy ra từ QA local.

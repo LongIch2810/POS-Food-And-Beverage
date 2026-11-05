@@ -1,0 +1,10 @@
+# Trạng thái: Đã sửa, QA độc lập chạy lại PASS
+
+- Task: `tasks/completed/2026-11-05-sprint-05-acceptance-remediation.md`
+- Tiêu chí: Sprint 05, mục 5, dòng không trộn dữ liệu giữa các phiên; BR-80.
+- Triệu chứng: Sau khi CASHIER cửa hàng A mở và đóng ca, rồi đăng xuất và đăng nhập OWNER cửa hàng B, các thông báo thành công/lỗi từ phiên A vẫn xuất hiện trên màn hình B.
+- Bước tái hiện: Chạy `qa-evidence/20261105-181854-1132f12-sprint05-remediation/browser-shift.cjs` trên API/UI local và DB thử riêng; mở/đóng ca A, gây lỗi mạng ở tải lại, đăng xuất, đăng nhập chủ cửa hàng B, mở tab Ca làm. Ảnh trước sửa: `qa-evidence/20261105-181854-1132f12-sprint05-remediation/browser-other-store.png` của lượt `browser-shift-edge-final.log` (ảnh này đã bị lần kiểm lại ghi đè; bản gốc còn tại `qa-evidence/20261105-213606-1132f12-sprint05-qa-browser-extended/browser-other-store.png`).
+- Nguyên nhân: Đã xác minh từ `POS_UI/src/app/App.tsx` và `POS_UI/src/context/ToastContext.tsx`: `ToastProvider` sống xuyên suốt các lần đổi phiên nhưng mảng `toasts` không được xóa khi danh tính phiên đổi. Ảnh QA và browser log nêu trên xác nhận hậu quả.
+- Cách sửa: `ToastProvider` theo dõi danh tính và trạng thái xác thực từ `AuthContext`, xóa thông báo khi đổi phiên.
+- Kiểm chứng: Local `POS_UI npm test` 37/37 (`qa-evidence/20261105-181854-1132f12-sprint05-remediation/frontend-test-toast.log`); chạy lại tình huống và hồi quy mở/đóng ca, tải trang, lỗi mạng, phiên B: `browser-toast-retest.log` exit 0, `browser-other-store.png` mới không còn toast phiên A, script assert container thông báo rỗng. QA độc lập tự chạy lại B09 và B05-B08, kết luận PASS tại `qa-evidence/20261105-213954-1132f12-sprint05-qa-b09-retest/run.md`; chạy browser cuối với cổng POS/chuyển tab/đổi phiên tại `qa-evidence/20261105-214648-1132f12-sprint05-qa-pos-tab-final/run.md`.
+- Tham chiếu: `qa-evidence/20261105-213606-1132f12-sprint05-qa-browser-extended/run.md` tình huống B09; `errors/2026-10-30-pb13-session-retry-scope.md` là lỗi liên quan.

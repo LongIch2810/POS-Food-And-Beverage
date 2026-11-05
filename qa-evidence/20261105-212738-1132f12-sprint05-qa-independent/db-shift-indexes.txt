@@ -1,0 +1,6 @@
+﻿idx_work_shifts_branch_started: CREATE INDEX idx_work_shifts_branch_started ON public.work_shifts USING btree (branch_id, started_at)
+idx_work_shifts_status: CREATE INDEX idx_work_shifts_status ON public.work_shifts USING btree (status)
+idx_work_shifts_user_id: CREATE INDEX idx_work_shifts_user_id ON public.work_shifts USING btree (user_id)
+uq_work_shifts_branch_cashier_open: CREATE UNIQUE INDEX uq_work_shifts_branch_cashier_open ON public.work_shifts USING btree (branch_id) WHERE (((status)::text = 'OPEN'::text) AND ((shift_type)::text = 'CASHIER'::text))
+uq_work_shifts_user_open: CREATE UNIQUE INDEX uq_work_shifts_user_open ON public.work_shifts USING btree (user_id) WHERE ((status)::text = 'OPEN'::text)
+work_shifts_pkey: CREATE UNIQUE INDEX work_shifts_pkey ON public.work_shifts USING btree (id)
