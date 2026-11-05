@@ -1,0 +1,6 @@
+﻿start=2026-11-05T21:46:48.9092190+07:00
+end=2026-11-05T21:46:58.4129581+07:00
+exit=0
+command=node --env-file=POS_API/.env qa-evidence\20261105-214648-1132f12-sprint05-qa-pos-tab-final/browser-shift.cjs
+sha=1132f12a447058e6ace8cb8fb87dc6877763ee5d
+working_tree_dirty=True

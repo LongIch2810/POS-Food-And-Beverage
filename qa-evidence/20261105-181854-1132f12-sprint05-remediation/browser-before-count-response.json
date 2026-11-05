@@ -1,0 +1,33 @@
+{
+  "data": {
+    "id": "1aecdd61-452b-4161-a2c3-dcf533c932c2",
+    "branchId": "bb3809e1-2602-4f6e-a165-6b53afb34857",
+    "branchName": "QA Branch",
+    "userId": "50876b28-a47d-49bc-b09e-563aa12dc12c",
+    "userName": "QA Cashier",
+    "shiftType": "CASHIER",
+    "startedAt": "2026-11-05T14:45:54.152Z",
+    "endedAt": null,
+    "status": "OPEN",
+    "closedBy": null,
+    "closedByName": null,
+    "note": null,
+    "reconciliation": {
+      "id": "9ea0c1ab-4480-4359-9009-ed0f55270dcb",
+      "workShiftId": "1aecdd61-452b-4161-a2c3-dcf533c932c2",
+      "openingCash": 100000,
+      "cashSalesAmount": null,
+      "expenseAmount": null,
+      "expectedCash": null,
+      "countedCash": null,
+      "difference": null,
+      "status": "PENDING",
+      "note": null,
+      "reconciledAt": null,
+      "createdAt": "2026-11-05T14:45:54.145Z",
+      "updatedAt": "2026-11-05T14:45:54.145Z"
+    },
+    "createdAt": "2026-11-05T14:45:54.145Z",
+    "updatedAt": "2026-11-05T14:45:54.145Z"
+  }
+}

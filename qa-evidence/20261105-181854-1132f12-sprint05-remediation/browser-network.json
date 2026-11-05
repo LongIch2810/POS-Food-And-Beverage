@@ -1,0 +1,292 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 401
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 401
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 401
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/csrf",
+    "status": 401
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 401
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/csrf",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/opening-cash-info",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/opening-cash-info",
+    "status": 304
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/work-shifts",
+    "status": 201
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/work-shifts/1aecdd61-452b-4161-a2c3-dcf533c932c2/close",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/sizes",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/categories",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/sizes",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/products",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/toppings",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/categories",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/products",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/toppings",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": "NETWORK_FAILED"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts",
+    "status": 304
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/logout",
+    "status": 204
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/logout",
+    "status": "NETWORK_FAILED"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/branches",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/branches",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/branches",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/branches",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/branches",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/branches",
+    "status": 304
+  }
+]

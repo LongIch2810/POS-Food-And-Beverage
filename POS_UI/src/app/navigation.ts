@@ -14,7 +14,7 @@ export function accessibleTabs(session: AuthSession): NavTab[] {
   if (has('pos.sell')) tabs.push('pos');
   if (has('pos.sell') || has('table.manage')) tabs.push('tables');
   if (has('pos.sell') || has('invoice.cancel_open') || has('invoice.cancel_paid')) tabs.push('invoices');
-  if (has('shift.open_close') || has('shift.force_close')) tabs.push('shifts');
+  if (has('shift.read') || has('shift.open') || has('shift.close') || has('shift.force_close')) tabs.push('shifts');
   if (has('menu.read') || has('menu.manage') || has('product.manage')) tabs.push('products');
   if (has('inventory.view')) tabs.push('inventory');
   if (has('report.view_branch') || has('report.view_all')) tabs.push('reports');

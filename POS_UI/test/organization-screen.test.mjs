@@ -18,7 +18,7 @@ const source = readFileSync(new URL('../src/features/settings/SettingsScreen.tsx
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS,
   jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
 
-function mount(overrides = {}, session = owner) {
+function mount(overrides = {}, session = owner, shiftsTotal = 0) {
   const calls = [], toasts = [], slots = [], listeners = new Map(), sessionEvents = [];
   let index = 0, dirty = true, tree, effects = [], mounted = true, lateWrites = 0;
   const service = {
@@ -53,6 +53,7 @@ function mount(overrides = {}, session = owner) {
     require: path => {
       if (path === 'react') return React;
       if (path.endsWith('/organizationService')) return { organizationService: service };
+      if (path.endsWith('/shiftService')) return { shiftService: { getShifts: async () => ({ meta: { total: shiftsTotal } }) } };
       if (path.endsWith('/AuthContext')) return { useAuth: () => ({ session }) };
       if (path.endsWith('/ToastContext')) return { useToast: () => ({ showToast: value => toasts.push(value) }) };
       if (path.endsWith('/auth/client')) return { AuthError };
@@ -103,6 +104,22 @@ test('PB13-NAV OWNER opens settings, permission-only staff entry and platform is
   assert.equal(canOpenSettings(['user.manage']), true);
   assert.deepEqual(accessibleTabs({ ...owner, user: { ...owner.user, role_code: 'PLATFORM_ADMIN' }, permissions: ['store.read','user.manage'] }), ['platform_stores']);
   assert.equal(canOpenSettings(['pos.sell']), false);
+  const cashier = { ...owner, user: { ...owner.user, role_code: 'CASHIER' }, permissions: ['shift.read', 'shift.open', 'shift.close'] };
+  assert.ok(accessibleTabs(cashier).includes('shifts'), 'CASHIER with API permissions can open Ca làm');
+});
+
+test('PB13-BR55 editing branch details omits unchanged initialCash', async () => {
+  const payloads = [];
+  const screen = mount({ patchBranch: async (_id, body) => { payloads.push(body); return { id: 'branch', ...body }; } }, owner, 1);
+  await screen.flush();
+  await screen.rowAction('Sửa');
+  assert.equal(screen.editor().initialCashLocked, true);
+  await screen.submit({ name: 'Tên mới', address: '', phone: '', initialCash: '0' });
+  assert.equal(Object.hasOwn(payloads[0], 'initialCash'), false);
+  await screen.rowAction('Sửa');
+  await screen.submit({ name: 'Tên mới', address: '', phone: '', initialCash: '1' });
+  assert.equal(payloads[1].initialCash, 1);
+  await screen.unmount();
 });
 
 test('PB13-FORM money/capacity boundaries preserve zero/null and reject coercion', () => {

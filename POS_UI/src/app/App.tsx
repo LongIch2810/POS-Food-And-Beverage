@@ -95,8 +95,8 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
         }
         return <InvoicesScreen />;
       case 'shifts':
-        if (!has('shift.open_close') && !has('shift.force_close')) {
-          return <AccessDenied message="Yêu cầu quyền ca làm việc (shift.open_close hoặc shift.force_close)." />;
+        if (!has('shift.read') && !has('shift.open') && !has('shift.close') && !has('shift.force_close')) {
+          return <AccessDenied message="Yêu cầu quyền xem hoặc quản lý ca làm việc." />;
         }
         return <ShiftsScreen onNavigateToInvoice={handleNavigateToInvoice} />;
       case 'products':
@@ -150,7 +150,7 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {currentTab !== 'settings' && currentTab !== 'products' && !currentTab.startsWith('platform_') && (
+      {currentTab !== 'settings' && currentTab !== 'products' && currentTab !== 'shifts' && !currentTab.startsWith('platform_') && (
         <div role="status" style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning)', padding: '8px 16px', textAlign: 'center' }}>
           Màn hình này dùng dữ liệu mẫu, chưa kết nối API.
         </div>
