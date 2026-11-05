@@ -9,6 +9,7 @@ import type { EditorKind, FormValues } from './organizationForm';
 interface Props {
   kind: EditorKind; initial: FormValues; editing: boolean; branches: OrganizationBranch[];
   restrictedBranch: boolean; allowedRoles: string[]; busy: boolean; blocked: boolean;
+  initialCashLocked?: boolean;
   serverErrors: Record<string, string>; onSubmit: (values: FormValues) => void; onCancel: () => void;
 }
 export function OrganizationEditor(props: Props) {
@@ -30,9 +31,9 @@ export function OrganizationEditor(props: Props) {
     {props.kind === 'branches' && <>
       {props.editing ? <p>Mã chi nhánh: <strong>{values.code}</strong> (không đổi sau khi tạo)</p> : field('code', 'Mã chi nhánh', 10)}
       {field('name', 'Tên chi nhánh', 150)}{field('address', 'Địa chỉ', 255)}{field('phone', 'Điện thoại', 20)}
-      <Field label="Quỹ tiền ban đầu" value={values.initialCash} inputMode="numeric" suffix="đ" disabled={props.busy}
+      <Field label="Quỹ tiền ban đầu" value={values.initialCash} inputMode="numeric" suffix="đ" disabled={props.busy || props.initialCashLocked}
         error={errors.initialCash || props.serverErrors.initialCash} onChange={event => change('initialCash', event.target.value)}
-        hint="Là tiền đầu ca của ca thu ngân đầu tiên. Từ ca sau, hệ thống lấy từ tiền đã đếm của ca trước." />
+        hint={props.initialCashLocked ? 'Đã khóa sau ca thu ngân đầu tiên.' : 'Là tiền đầu ca của ca thu ngân đầu tiên. Từ ca sau, hệ thống lấy từ tiền đã đếm của ca trước.'} />
       {/^\d+$/.test(values.initialCash) && Number(values.initialCash) <= 1000000000000 && <span className="money">{formatVND(BigInt(values.initialCash))}</span>}
     </>}
     {((props.kind === 'tables' && !props.editing && values.requireBranch === 'true') || props.kind === 'staff') && <SelectField

@@ -1,7 +1,8 @@
 // POS-F&B Toast Notification Context per DESIGN.md §6.6
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import { useAuth } from './AuthContext';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -23,6 +24,8 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const { session, isAuthenticated } = useAuth();
+  useEffect(() => { setToasts([]); }, [isAuthenticated, session?.user.id]);
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));

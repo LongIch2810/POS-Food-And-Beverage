@@ -10,6 +10,7 @@ import type { Column } from '../../components/ui/DataTable';
 import { Dialog } from '../../components/ui/Dialog';
 import { SelectField } from '../../components/ui/Field';
 import { organizationService as service } from '../../services/organizationService';
+import { shiftService } from '../../services/shiftService';
 import type { OrganizationBranch, OrganizationTable, OrganizationStaff, StaffPassword } from '../../services/organizationService';
 import type { AuthSession } from '../../types/auth';
 import { formatVND } from '../../utils/formatters';
@@ -47,6 +48,7 @@ export function SettingsContent({ session }: { session: AuthSession }) {
   const [error, setError] = useState('');
   const [revision, setRevision] = useState({ branches: 0, tables: 0, staff: 0 });
   const [branches, setBranches] = useState<OrganizationBranch[]>([]);
+  const [cashLockedByBranch, setCashLockedByBranch] = useState<Record<string, boolean>>({});
   const [choicesLoading, setChoicesLoading] = useState(true);
   const [choicesError, setChoicesError] = useState('');
   const [choicesRevision, setChoicesRevision] = useState(0);
@@ -113,6 +115,11 @@ export function SettingsContent({ session }: { session: AuthSession }) {
   const refresh = () => setRevision(current => ({ ...current, [view.tab]: current[view.tab] + 1 }));
   const openEditor = (kind: EditorKind, row?: Row) => {
     setFieldErrors({}); setFormError(''); setEditor({ kind, row });
+    if (kind === 'branches' && row) {
+      void shiftService.getShifts({ branchId: row.id, limit: 1 }).then(page => {
+        if (live.current) setCashLockedByBranch(current => ({ ...current, [row.id]: page.meta.total > 0 }));
+      }).catch(() => { /* API vẫn kiểm tra khóa khi lưu. */ });
+    }
   };
   const branchName = (id: string) => branches.find(branch => branch.id === id)?.name || (id === session.user.branch_id ? 'Chi nhánh của bạn' : 'Chi nhánh chưa tải');
   const run = async (tab: Tab, action: () => Promise<unknown>, password = false) => {
@@ -154,7 +161,9 @@ export function SettingsContent({ session }: { session: AuthSession }) {
     if (!editor) return;
     const row = editor.row;
     if (editor.kind === 'branches') {
-      const body = { name: values.name.trim(), address: nullable(values.address), phone: nullable(values.phone), initialCash: Number(values.initialCash.trim()) };
+      const body = { name: values.name.trim(), address: nullable(values.address), phone: nullable(values.phone),
+        ...(!row || Number(values.initialCash.trim()) !== (row as OrganizationBranch).initialCash
+          ? { initialCash: Number(values.initialCash.trim()) } : {}) };
       void run('branches', () => row ? service.patchBranch(row.id, body) : service.createBranch({ ...body, code: values.code.trim() }));
     } else if (editor.kind === 'tables') {
       const body = { name: values.name.trim(), area: nullable(values.area), capacity: values.capacity.trim() ? Number(values.capacity) : null };
@@ -270,6 +279,7 @@ export function SettingsContent({ session }: { session: AuthSession }) {
         {choicesBlocked && <p role="alert">Chưa chọn được chi nhánh. Tải lại danh mục hoặc tạo chi nhánh trước.</p>}
         <OrganizationEditor key={editor.kind + (editor.row?.id ?? 'new')} kind={editor.kind} initial={initial}
           editing={Boolean(editor.row)} branches={branches} restrictedBranch={!allBranches} allowedRoles={roles}
+          initialCashLocked={editor.kind === 'branches' && Boolean(editor.row && cashLockedByBranch[editor.row.id])}
           busy={busy} blocked={offline || choicesBlocked} serverErrors={fieldErrors} onSubmit={submit} onCancel={() => setEditor(null)} />
       </>}
     </Dialog>

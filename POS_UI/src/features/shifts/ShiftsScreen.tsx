@@ -8,8 +8,11 @@ import { formatVND, formatDateTimeVN, formatDuration } from '../../utils/formatt
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { DataTable, Column } from '../../components/ui/DataTable';
+import { SelectField } from '../../components/ui/Field';
+import { organizationService, OrganizationBranch } from '../../services/organizationService';
 import { BlindCountCloseShiftModal } from './BlindCountCloseShiftModal';
 import { ForceCloseShiftModal } from './ForceCloseShiftModal';
+import { OpenShiftGate } from './OpenShiftGate';
 import { Clock, LogOut, UserCheck, ShieldAlert, LogIn, RefreshCw } from 'lucide-react';
 
 export interface ShiftsScreenProps {
@@ -26,8 +29,21 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = () => {
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [forceCloseTargetShift, setForceCloseTargetShift] = useState<WorkShiftDto | null>(null);
   const [isStaffChecking, setIsStaffChecking] = useState(false);
+  const [showCashierGate, setShowCashierGate] = useState(false);
+  const [branches, setBranches] = useState<OrganizationBranch[]>([]);
+  const [staffBranchId, setStaffBranchId] = useState('');
+  const [branchesError, setBranchesError] = useState('');
 
   const canForceClose = session.permissions.includes('shift.force_close');
+  const allBranches = session.permissions.includes('branch.access_all');
+
+  useEffect(() => {
+    if (!allBranches) return;
+    let active = true;
+    void organizationService.getBranchChoices().then(rows => { if (active) setBranches(rows.filter(row => row.isActive)); })
+      .catch(err => { if (active) setBranchesError(err instanceof Error ? err.message : 'Không thể tải chi nhánh.'); });
+    return () => { active = false; };
+  }, [allBranches, session.user.id]);
 
   const loadData = useCallback(async () => {
     try {
@@ -57,7 +73,7 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = () => {
   const handleCheckInStaff = async () => {
     setIsStaffChecking(true);
     try {
-      await shiftService.checkInStaffShift();
+      await shiftService.checkInStaffShift(allBranches ? staffBranchId : undefined);
       showToast({ type: 'success', message: 'Đã check-in bắt đầu ca làm việc nhân viên' });
       await loadData();
     } catch (err: any) {
@@ -199,6 +215,12 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = () => {
     },
   ];
 
+  if (showCashierGate) return <OpenShiftGate branchId={session.user.branch_id ?? ''}
+    branchName={session.branch_name || 'Chi nhánh'} onShiftOpened={() => {
+      setShowCashierGate(false);
+      void loadData();
+    }} />;
+
   return (
     <div style={{ flex: 1, padding: 'clamp(14px, 2.5vw, 24px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Tiêu đề & Thông tin ca hiện tại */}
@@ -233,15 +255,28 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = () => {
           </Button>
 
           {!hasOpenShift && (
+            <>
+            {session.permissions.includes('shift.open') && <Button variant="primary" size="md"
+              disabled={isLoading} onClick={() => setShowCashierGate(true)}>
+              Mở ca thu ngân
+            </Button>}
+            {allBranches && <SelectField label="Chi nhánh check-in" value={staffBranchId}
+              onChange={event => setStaffBranchId(event.target.value)}>
+              <option value="">Chọn chi nhánh</option>
+              {branches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+            </SelectField>}
+            {branchesError && <span role="alert">{branchesError}</span>}
             <Button
               variant="secondary"
               size="md"
               icon={<LogIn size={18} />}
               onClick={handleCheckInStaff}
               isLoading={isStaffChecking}
+              disabled={allBranches && !staffBranchId}
             >
               Check-in ca nhân viên
             </Button>
+            </>
           )}
 
           {isCashierShift && (

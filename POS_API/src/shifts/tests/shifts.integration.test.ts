@@ -183,7 +183,7 @@ test('PB-06 shifts and cash reconciliation HTTP with PostgreSQL', { timeout: 180
         assert.equal(closeRes.status, 200);
         assert.equal(closeRes.json.data.status, 'CLOSED');
         assert.ok(closeRes.json.data.endedAt);
-        assert.ok(new Date(closeRes.json.data.endedAt) >= new Date(closeRes.json.data.startedAt));
+        assert.ok(new Date(closeRes.json.data.endedAt) > new Date(closeRes.json.data.startedAt));
 
         // 6. Current shift sau khi đóng lại về null
         const curr3 = await request(staffA1, '/work-shifts/current');
@@ -195,6 +195,10 @@ test('PB-06 shifts and cash reconciliation HTTP with PostgreSQL', { timeout: 180
 
       // --- SHIFT-02: Ca thu ngân CASHIER đầu tiên tự động lấy initial_cash ---
       await t.test('SHIFT-02: Ca CASHIER đầu tiên tự lấy initial_cash, sinh đối soát PENDING', async () => {
+        const tampered = await request(cashierA1, '/work-shifts', 'POST', {
+          shiftType: 'CASHIER', openingCash: 999,
+        });
+        assert.equal(tampered.status, 422);
         const openRes = await request(cashierA1, '/work-shifts', 'POST', {
           shiftType: 'CASHIER',
         });
@@ -207,6 +211,12 @@ test('PB-06 shifts and cash reconciliation HTTP with PostgreSQL', { timeout: 180
         assert.ok(openRes.json.data.reconciliation);
         assert.equal(openRes.json.data.reconciliation.openingCash, 1000000);
         assert.equal(openRes.json.data.reconciliation.status, 'PENDING');
+        const current = await request(cashierA1, '/work-shifts/current');
+        assert.equal(current.status, 200);
+        assert.equal(current.json.data.shiftType, 'CASHIER');
+        assert.ok(current.json.data.startedAt);
+        assert.equal(current.json.data.reconciliation.openingCash, 1000000);
+        assert.equal(current.json.data.reconciliation.expectedCash, null);
       });
 
       // --- SHIFT-03: Chặn 2 ca CASHIER cùng mở trong một chi nhánh ---
@@ -253,6 +263,8 @@ test('PB-06 shifts and cash reconciliation HTTP with PostgreSQL', { timeout: 180
         });
         assert.equal(alreadyClosed.status, 409);
         assert.equal(alreadyClosed.json.error.code, 'SHIFT_CLOSED');
+        const editClosed = await request(cashierA1, `/work-shifts/${cashierShift1Id}`, 'PATCH', { status: 'OPEN' });
+        assert.equal(editClosed.status, 404);
       });
 
       let cashierShift2Id = '';
@@ -302,6 +314,43 @@ test('PB-06 shifts and cash reconciliation HTTP with PostgreSQL', { timeout: 180
         assert.equal(forceRes.json.data.reconciliation.status, 'MATCHED');
         assert.equal(forceRes.json.data.closedBy, managerRes.json.data.user.id);
         assert.ok(forceRes.json.data.note.includes('Thu ngân ra ngoài'));
+
+        const reopened = await request(cashierA2, '/work-shifts', 'POST', { shiftType: 'CASHIER' });
+        assert.equal(reopened.status, 201);
+        const reason = 'R'.repeat(255);
+        const note = 'N'.repeat(255);
+        const boundary = await request(managerA1, `/work-shifts/${reopened.json.data.id}/force-close`, 'POST', {
+          countedCash: 950000, reason, note,
+        });
+        assert.equal(boundary.status, 200, '255-character reason and note must fit the persisted columns');
+        assert.equal(boundary.json.data.note, reason);
+        assert.equal(boundary.json.data.reconciliation.note, note);
+      });
+
+      let branchA2Id = '';
+      await t.test('BR-14: cùng OWNER mở STAFF đồng thời ở hai chi nhánh chỉ tạo một ca', async () => {
+        const branchB = await request(ownerA, '/branches', 'POST', { code: 'A2', name: 'Chi nhanh A2', initialCash: 0 });
+        assert.equal(branchB.status, 201);
+        branchA2Id = branchB.json.data.id;
+        const attempts = await Promise.all([branchA1Id, branchB.json.data.id].map(branchId =>
+          request(ownerA, '/work-shifts', 'POST', { shiftType: 'STAFF', branchId })));
+        assert.deepEqual(attempts.map(result => result.status).sort(), [201, 409]);
+        assert.equal(attempts.find(result => result.status === 409)?.json.error.code, 'SHIFT_ALREADY_OPEN');
+        const opened = attempts.find(result => result.status === 201)!;
+        const closed = await request(ownerA, `/work-shifts/${opened.json.data.id}/close`, 'POST', {});
+        assert.equal(closed.status, 200);
+      });
+
+      await t.test('SHIFT-09: Đếm thừa tiền ghi OVERAGE và chênh lệch dương', async () => {
+        const opened = await request(cashierA1, '/work-shifts', 'POST', { shiftType: 'CASHIER' });
+        assert.equal(opened.status, 201);
+        const expected = opened.json.data.reconciliation.openingCash;
+        const closed = await request(cashierA1, `/work-shifts/${opened.json.data.id}/close`, 'POST', {
+          countedCash: expected + 1000, note: 'Thừa tiền mặt',
+        });
+        assert.equal(closed.status, 200);
+        assert.equal(closed.json.data.reconciliation.status, 'OVERAGE');
+        assert.equal(closed.json.data.reconciliation.difference, 1000);
       });
 
       // --- SHIFT-08: Phân quyền, Danh sách ca và Cô lập Multi-tenant ---
@@ -346,6 +395,47 @@ test('PB-06 shifts and cash reconciliation HTTP with PostgreSQL', { timeout: 180
         assert.equal(detailRes.json.data.id, cashierShift1Id);
         assert.equal(detailRes.json.data.shiftType, 'CASHIER');
         assert.ok(detailRes.json.data.reconciliation);
+
+        // 6. Phạm vi branch và ca của CASHIER trên cả danh sách lẫn chi tiết
+        const a2Shift = await request(ownerA, '/work-shifts', 'POST', {
+          shiftType: 'STAFF', branchId: branchA2Id,
+        });
+        assert.equal(a2Shift.status, 201);
+        const cashierWrongBranch = await request(cashierA1, '/work-shifts', 'POST', {
+          shiftType: 'CASHIER', branchId: branchA2Id,
+        });
+        assert.equal(cashierWrongBranch.status, 201);
+        assert.equal(cashierWrongBranch.json.data.branchId, branchA1Id);
+        const closeOwnBranch = await request(cashierA1, `/work-shifts/${cashierWrongBranch.json.data.id}/close`, 'POST', {
+          countedCash: cashierWrongBranch.json.data.reconciliation.openingCash,
+        });
+        assert.equal(closeOwnBranch.status, 200);
+        const ownerWrongStore = await request(ownerB, '/work-shifts', 'POST', {
+          shiftType: 'CASHIER', branchId: branchA1Id,
+        });
+        assert.equal(ownerWrongStore.status, 404);
+        assert.equal(ownerWrongStore.json.error.code, 'BRANCH_NOT_FOUND');
+        const managerList = await request(managerA1, '/work-shifts');
+        assert.equal(managerList.status, 200);
+        assert.ok(managerList.json.data.every((shift: { branchId: string }) => shift.branchId === branchA1Id));
+        const managerA2 = await request(managerA1, `/work-shifts/${a2Shift.json.data.id}`);
+        assert.equal(managerA2.status, 403);
+        const cashierList = await request(cashierA1, '/work-shifts');
+        assert.equal(cashierList.status, 200);
+        assert.ok(cashierList.json.data.every((shift: { userId: string }) => shift.userId === cashier1Res.json.data.user.id));
+        const cashierOther = await request(cashierA1, `/work-shifts/${a2Shift.json.data.id}`);
+        assert.equal(cashierOther.status, 403);
+
+        // 7. Phiên cũ bị chặn khi tài khoản/cửa hàng ngưng hoạt động
+        await db.query('UPDATE users SET is_active=false WHERE id=$1', [cashier1Res.json.data.user.id]);
+        const disabled = await request(cashierA1, '/work-shifts/current');
+        assert.equal(disabled.status, 403);
+        assert.equal(disabled.json.error.code, 'ACCOUNT_DISABLED');
+        await db.query('UPDATE users SET is_active=true WHERE id=$1', [cashier1Res.json.data.user.id]);
+        await db.query("UPDATE stores SET status='SUSPENDED' WHERE id=$1", [storeResA.json.data.store.id]);
+        const suspended = await request(ownerA, '/work-shifts/current');
+        assert.equal(suspended.status, 403);
+        assert.equal(suspended.json.error.code, 'STORE_SUSPENDED');
       });
     } finally {
       await app.close();

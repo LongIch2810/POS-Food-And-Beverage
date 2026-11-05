@@ -3,7 +3,7 @@
 import React, { ReactNode, useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { MockEngine } from '../../mock/mockEngine';
-import { shiftService } from '../../services/shiftService';
+import { shiftService, WorkShiftDto } from '../../services/shiftService';
 import { formatDuration } from '../../utils/formatters';
 import { Badge } from '../ui/Badge';
 import { canOpenSettings } from '../../app/navigation';
@@ -49,10 +49,11 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
   const perms = session.permissions || [];
   const has = (p: string) => perms.includes(p as any);
   const isPlatformAdmin = user.role_code === 'PLATFORM_ADMIN';
-  const isDemo = !isPlatformAdmin && currentTab !== 'settings';
+  const isDemo = !isPlatformAdmin && !['settings', 'products', 'shifts'].includes(currentTab);
   const canSwitchBranch = has('branch.access_all');
 
   const [activeShiftDuration, setActiveShiftDuration] = useState<string>('');
+  const [currentShift, setCurrentShift] = useState<WorkShiftDto | null>(null);
   const [accessibleBranches, setAccessibleBranches] = useState(() => isDemo ? MockEngine.getAccessibleBranches() : []);
   const [selectedBranchId, setSelectedBranchId] = useState(() => isDemo ? MockEngine.getEffectiveBranchId() : '');
   const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
@@ -72,25 +73,37 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
 
   // Cập nhật thông tin ca làm việc
   useEffect(() => {
-    if (!isDemo) { setBranchDropdownOpen(false); return; }
+    if (!isDemo) setBranchDropdownOpen(false);
     const updateShiftTime = () => {
-      const shift = shiftService.getMyActiveShift();
-      if (shift && shift.status === 'OPEN') {
-        setActiveShiftDuration(formatDuration(shift.started_at));
+      if (currentShift?.status === 'OPEN') {
+        setActiveShiftDuration(formatDuration(currentShift.startedAt));
       } else {
         setActiveShiftDuration('');
       }
-      setAccessibleBranches(MockEngine.getAccessibleBranches());
-      setSelectedBranchId(MockEngine.getEffectiveBranchId());
+      if (isDemo) {
+        setAccessibleBranches(MockEngine.getAccessibleBranches());
+        setSelectedBranchId(MockEngine.getEffectiveBranchId());
+      }
     };
 
     updateShiftTime();
     const timer = setInterval(updateShiftTime, 30000); // 30s update
     return () => clearInterval(timer);
-  }, [user, isDemo]);
+  }, [user, isDemo, currentShift]);
 
-  const myShift = isDemo ? shiftService.getMyActiveShift() : null;
-  const hasOpenShift = myShift && myShift.status === 'OPEN';
+  useEffect(() => {
+    if (isPlatformAdmin) return;
+    let active = true;
+    const refresh = () => {
+      void shiftService.getCurrentShift().then(shift => { if (active) setCurrentShift(shift); })
+        .catch(() => { if (active) setCurrentShift(null); });
+    };
+    refresh();
+    window.addEventListener('pos-shift-changed', refresh);
+    return () => { active = false; window.removeEventListener('pos-shift-changed', refresh); };
+  }, [user.id, isPlatformAdmin]);
+
+  const hasOpenShift = currentShift?.status === 'OPEN';
 
   // Danh sách Navigation Items theo quyền động (BR-05)
   const allNavItems: { id: NavTab; label: string; icon: React.ReactNode; visible: boolean }[] = [
@@ -102,7 +115,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
     { id: 'pos', label: 'Bán hàng', icon: <ShoppingBag size={24} />, visible: !isPlatformAdmin && has('pos.sell') },
     { id: 'tables', label: 'Sơ đồ bàn', icon: <LayoutGrid size={24} />, visible: !isPlatformAdmin && (has('pos.sell') || has('table.manage')) },
     { id: 'invoices', label: 'Hóa đơn', icon: <Receipt size={24} />, visible: !isPlatformAdmin && (has('pos.sell') || has('invoice.cancel_open') || has('invoice.cancel_paid')) },
-    { id: 'shifts', label: 'Ca làm', icon: <Clock size={24} />, visible: !isPlatformAdmin && (has('shift.open_close') || has('shift.force_close')) },
+    { id: 'shifts', label: 'Ca làm', icon: <Clock size={24} />, visible: !isPlatformAdmin && (has('shift.read') || has('shift.open') || has('shift.close') || has('shift.force_close')) },
     { id: 'inventory', label: 'Kho hàng', icon: <Boxes size={24} />, visible: !isPlatformAdmin && has('inventory.view') },
     { id: 'reports', label: 'Báo cáo', icon: <BarChart3 size={24} />, visible: !isPlatformAdmin && (has('report.view_branch') || has('report.view_all')) },
     { id: 'products', label: 'Thực đơn', icon: <UtensilsCrossed size={24} />, visible: !isPlatformAdmin && (has('menu.read') || has('menu.manage') || has('product.manage')) },
@@ -539,7 +552,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
           </div>
 
           {/* Ở giữa: Chip trạng thái ca làm việc (tự thu gọn trên mobile) */}
-          {isDemo && (
+          {!isPlatformAdmin && (
             <div style={{ flexShrink: 0 }}>
               {hasOpenShift ? (
                 <Badge variant="success" size="sm">
@@ -554,11 +567,11 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
                       marginRight: isMobile ? 0 : 6,
                     }}
                   />
-                  {!isMobile && `Ca thu ngân (${activeShiftDuration})`}
+                  {!isMobile && `${currentShift?.shiftType === 'STAFF' ? 'Ca nhân viên' : 'Ca thu ngân'} (${activeShiftDuration})`}
                 </Badge>
               ) : (
                 <Badge variant="warning" size="sm">
-                  {isMobile ? 'Chưa ca' : 'Chưa mở ca thu ngân'}
+                  {isMobile ? 'Chưa ca' : 'Chưa có ca đang mở'}
                 </Badge>
               )}
             </div>

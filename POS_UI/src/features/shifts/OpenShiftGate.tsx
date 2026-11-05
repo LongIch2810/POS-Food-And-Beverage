@@ -6,22 +6,28 @@ import { formatVND } from '../../utils/formatters';
 import { Button } from '../../components/ui/Button';
 import { Dialog } from '../../components/ui/Dialog';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
+import { organizationService, OrganizationBranch } from '../../services/organizationService';
+import { SelectField } from '../../components/ui/Field';
 import { Lock } from 'lucide-react';
 
 export interface OpenShiftGateProps {
   branchId: string;
   branchName: string;
-  initialCash?: number;
   onShiftOpened: () => void;
 }
 
 export const OpenShiftGate: React.FC<OpenShiftGateProps> = ({
   branchId,
   branchName,
-  initialCash,
   onShiftOpened,
 }) => {
   const { showToast } = useToast();
+  const { session } = useAuth();
+  const allBranches = session.permissions.includes('branch.access_all');
+  const [branches, setBranches] = useState<OrganizationBranch[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState(branchId);
+  const [openingError, setOpeningError] = useState('');
   const [openingCash, setOpeningCash] = useState<number | null>(null);
   const [sourceText, setSourceText] = useState<string>('Đang tính tiền đầu ca...');
   const [loading, setLoading] = useState(false);
@@ -29,40 +35,52 @@ export const OpenShiftGate: React.FC<OpenShiftGateProps> = ({
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
 
+  useEffect(() => {
+    if (!allBranches) { setSelectedBranchId(branchId); return; }
+    let active = true;
+    void organizationService.getBranchChoices().then(rows => { if (active) setBranches(rows.filter(row => row.isActive)); })
+      .catch(err => { if (active) setOpeningError(err instanceof Error ? err.message : 'Không thể tải chi nhánh.'); });
+    return () => { active = false; };
+  }, [allBranches, branchId, session.user.id]);
+
   // Tải thông tin tiền đầu ca tự động từ API chuyên biệt (BR-55, BR-89)
   useEffect(() => {
     let cancelled = false;
     async function loadOpeningInfo() {
       try {
         setInitialLoading(true);
-        const info = await shiftService.getOpeningCashInfo(branchId);
+        const info = await shiftService.getOpeningCashInfo(selectedBranchId);
         if (cancelled) return;
+        setOpeningError('');
         setOpeningCash(info.amount);
         setSourceText(info.sourceText);
       } catch (err) {
         if (!cancelled) {
-          setOpeningCash(initialCash ?? 0);
-          setSourceText('Lấy theo cấu hình hệ thống (BR-55)');
+          setOpeningCash(null);
+          setOpeningError(err instanceof Error ? err.message : 'Không thể tải tiền đầu ca.');
         }
       } finally {
         if (!cancelled) setInitialLoading(false);
       }
     }
 
-    if (branchId) {
+    if (selectedBranchId) {
       loadOpeningInfo();
+    } else {
+      setInitialLoading(false);
+      setOpeningCash(null);
     }
     return () => {
       cancelled = true;
     };
-  }, [branchId, initialCash]);
+  }, [selectedBranchId]);
 
   const handleOpenShift = async () => {
     setLoading(true);
     try {
       await shiftService.openShift({
         shiftType: 'CASHIER',
-        branchId,
+        branchId: selectedBranchId,
       });
       showToast({ type: 'success', message: 'Mở ca thu ngân thành công! Bắt đầu phiên bán hàng.' });
       onShiftOpened();
@@ -130,9 +148,15 @@ export const OpenShiftGate: React.FC<OpenShiftGateProps> = ({
             Mở ca thu ngân
           </h2>
           <div style={{ fontSize: 15, color: 'var(--color-text-muted)', marginTop: 4 }}>
-            {branchName}
+            {branches.find(branch => branch.id === selectedBranchId)?.name || branchName}
           </div>
         </div>
+
+        {allBranches && <SelectField label="Chi nhánh mở ca" value={selectedBranchId}
+          onChange={event => setSelectedBranchId(event.target.value)}>
+          <option value="">Chọn chi nhánh</option>
+          {branches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+        </SelectField>}
 
         {/* Tiền đầu ca: CHỈ ĐỌC, KHÔNG PHẢI Ô NHẬP (BR-55) */}
         <div
@@ -151,11 +175,12 @@ export const OpenShiftGate: React.FC<OpenShiftGateProps> = ({
             className="money"
             style={{ fontSize: 32, fontWeight: 700, color: 'var(--color-brand-800)' }}
           >
-            {initialLoading ? '...' : formatVND(openingCash ?? 0)}
+            {initialLoading ? '...' : openingCash == null ? '—' : formatVND(openingCash)}
           </div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 6 }}>
             {sourceText}
           </div>
+          {openingError && <p role="alert">{openingError}</p>}
         </div>
 
         {/* Nút Mở ca & Báo lệch tiền giao ca */}
@@ -165,6 +190,7 @@ export const OpenShiftGate: React.FC<OpenShiftGateProps> = ({
             size="lg"
             fullWidth
             isLoading={loading || initialLoading}
+            disabled={!selectedBranchId || openingCash == null || Boolean(openingError)}
             onClick={handleOpenShift}
           >
             Xác nhận mở ca thu ngân

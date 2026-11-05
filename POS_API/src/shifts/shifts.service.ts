@@ -140,6 +140,10 @@ export class ShiftsService {
     }
 
     return this.db.transaction(async (manager) => {
+      // Tuần tự hóa mở ca của cùng người dùng ở các chi nhánh khác nhau.
+      await manager.getRepository(User).createQueryBuilder('u')
+        .where('u.id = :id AND u.store_id = :storeId', { id: user.id, storeId: user.storeId })
+        .setLock('pessimistic_write').getOneOrFail();
       // 1. Khóa và kiểm tra chi nhánh
       const branch = await manager
         .getRepository(Branch)
@@ -371,7 +375,7 @@ export class ShiftsService {
         reconciliation.counted_cash = String(countedCash);
         reconciliation.difference = String(difference);
         reconciliation.status = difference === 0n ? 'MATCHED' : difference < 0n ? 'SHORTAGE' : 'OVERAGE';
-        reconciliation.note = input.note?.trim() || `Đóng cưỡng chế: ${input.reason.trim()}`;
+        reconciliation.note = input.note?.trim() || input.reason.trim();
         reconciliation.reconciled_at = now;
 
         await manager.getRepository(CashReconciliation).save(reconciliation);
@@ -380,7 +384,7 @@ export class ShiftsService {
       shift.status = 'CLOSED';
       shift.ended_at = now;
       shift.closed_by = user.id;
-      shift.note = `Đóng cưỡng chế: ${input.reason.trim()}${input.note ? ` - ${input.note.trim()}` : ''}`;
+      shift.note = input.reason.trim();
 
       const updatedShift = await manager.getRepository(WorkShift).save(shift);
       return shiftView(updatedShift, shift.reconciliation);

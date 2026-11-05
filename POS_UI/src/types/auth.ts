@@ -19,7 +19,10 @@ export type PermissionCode =
   | 'menu.read' // Xem danh mục, kích cỡ, món, topping
   | 'menu.manage' // Quản lý danh mục, kích cỡ, món, topping, ảnh
   | 'product.manage' // Quản lý menu, size, topping, công thức, mã giảm giá
-  | 'shift.open_close' // Mở và đóng ca của mình
+  | 'shift.read'
+  | 'shift.open'
+  | 'shift.close'
+  | 'shift.open_close' // Quyền chỉ còn trong dữ liệu demo
   | 'shift.force_close' // Đóng cưỡng chế ca của người khác (MANAGER, OWNER)
   | 'pos.sell' // Bán hàng, tạo đơn, thanh toán
   | 'invoice.cancel_open' // Hủy đơn OPEN

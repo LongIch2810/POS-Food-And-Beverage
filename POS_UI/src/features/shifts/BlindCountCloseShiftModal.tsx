@@ -35,6 +35,11 @@ export const BlindCountCloseShiftModal: React.FC<BlindCountCloseShiftModalProps>
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [closeResult, setCloseResult] = useState<WorkShiftDto | null>(null);
 
+  const finish = () => {
+    onClose();
+    if (closeResult) onSuccess();
+  };
+
   if (!isOpen) return null;
 
   // Tính tổng tiền đếm theo từng mệnh giá
@@ -67,7 +72,6 @@ export const BlindCountCloseShiftModal: React.FC<BlindCountCloseShiftModalProps>
       setCloseResult(result);
       setStep(2);
       showToast({ type: 'success', message: 'Đóng ca thu ngân và đối soát thành công!' });
-      onSuccess();
     } catch (err: any) {
       if (err?.code === 'RECONCILIATION_NOTE_REQUIRED') {
         setErrorMsg('Ca có chênh lệch tiền mặt so với kỳ vọng. Bắt buộc phải nhập ghi chú giải trình.');
@@ -82,7 +86,7 @@ export const BlindCountCloseShiftModal: React.FC<BlindCountCloseShiftModalProps>
   return (
     <Dialog
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={finish}
       title={
         step === 1
           ? 'Đóng ca: Đếm tiền trong két (Đếm mù)'
@@ -111,7 +115,7 @@ export const BlindCountCloseShiftModal: React.FC<BlindCountCloseShiftModalProps>
               <Button
                 variant="primary"
                 size="md"
-                onClick={onClose}
+                onClick={finish}
               >
                 Hoàn tất & Đóng
               </Button>

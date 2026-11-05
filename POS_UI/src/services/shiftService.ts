@@ -1,5 +1,9 @@
 import { request } from '../http/client.ts';
-import type { WorkShift, ShiftExpense } from '../types/entities.ts';
+import type { ShiftExpense } from '../types/entities.ts';
+
+const notifyShiftChanged = () => {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('pos-shift-changed'));
+};
 
 export interface ShiftReconciliationDto {
   id: string;
@@ -75,7 +79,9 @@ export const shiftService = {
     branchId?: string;
     note?: string;
   }): Promise<WorkShiftDto> {
-    return request<WorkShiftDto>('work-shifts', 'POST', input);
+    const shift = await request<WorkShiftDto>('work-shifts', 'POST', input);
+    notifyShiftChanged();
+    return shift;
   },
 
   // Đóng ca tự thân
@@ -83,7 +89,9 @@ export const shiftService = {
     shiftId: string,
     input: { countedCash?: number; note?: string }
   ): Promise<WorkShiftDto> {
-    return request<WorkShiftDto>(`work-shifts/${encodeURIComponent(shiftId)}/close`, 'POST', input);
+    const shift = await request<WorkShiftDto>(`work-shifts/${encodeURIComponent(shiftId)}/close`, 'POST', input);
+    notifyShiftChanged();
+    return shift;
   },
 
   // Đóng cưỡng chế (Quản lý / Chủ quán)
@@ -91,7 +99,9 @@ export const shiftService = {
     shiftId: string,
     input: { countedCash: number; reason: string; note?: string }
   ): Promise<WorkShiftDto> {
-    return request<WorkShiftDto>(`work-shifts/${encodeURIComponent(shiftId)}/force-close`, 'POST', input);
+    const shift = await request<WorkShiftDto>(`work-shifts/${encodeURIComponent(shiftId)}/force-close`, 'POST', input);
+    notifyShiftChanged();
+    return shift;
   },
 
   // Lấy chi tiết ca
@@ -123,11 +133,6 @@ export const shiftService = {
   // Helper cho thu ngân đóng ca đếm mù
   async closeShiftBlind(shiftId: string, countedCash: number | bigint, note?: string): Promise<WorkShiftDto> {
     return this.closeShift(shiftId, { countedCash: Number(countedCash), note });
-  },
-
-  // Tương thích ngược với UI demo / các màn chưa nối API
-  getMyActiveShift(): WorkShift | undefined {
-    return undefined;
   },
 
   addExpense(_shiftId: string, _amount: bigint, _reason: string, _paidFromDrawer: boolean): Promise<ShiftExpense> {

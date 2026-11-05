@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { posService } from './posService';
-import { shiftService } from '../../services/shiftService';
+import { shiftService, WorkShiftDto } from '../../services/shiftService';
 import { MockEngine } from '../../mock/mockEngine';
 import { mockStorage } from '../../mock/mockStorage';
 import { Invoice, DiningTable, PaymentMethod } from '../../types/entities';
@@ -42,6 +42,18 @@ export const PosScreen: React.FC<PosScreenProps> = ({
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isPortrait, setIsPortrait] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1024);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
+  const [currentShift, setCurrentShift] = useState<WorkShiftDto | null | undefined>();
+  const [shiftError, setShiftError] = useState('');
+  const [shiftRevision, setShiftRevision] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setCurrentShift(undefined);
+    setShiftError('');
+    void shiftService.getCurrentShift().then(shift => { if (active) setCurrentShift(shift); })
+      .catch(err => { if (active) setShiftError(err instanceof Error ? err.message : 'Không thể tải ca hiện tại.'); });
+    return () => { active = false; };
+  }, [session.user.id, shiftRevision]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -79,8 +91,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
   );
 
   // Kiểm tra ca làm việc của chính mình (BR-16)
-  const myShift = shiftService.getMyActiveShift();
-  const hasOpenCashierShift = myShift && myShift.status === 'OPEN' && myShift.shift_type === 'CASHIER';
+  const hasOpenCashierShift = currentShift?.status === 'OPEN' && currentShift.shiftType === 'CASHIER';
 
   useEffect(() => {
     const unsubscribe = mockStorage.subscribe(() => {
@@ -97,13 +108,19 @@ export const PosScreen: React.FC<PosScreenProps> = ({
   }, [storeId, effectiveBranchId, selectedInvoice?.id]);
 
   // Nếu chưa mở ca thu ngân -> Chặn và thay bằng màn hình Mở ca (BR-16)
+  if (currentShift === undefined || shiftError) {
+    return <div role={shiftError ? 'alert' : 'status'} style={{ padding: 24 }}>
+      {shiftError || 'Đang tải ca hiện tại...'}
+      {shiftError && <button type="button" onClick={() => setShiftRevision(value => value + 1)}>Thử lại</button>}
+    </div>;
+  }
   if (!hasOpenCashierShift) {
     return (
       <OpenShiftGate
-        branchId={effectiveBranchId}
+        branchId={session.user.branch_id ?? ''}
         branchName={session.branch_name || 'Chi nhánh'}
         onShiftOpened={() => {
-          setTablesWithInvoices(posService.getTablesWithStatus(effectiveBranchId));
+          setShiftRevision(value => value + 1);
         }}
       />
     );
