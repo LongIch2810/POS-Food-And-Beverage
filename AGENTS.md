@@ -40,8 +40,10 @@ Trong `rules/`: đọc `clean-code.md`, `coding-style.md`, `naming.md` khi viế
 
 ## Tìm hiểu code
 
-- Khi đã có mã nguồn, ưu tiên codebase-memory-mcp theo thứ tự: `search_graph` để tìm symbol; `trace_path` để xem caller/callee; `get_code_snippet` để đọc đoạn mã; `query_graph` cho truy vấn phức tạp; `get_architecture` để xem tổng quan. Chạy `index_repository` nếu repo chưa được index.
-- Dùng `rg`/tìm file cho chuỗi literal, thông báo lỗi, config, tài liệu không phải code hoặc khi graph không đủ thông tin.
+- Trước khi dùng graph, kiểm tra `graphify-out/needs_update`; nếu marker tồn tại, làm semantic update theo mục Graphify bên dưới và xác minh thành công trước khi query.
+- Khi `graphify-out/graph.json` tồn tại và không có marker cần xử lý, ưu tiên `graphify query "<câu hỏi về code>"` để định vị symbol và quan hệ; dùng `graphify path "<A>" "<B>"` để truy vết quan hệ, `graphify explain "<symbol>"` để xem khái niệm. Sau đó đọc source liên quan để xác nhận chi tiết.
+- Sau khi tạo, sửa hoặc xóa code, cập nhật graph bằng `graphify update .` trước khi hoàn tất task. Nếu graph chưa có, tạo bằng `graphify . --code-only --no-viz`. Chế độ code-only phân tích AST cục bộ, không gửi tài liệu/ảnh tới dịch vụ LLM.
+- Dùng `rg`/tìm file cho chuỗi literal, thông báo lỗi, config, tài liệu không phải code, loại file Graphify không hỗ trợ hoặc khi graph thiếu thông tin. Không coi graph là bằng chứng thay cho source/test.
 - Trước khi sửa logic dùng chung, kiểm tra caller, dữ liệu liên quan và phạm vi ảnh hưởng. Khi có code và test, chạy đúng lệnh kiểm tra của phần đã sửa; không tự đặt ra lệnh chạy khi project chưa có cấu hình.
 
 ## Quy tắc sản phẩm cần giữ
@@ -70,6 +72,8 @@ Trong `rules/`: đọc `clean-code.md`, `coding-style.md`, `naming.md` khi viế
 
 ## Ghi plan, task và lỗi ra file
 
+**Plan và task là hồ sơ thực thi đầy đủ, không phải bản tóm tắt ngắn.** Nội dung phải đủ chi tiết để người khác tiếp tục công việc chỉ dựa vào file, không cần đọc lại hội thoại hoặc tự suy đoán. Ghi rõ bối cảnh và mục tiêu, phạm vi, quyết định kèm căn cứ, từng bước cụ thể theo thứ tự, tiêu chí/kết quả cần đạt, trạng thái và bằng chứng, file liên quan, lệnh đã chạy cùng kết quả, blocker/câu hỏi và bước tiếp theo. Không gộp nhiều bước thành mô tả chung, không bỏ thông tin đã biết; điều chưa rõ ghi rõ `chưa xác minh` hoặc blocker. Mỗi lần cập nhật phải phản ánh đầy đủ tiến độ hiện tại, không chỉ thêm một câu như “đã làm xong”.
+
 **Không dùng trí nhớ phiên chat làm nơi duy nhất giữ plan hoặc tiến độ.** Trước khi bắt đầu hay tiếp tục việc nhiều bước, lướt tiêu đề `MEMORY.md` và chỉ đọc mục khớp với task hoặc vùng code sắp sửa; đọc `tasks/active/` và `plans/active/`. Chỉ tra `errors/` khi ngữ cảnh task có dấu hiệu liên quan như cùng triệu chứng, thông báo lỗi, module, dependency hoặc môi trường đã từng gặp lỗi. Khi tiếp tục sau compact hoặc phiên mới, đọc file đang active, đối chiếu với Git/mã/test hiện tại rồi mới làm bước tiếp theo; ghi chép có thể cũ hơn trạng thái repository.
 
 - `plans/active/`: khi người dùng yêu cầu triển khai plan đã lập trong Plan mode, đọc lại plan trong hội thoại, đối chiếu với repository rồi ghi plan vào đây trước khi triển khai. Mỗi plan ghi mục tiêu, phạm vi, các bước, tiêu chí hoàn thành, quyết định và rủi ro; nếu phạm vi đổi, ghi thay đổi và lý do vào plan. Khi mọi task và kiểm tra xong, chuyển cùng file sang `plans/completed/` kèm kết quả. Mỗi plan chỉ nằm ở **một** trạng thái.
@@ -90,3 +94,15 @@ Tên file dùng `YYYY-MM-DD-ten-ngan.md`; task thuộc plan ghi đường dẫn 
 - **Trước khi báo đạt hoặc tick nghiệm thu**, mở lại từng file/ảnh/log đã dẫn, kiểm tra file tồn tại, đọc được, đúng commit/working tree, đúng UI cuối và khớp expected/actual; lập bảng tiêu chí → tình huống → artifact cụ thể. QA độc lập phải rà độ đầy đủ này và ghi rõ phần thiếu. Chỉ tick sau khi phần thiếu đã được chạy lại, lưu đủ chứng cứ và QA đối chiếu lại; nếu chưa đủ, để ô trống và nêu bước kiểm tra tiếp theo.
 - Gắn nhãn **CI/runner độc lập**, **local do agent chạy** hoặc **chưa xác minh**. File agent tự tạo không chứng minh độc lập rằng nó đã chạy; để xác thực mạnh hơn, cung cấp URL/ID của lần chạy CI với commit, log và artifact để người dùng tự đối chiếu. Khi chưa có CI, đưa lệnh tái chạy và không gọi bằng chứng local là xác nhận độc lập.
 - Không đưa token, secret, dữ liệu cá nhân thật hoặc log/binary lớn vào Git. Giữ bản đã che dữ liệu cần thiết để tái hiện và ghi rõ phần nào đã che; đặt artifact lớn ở nơi lưu phù hợp và liên kết từ `run.md`. Không tạo thư mục run hay số liệu giả khi chưa thực thi.
+
+## Graphify
+
+Codex đã được tích hợp Graphify bằng skill project-scoped tại `.codex/skills/graphify/SKILL.md`; graph nằm trong `graphify-out/`. Cài đặt Codex hiện có nên không chạy lại `graphify codex install`, vì lệnh đó ghi vào `AGENTS.md`.
+
+- Trước mọi query hoặc dùng nội dung graph, kiểm tra `graphify-out/needs_update` (có thể chạy `graphify check-update .`). Nếu marker tồn tại, không đọc graph cũ. Thực hiện semantic update trước, xác minh nội dung mới đã vào graph, rồi mới xóa đúng marker `graphify-out/needs_update`. Không xóa marker nếu update thất bại hoặc chưa kiểm chứng.
+- Sau khi tạo, sửa hoặc xóa code, chạy `graphify update .` để cập nhật AST graph. Đây là lệnh đồng bộ do Codex chạy; nó không tự chạy chỉ vì agent sửa file.
+- Sau khi tạo hoặc sửa Markdown, chạy quy trình semantic update của skill Graphify (`.codex/skills/graphify/SKILL.md` và `references/update.md`) cho các Markdown thay đổi. `graphify update .` chỉ cập nhật code và không thay thế semantic extraction. Chỉ xóa marker sau khi merge graph thành công và query đã xác nhận nội dung mới.
+- Graph ban đầu được tạo bằng `--code-only`; nhiều tài liệu khác trong repository chưa được lập chỉ mục. Giới hạn semantic update vào tài liệu thay đổi trong task. Nếu công cụ sẽ kéo thêm hàng trăm tài liệu chưa được index và không thể giới hạn an toàn, báo phạm vi đó trước khi chạy semantic extraction rộng.
+- `graphify watch .` là watcher tùy chọn chạy như một process riêng (cần package `watchdog`). Khi đang chạy, Graphify tự rebuild graph cho code; với Markdown/tài liệu, nó chỉ ghi `graphify-out/needs_update` và yêu cầu Codex thực hiện semantic update. Watcher không được tự khởi chạy bởi Codex config hay hook hiện tại.
+- Graphify watcher bỏ qua các event nằm trong thư mục output `graphify-out/`, nên cập nhật graph/report/cache không tự kích hoạt vòng rebuild lặp. Giữ nguyên quy tắc loại trừ này.
+- Graphify query/path/explain, cập nhật code và semantic update sau Markdown chỉ chạy khi Codex thực hiện các bước nêu trên; không mô tả chúng là hook tự động. Dùng `rg`/đọc file trực tiếp cho literal, config, business rule, loại file chưa hỗ trợ và xác nhận source.

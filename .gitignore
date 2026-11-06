@@ -6,6 +6,7 @@ dist-ssr/
 .idea/
 .playwright-mcp/
 .DS_Store
+/graphify-out/
 
 # Published losslessly as .log.gz; keep the original local QA output.
 /qa-evidence/20261030-214100-9ce75dd-pb13-organization-ui/api-tests-1.log
