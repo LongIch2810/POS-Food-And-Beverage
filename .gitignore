@@ -10,3 +10,6 @@ dist-ssr/
 
 # Published losslessly as .log.gz; keep the original local QA output.
 /qa-evidence/20261030-214100-9ce75dd-pb13-organization-ui/api-tests-1.log
+/qa-evidence/20261105-212738-1132f12-sprint05-qa-independent/backend-test-after-overage.log
+/qa-evidence/20261105-212738-1132f12-sprint05-qa-independent/backend-test.log
+/qa-evidence/20261105-213954-1132f12-sprint05-qa-b09-retest/backend-test-final.log

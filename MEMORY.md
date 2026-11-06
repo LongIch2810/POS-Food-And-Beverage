@@ -12,6 +12,12 @@
 - Bài học: Capture identity và session epoch trước request; sau async CSRF/restore phải đối chiếu trước phát mutation hoặc retry. Broadcast/unmount chỉ chặn setState, không ngăn fetch cũ ghi dữ liệu dưới danh tính mới. Chỉ nhớ identity từ kết quả auth đã qua generation guard.
 - Căn cứ: `errors/2026-10-30-pb13-session-retry-scope.md`; ui-tests-4 red, regression final green và browser B32 old-cookie401/noXS trong `qa-evidence/20261030-214100-9ce75dd-pb13-organization-ui/`.
 
+## Xóa thông báo UI khi đổi phiên
+
+- Áp dụng: Provider hiển thị toast hoặc trạng thái tạm sống xuyên logout/login hay đổi user/store.
+- Bài học: Xóa thông báo cũ khi danh tính hoặc trạng thái xác thực đổi; kiểm bằng browser sau logout/login cửa hàng khác, kể cả toast lỗi không tự biến mất.
+- Căn cứ: `errors/2026-11-05-toast-leak-between-sessions.md`; ảnh lỗi trước và QA tự chạy lại B09 PASS tại `qa-evidence/20261105-213954-1132f12-sprint05-qa-b09-retest/run.md`.
+
 ## Khóa dòng trước khi đọc quan hệ có thể thay đổi
 
 - Áp dụng: PostgreSQL READ COMMITTED, truy vấn JOIN quan hệ mutable cùng FOR UPDATE và phải chờ transaction khác sửa khóa ngoại.
