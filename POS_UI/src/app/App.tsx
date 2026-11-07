@@ -8,7 +8,7 @@ import { ForcePasswordModal } from '../features/auth/ForcePasswordModal';
 import { LoginScreen } from '../features/auth/LoginScreen';
 
 // Features
-import { PosScreen } from '../features/pos/PosScreen';
+import { LivePosScreen } from '../features/pos/LivePosScreen';
 import { InvoicesScreen } from '../features/invoices/InvoicesScreen';
 import { ShiftsScreen } from '../features/shifts/ShiftsScreen';
 import { ProductsScreen } from '../features/products/ProductsScreen';
@@ -65,14 +65,17 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
   }, [JSON.stringify(availableTabs), currentTab]);
 
   const perms = session?.permissions || [];
+  const identityKey = JSON.stringify([session.user.id,session.user.store_id,session.user.branch_id,
+    session.user.role_code,session.user.must_change_password,[...perms].sort()]);
   const has = (p: string) => perms.includes(p as any);
 
   const renderContent = () => {
     switch (currentTab) {
       case 'pos':
-        if (!has('pos.sell')) return <AccessDenied message="Yêu cầu quyền bán hàng (pos.sell)." />;
+        if (!has('pos.sell') && !has('invoice.read')) return <AccessDenied message="Yêu cầu quyền đọc đơn hoặc bán hàng." />;
         return (
-          <PosScreen
+          <LivePosScreen
+            key={`${session.user.id}:${session.user.branch_id}:${session.permissions.join(',')}`}
             activeMode="pos"
             initialInvoiceId={targetInvoiceId}
             onSwitchToTables={() => setCurrentTab('tables')}
@@ -80,9 +83,10 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
           />
         );
       case 'tables':
-        if (!has('pos.sell') && !has('table.manage')) return <AccessDenied message="Yêu cầu quyền pos.sell hoặc table.manage." />;
+        if (!has('pos.sell') && !has('table.read')) return <AccessDenied message="Yêu cầu quyền đọc bàn hoặc bán hàng." />;
         return (
-          <PosScreen
+          <LivePosScreen
+            key={`${session.user.id}:${session.user.branch_id}:${session.permissions.join(',')}`}
             activeMode="tables"
             initialInvoiceId={targetInvoiceId}
             onSwitchToTables={() => setCurrentTab('tables')}
@@ -90,7 +94,7 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
           />
         );
       case 'invoices':
-        if (!has('pos.sell') && !has('invoice.cancel_open') && !has('invoice.cancel_paid')) {
+        if (!has('invoice.read') && !has('invoice.cancel_open') && !has('invoice.cancel_paid')) {
           return <AccessDenied message="Yêu cầu quyền xem hoặc xử lý hóa đơn." />;
         }
         return <InvoicesScreen />;
@@ -103,10 +107,10 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
         if (!has('menu.read') && !has('menu.manage') && !has('product.manage')) {
           return <AccessDenied message="Yêu cầu quyền xem hoặc quản lý thực đơn (menu.read hoặc menu.manage)." />;
         }
-        return <ProductsScreen />;
+        return <ProductsScreen key={identityKey} />;
       case 'inventory':
         if (!has('inventory.view')) return <AccessDenied message="Yêu cầu quyền xem kho hàng (inventory.view)." />;
-        return <InventoryScreen />;
+        return <InventoryScreen key={identityKey} />;
       case 'reports':
         if (!has('report.view_branch') && !has('report.view_all')) {
           return <AccessDenied message="Yêu cầu quyền xem báo cáo doanh thu (report.view_branch hoặc report.view_all)." />;
@@ -139,7 +143,7 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
         );
       default:
         return (
-          <PosScreen
+          <LivePosScreen
             activeMode="pos"
             onSwitchToTables={() => setCurrentTab('tables')}
             onSwitchToPos={() => setCurrentTab('pos')}
@@ -150,7 +154,7 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {currentTab !== 'settings' && currentTab !== 'products' && currentTab !== 'shifts' && !currentTab.startsWith('platform_') && (
+      {currentTab !== 'pos' && currentTab !== 'tables' && currentTab !== 'settings' && currentTab !== 'products' && currentTab !== 'shifts' && currentTab !== 'inventory' && !currentTab.startsWith('platform_') && (
         <div role="status" style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning)', padding: '8px 16px', textAlign: 'center' }}>
           Màn hình này dùng dữ liệu mẫu, chưa kết nối API.
         </div>

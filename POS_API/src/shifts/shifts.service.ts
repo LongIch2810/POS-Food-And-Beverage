@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { HttpException, Injectable } from '@nestjs/common';
+import { DataSource, EntityManager } from 'typeorm';
 import { UserSummary } from '../auth/auth.service';
 import { httpError } from '../http/http-error';
 import { Branch } from '../organization/entities/branch.entity';
@@ -56,6 +56,16 @@ function shiftView(shift: WorkShift, reconciliation?: CashReconciliation | null)
 @Injectable()
 export class ShiftsService {
   constructor(private readonly db: DataSource) {}
+
+  private async assertNoOpenInvoices(manager: EntityManager, shiftId: string): Promise<void> {
+    const rows: { invoice_code: string }[] = await manager.query(
+      "SELECT invoice_code FROM invoices WHERE work_shift_id=$1 AND status='OPEN' ORDER BY created_at,id",
+      [shiftId],
+    );
+    if (rows.length) throw new HttpException({ code: 'SHIFT_HAS_OPEN_INVOICES',
+      message: 'Cần thanh toán hoặc hủy mọi đơn đang mở trước khi đóng ca.',
+      details: rows.map(row => ({ invoiceCode: row.invoice_code })) }, 409);
+  }
 
   private checkTenant(user: UserSummary) {
     if (!user.storeId) {
@@ -262,6 +272,8 @@ export class ShiftsService {
         throw httpError(403, 'FORBIDDEN_NOT_SHIFT_OWNER', 'Chỉ người trực tiếp làm ca mới có quyền đóng ca của mình');
       }
 
+      await this.assertNoOpenInvoices(manager, shift.id);
+
       const now = new Date();
 
       if (shift.shift_type === 'CASHIER') {
@@ -349,6 +361,8 @@ export class ShiftsService {
       if (!allBranches && shift.branch_id !== user.branchId) {
         throw httpError(403, 'PERMISSION_DENIED', 'Quản lý chỉ được đóng cưỡng chế ca trong chi nhánh của mình');
       }
+
+      await this.assertNoOpenInvoices(manager, shift.id);
 
       if (input.countedCash == null || input.countedCash < 0) {
         throw httpError(400, 'COUNTED_CASH_REQUIRED', 'Đóng cưỡng chế bắt buộc quản lý phải đếm và nhập số tiền thực tế trong két');

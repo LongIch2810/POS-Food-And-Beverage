@@ -1,11 +1,9 @@
-// POS-F&B Recipe Modal per BR-48, BR-49 (Supports Product Sizes & Toppings)
-
-import React, { useState, useEffect } from 'react';
-import { productService } from './productService';
+import React, { useEffect, useRef, useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { Button } from '../../components/ui/Button';
 import { useToast } from '../../context/ToastContext';
-import { Plus, Trash2, AlertCircle } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { inventoryService, Ingredient, RecipeLine } from '../inventory/inventoryService';
 
 export interface RecipeModalProps {
   isOpen: boolean;
@@ -15,244 +13,74 @@ export interface RecipeModalProps {
   productSizeId?: string;
   toppingName?: string;
   toppingId?: string;
-  storeId: string;
   onSuccess: () => void;
 }
 
-export const RecipeModal: React.FC<RecipeModalProps> = ({
-  isOpen,
-  onClose,
-  productName,
-  sizeName,
-  productSizeId,
-  toppingName,
-  toppingId,
-  storeId,
-  onSuccess,
-}) => {
+export const RecipeModal: React.FC<RecipeModalProps> = ({ isOpen, onClose, productName, sizeName,
+  productSizeId, toppingName, toppingId, onSuccess }) => {
   const { showToast } = useToast();
-  const [recipes, setRecipes] = useState<{ ingredient_id: string; ingredientName: string; unit: string; quantity: number }[]>([]);
-  const [availableIngredients] = useState(() => productService.getAllIngredients(storeId));
-
-  const [selectedIngredientId, setSelectedIngredientId] = useState(availableIngredients[0]?.id || '');
-  const [quantityInput, setQuantityInput] = useState('20');
-
-  const loadRecipes = () => {
-    if (productSizeId) {
-      setRecipes(productService.getRecipesForProductSize(productSizeId));
-    } else if (toppingId) {
-      setRecipes(productService.getToppingRecipes(toppingId));
-    }
-  };
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const { session } = useAuth();
+  const canEdit = session.permissions.includes('menu.manage');
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [recipe, setRecipe] = useState<RecipeLine[]>([]);
+  const [selected, setSelected] = useState('');
+  const [quantity, setQuantity] = useState('1');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const kind = productSizeId ? 'product-sizes' : 'toppings';
+  const id = productSizeId ?? toppingId;
 
   useEffect(() => {
-    loadRecipes();
-  }, [productSizeId, toppingId]);
+    if (!isOpen || !id) return;
+    let live = true;
+    setLoading(true); setError(''); setRecipe([]); setIngredients([]);
+    Promise.all([inventoryService.ingredients(), inventoryService.getRecipe(kind,id)])
+      .then(([items,lines]) => { if (live) { setIngredients(items); setRecipe(lines); setSelected(items.find(item => item.isActive)?.id ?? ''); } })
+      .catch(err => { if (live) setError(err instanceof Error ? err.message : 'Không tải được công thức.'); })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, [isOpen, id, kind]);
 
-  if (!isOpen) return null;
-
-  const currentIngredient = availableIngredients.find((i) => i.id === selectedIngredientId);
-
-  const handleAddOrUpdate = async () => {
-    const qty = parseFloat(quantityInput);
-    if (isNaN(qty) || qty <= 0) {
-      showToast({ type: 'error', message: 'Định lượng nguyên liệu phải lớn hơn 0' });
-      return;
+  const save = async (lines: RecipeLine[]) => {
+    if (!id) return;
+    setSaving(true);
+    try {
+      const next = await inventoryService.putRecipe(kind,id,lines.map(line => ({ ingredientId:line.ingredientId, quantity:line.quantity })));
+      if (mounted.current) { setRecipe(next); onSuccess(); showToast({ type:'success', message:'Đã lưu công thức.' }); }
+    } catch (err) { if (mounted.current) showToast({ type:'error', message:err instanceof Error ? err.message : 'Không lưu được công thức.' }); }
+    finally { if (mounted.current) setSaving(false); }
+  };
+  const add = () => {
+    const item = ingredients.find(row => row.id === selected);
+    if (!item || !item.isActive || !/^(?:0|[1-9]\d{0,10})(?:\.\d{1,3})?$/.test(quantity) || Number(quantity) <= 0) {
+      showToast({ type:'error', message:'Chọn nguyên liệu đang dùng và nhập lượng dương tối đa 3 số lẻ.' }); return;
     }
-
-    const updated = recipes.filter((r) => r.ingredient_id !== selectedIngredientId);
-    updated.push({
-      ingredient_id: selectedIngredientId,
-      ingredientName: currentIngredient?.name || '',
-      unit: currentIngredient?.unit || '',
-      quantity: qty,
-    });
-
-    if (productSizeId) {
-      await productService.saveProductSizeRecipe(productSizeId, updated);
-    } else if (toppingId) {
-      await productService.saveToppingRecipe(toppingId, updated);
-    }
-
-    loadRecipes();
-    showToast({ type: 'success', message: 'Đã cập nhật công thức định lượng!' });
-    onSuccess();
+    save([...recipe.filter(line => line.ingredientId !== selected),
+      { ingredientId:item.id, ingredientName:item.name, unit:item.unit, quantity }]);
   };
 
-  const handleRemove = async (ingId: string) => {
-    const updated = recipes.filter((r) => r.ingredient_id !== ingId);
-    if (productSizeId) {
-      await productService.saveProductSizeRecipe(productSizeId, updated);
-    } else if (toppingId) {
-      await productService.saveToppingRecipe(toppingId, updated);
-    }
-    loadRecipes();
-    showToast({ type: 'info', message: 'Đã xóa nguyên liệu khỏi công thức' });
-    onSuccess();
-  };
-
-  const modalTitle = productSizeId
-    ? `Công thức: ${productName} (Size ${sizeName})`
-    : `Công thức: Topping ${toppingName}`;
-
-  return (
-    <Dialog
-      isOpen={isOpen}
-      onClose={onClose}
-      title={modalTitle}
-      maxWidth={520}
-      footer={
-        <Button variant="secondary" onClick={onClose}>
-          Đóng
-        </Button>
-      }
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-          Công thức nguyên liệu dùng chung cho toàn bộ chi nhánh. Khi đơn hàng chuyển trạng thái
-          Đã thanh toán, kho chi nhánh sẽ tự động trừ lượng nguyên liệu này.
-        </p>
-
-        {/* Danh sách nguyên liệu trong công thức */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
-            Định lượng cho 1 khẩu phần:
-          </label>
-          {recipes.length === 0 ? (
-            <div
-              style={{
-                padding: 16,
-                background: 'var(--color-warning-bg)',
-                color: 'var(--color-warning)',
-                borderRadius: 'var(--radius-control)',
-                fontSize: 13,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <AlertCircle size={18} />
-              <span>Chưa có công thức. Món/Topping vẫn bán được nhưng chưa liên kết trừ tồn kho.</span>
-            </div>
-          ) : (
-            recipes.map((r) => (
-              <div
-                key={r.ingredient_id}
-                style={{
-                  height: 48,
-                  padding: '0 14px',
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-control)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <span style={{ fontWeight: 600 }}>{r.ingredientName}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span className="num" style={{ fontWeight: 700, color: 'var(--color-brand-800)' }}>
-                    {r.quantity} {r.unit}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(r.ingredient_id)}
-                    aria-label={`Xóa nguyên liệu ${r.ingredientName} khỏi công thức`}
-                    style={{
-                      minWidth: 44,
-                      minHeight: 44,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: 'transparent',
-                      border: 'none',
-                      borderRadius: 'var(--radius-control)',
-                      color: 'var(--color-danger)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Thêm / Cập nhật nguyên liệu */}
-        <div
-          style={{
-            padding: 14,
-            background: 'var(--color-surface-sunken)',
-            borderRadius: 'var(--radius-control)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-          }}
-        >
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-muted)' }}>
-            THÊM NGUYÊN LIỆU VÀO CÔNG THỨC
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 10, alignItems: 'center' }}>
-            <select
-              aria-label="Chọn nguyên liệu"
-              value={selectedIngredientId}
-              onChange={(e) => setSelectedIngredientId(e.target.value)}
-              style={{
-                height: 44,
-                padding: '0 12px',
-                borderRadius: 'var(--radius-control)',
-                border: '1px solid var(--color-border-control)',
-                background: 'var(--color-surface)',
-                color: 'var(--color-text)',
-                fontSize: 14,
-              }}
-            >
-              {availableIngredients.map((ing) => (
-                <option key={ing.id} value={ing.id}>
-                  {ing.name} ({ing.unit})
-                </option>
-              ))}
-            </select>
-
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <input
-                type="number"
-                aria-label="Nhập định lượng nguyên liệu"
-                placeholder="Định lượng"
-                value={quantityInput}
-                onChange={(e) => setQuantityInput(e.target.value)}
-                style={{
-                  height: 44,
-                  width: '100%',
-                  padding: '0 32px 0 12px',
-                  borderRadius: 'var(--radius-control)',
-                  border: '1px solid var(--color-border-control)',
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text)',
-                  fontSize: 14,
-                  textAlign: 'right',
-                }}
-              />
-              <span
-                style={{
-                  position: 'absolute',
-                  right: 10,
-                  fontSize: 12,
-                  color: 'var(--color-text-muted)',
-                  pointerEvents: 'none',
-                }}
-              >
-                {currentIngredient?.unit || 'g'}
-              </span>
-            </div>
-
-            <Button variant="primary" size="md" style={{ minHeight: 44 }} icon={<Plus size={16} />} onClick={handleAddOrUpdate}>
-              Thêm
-            </Button>
-          </div>
-        </div>
-      </div>
-    </Dialog>
-  );
+  return <Dialog isOpen={isOpen} onClose={onClose}
+    title={productSizeId ? `Công thức: ${productName} (${sizeName})` : `Công thức: ${toppingName}`}
+    maxWidth={520}>
+    {loading ? <p role="status">Đang tải công thức…</p> : error ? <p role="alert">{error}</p> : <div style={{ display:'grid', gap:16 }}>
+      <p style={{ color:'var(--color-text-muted)' }}>Định lượng cho một phần; có thể để công thức rỗng.</p>
+      {recipe.length ? <ul style={{ display:'grid', gap:8, padding:0, listStyle:'none' }}>
+        {recipe.map(line => <li key={line.ingredientId} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
+          <span>{line.ingredientName} · {line.quantity} {line.unit}</span>
+          {canEdit && <Button variant="text" size="sm" disabled={saving} onClick={() => save(recipe.filter(item => item.ingredientId !== line.ingredientId))}>
+            Bỏ</Button>}
+        </li>)}
+      </ul> : <p>Chưa có nguyên liệu trong công thức.</p>}
+      {canEdit && <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+        <select aria-label="Nguyên liệu" value={selected} onChange={event => setSelected(event.target.value)}>
+          {ingredients.filter(item => item.isActive).map(item => <option key={item.id} value={item.id}>{item.name} ({item.unit})</option>)}
+        </select>
+        <input aria-label="Định lượng" type="number" min="0.001" step="0.001" value={quantity} onChange={event => setQuantity(event.target.value)} />
+        <Button variant="primary" disabled={saving || !selected} onClick={add}>{saving ? 'Đang lưu…' : 'Thêm / cập nhật'}</Button>
+      </div>}
+    </div>}
+  </Dialog>;
 };

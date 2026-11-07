@@ -1,7 +1,0 @@
-﻿start=2026-11-05T21:40:34.3424506+07:00
-end=2026-11-05T21:40:37.2001277+07:00
-exit=0
-command=npm test
-cwd=POS_UI
-sha=1132f12a447058e6ace8cb8fb87dc6877763ee5d
-working_tree_dirty=True

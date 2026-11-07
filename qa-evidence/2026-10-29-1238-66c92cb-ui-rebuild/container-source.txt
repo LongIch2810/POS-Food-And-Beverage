@@ -1,2 +1,0 @@
-﻿29:    throw new AuthError('UNKNOWN', 'Có lỗi xảy ra. Vui lòng thử lại.');
-31:  if (!response.ok) throw new AuthError(json.error?.code ?? 'UNKNOWN', json.error?.message ?? 'Có lỗi xảy ra. Vui lòng thử lại.');

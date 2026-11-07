@@ -1,1 +1,0 @@
-{"error":{"code":"USERNAME_EXISTS","message":"Tên đăng nhập đã được sử dụng.","details":[],"requestId":"11938c7a-bb37-4d45-b93a-ac433351266b"}}

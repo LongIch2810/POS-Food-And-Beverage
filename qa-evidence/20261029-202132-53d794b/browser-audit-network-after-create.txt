@@ -1,6 +1,0 @@
-69. [GET] http://localhost:5173/api/v1/platform/stores?page=1 => [200] OK
-71. [GET] http://localhost:5173/api/v1/platform/stores?page=1 => [200] OK
-81. [POST] http://localhost:5173/api/v1/platform/stores => [201] Created
-82. [GET] http://localhost:5173/api/v1/platform/stores?page=1 => [200] OK
-
-Note: 74 static requests not shown, run with "static" option to see them.

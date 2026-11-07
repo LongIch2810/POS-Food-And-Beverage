@@ -1,7 +1,0 @@
-76. [GET] http://localhost:5173/api/v1/auth/me => [401] Unauthorized
-77. [GET] http://localhost:5173/api/v1/auth/me => [401] Unauthorized
-78. [GET] http://localhost:5173/api/v1/auth/me => [401] Unauthorized
-79. [POST] http://localhost:5173/api/v1/auth/refresh => [401] Unauthorized
-80. [GET] http://localhost:5173/api/v1/auth/me => [401] Unauthorized
-
-Note: 75 static requests not shown, run with "static" option to see them.

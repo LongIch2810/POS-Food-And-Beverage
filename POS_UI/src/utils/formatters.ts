@@ -1,6 +1,8 @@
 // POS-F&B Formatters per DESIGN.md §10 & §12.3
 
 const vndFormatter = new Intl.NumberFormat('vi-VN');
+const shopDate = new Intl.DateTimeFormat('sv-SE', { timeZone:'Asia/Ho_Chi_Minh', year:'numeric',month:'2-digit',day:'2-digit' });
+const shopTime = new Intl.DateTimeFormat('en-GB', { timeZone:'Asia/Ho_Chi_Minh', hour:'2-digit',minute:'2-digit',hourCycle:'h23' });
 
 /**
  * Định dạng tiền tệ VND từ bigint.
@@ -22,9 +24,7 @@ export function formatVND(amount: bigint | number): string {
 export function formatDateVN(dateInput: string | Date): string {
   const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   if (isNaN(date.getTime())) return '';
-  const d = String(date.getDate()).padStart(2, '0');
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const y = date.getFullYear();
+  const [y,m,d] = shopDate.format(date).split('-');
   return `${d}/${m}/${y}`;
 }
 
@@ -34,9 +34,7 @@ export function formatDateVN(dateInput: string | Date): string {
 export function formatTimeVN(dateInput: string | Date): string {
   const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   if (isNaN(date.getTime())) return '';
-  const h = String(date.getHours()).padStart(2, '0');
-  const min = String(date.getMinutes()).padStart(2, '0');
-  return `${h}:${min}`;
+  return shopTime.format(date);
 }
 
 /**

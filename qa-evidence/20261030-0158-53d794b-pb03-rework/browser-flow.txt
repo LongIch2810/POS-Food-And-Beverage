@@ -1,8 +1,0 @@
-### Error
-Error: locator.click: Error: strict mode violation: getByRole('button', { name: 'Cửa hàng', exact: true }) resolved to 2 elements:
-    1) <button type="button" class="touch-press">…</button> aka getByRole('navigation', { name: 'Điều hướng chính' }).getByRole('button', { name: 'Cửa hàng' })
-    2) <button class="touch-press ">…</button> aka getByRole('main').getByRole('button', { name: 'Cửa hàng', exact: true })
-
-Call log:
-[2m  - waiting for getByRole('button', { name: 'Cửa hàng', exact: true })[22m
-

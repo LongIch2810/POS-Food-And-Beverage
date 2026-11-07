@@ -1,4 +1,0 @@
-Total messages: 4 (Errors: 1, Warnings: 0)
-Returning 1 messages for level "error"
-
-[ERROR] Failed to load resource: the server responded with a status of 503 (Service Unavailable) @ http://localhost:5173/api/v1/users?role=OWNER&limit=20:0

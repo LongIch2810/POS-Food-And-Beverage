@@ -60,6 +60,7 @@ function mount(overrides = {}, session = owner, shiftsTotal = 0) {
       if (path.endsWith('/auth/session-events')) return { notifySessionChange: event => sessionEvents.push(event) };
       if (path.endsWith('/formatters')) return { formatVND: String };
       if (path.endsWith('/Field')) return { SelectField: 'SelectField' };
+      if (path === './PromotionsPanel') return { PromotionsPanel: 'PromotionsPanel' };
       const name = path.split('/').at(-1);
       if (['Button','Badge','DataTable','Dialog','OrganizationEditor'].includes(name)) return { [name]: name };
       throw new Error('Unexpected dependency: ' + path);

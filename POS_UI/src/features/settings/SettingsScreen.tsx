@@ -15,6 +15,7 @@ import type { OrganizationBranch, OrganizationTable, OrganizationStaff, StaffPas
 import type { AuthSession } from '../../types/auth';
 import { formatVND } from '../../utils/formatters';
 import { OrganizationEditor } from './OrganizationEditor';
+import { PromotionsPanel } from './PromotionsPanel';
 import type { EditorKind, FormValues } from './organizationForm';
 
 type Tab = 'branches' | 'tables' | 'staff';
@@ -30,9 +31,17 @@ const nullable = (value: string) => value.trim() || null;
 
 export const SettingsScreen: React.FC = () => {
   const { session } = useAuth();
+  const [section, setSection] = useState<'organization'|'promotions'>('organization');
   const identity = JSON.stringify([session.user.id, session.user.store_id, session.user.branch_id,
     session.user.role_code, session.user.must_change_password, [...session.permissions].sort()]);
-  return <SettingsContent key={identity} session={session} />;
+  return <div key={identity} style={{ flex:1, display:'flex', flexDirection:'column', overflow:'auto' }}>
+    {session.permissions.includes('promotion.manage') && <nav aria-label="Mục cài đặt" style={{ display:'flex', gap:8, padding:'12px 24px' }}>
+      <Button variant={section === 'organization' ? 'primary' : 'secondary'} onClick={() => setSection('organization')}>Tổ chức</Button>
+      <Button variant={section === 'promotions' ? 'primary' : 'secondary'} onClick={() => setSection('promotions')}>Khuyến mãi</Button>
+    </nav>}
+    {section === 'promotions' && session.permissions.includes('promotion.manage')
+      ? <PromotionsPanel key={identity} /> : <SettingsContent key={identity} session={session} />}
+  </div>;
 };
 
 export function SettingsContent({ session }: { session: AuthSession }) {

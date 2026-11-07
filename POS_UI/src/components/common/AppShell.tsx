@@ -49,7 +49,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
   const perms = session.permissions || [];
   const has = (p: string) => perms.includes(p as any);
   const isPlatformAdmin = user.role_code === 'PLATFORM_ADMIN';
-  const isDemo = !isPlatformAdmin && !['settings', 'products', 'shifts'].includes(currentTab);
+  const isDemo = !isPlatformAdmin && !['settings', 'products', 'shifts', 'inventory'].includes(currentTab);
   const canSwitchBranch = has('branch.access_all');
 
   const [activeShiftDuration, setActiveShiftDuration] = useState<string>('');
@@ -124,8 +124,9 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
 
   const navItems = allNavItems.filter((item) => item.visible);
 
-  const currentBranchName =
-    accessibleBranches.find((b) => b.id === selectedBranchId)?.name || session.branch_name || 'Chi nhánh';
+  const currentBranchName = isDemo
+    ? accessibleBranches.find((b) => b.id === selectedBranchId)?.name || session.branch_name || 'Chi nhánh'
+    : session.branch_name || 'Tất cả chi nhánh';
 
   return (
     <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
@@ -464,7 +465,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
               <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {isPlatformAdmin ? 'Quản trị nền tảng' : 'Cài đặt cửa hàng'}
               </span>
-            ) : canSwitchBranch ? (
+            ) : canSwitchBranch && isDemo ? (
               /* Người có quyền branch.access_all có dropdown đổi chi nhánh (BR-71b) */
               <div style={{ position: 'relative', minWidth: 0 }}>
                 <button

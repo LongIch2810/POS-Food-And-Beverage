@@ -1,4 +1,0 @@
-Script ran on page and returned:
-```json
-{"url":"http://localhost:5173/","secretVisibleOnce":true,"secretInUrl":false,"secretInLocalStorage":false,"secretInSessionStorage":false,"localStorageKeys":["pos_fb_mock_v1"],"sessionStorageKeys":[],"cookieNames":["__Host-pos_csrf"]}
-```
