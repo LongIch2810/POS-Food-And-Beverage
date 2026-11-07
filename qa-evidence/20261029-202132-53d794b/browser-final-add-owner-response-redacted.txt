@@ -1,3 +1,0 @@
-# Playwright response body; temporary password and long identifiers redacted
-### Result
-{"data":{"owner":{"id":"[REDACTED]","storeId":"[REDACTED]","username":"[REDACTED]","fullName":"Chủ cuối QA","isActive":true,"mustChangePassword":true,"createdAt":"2026-10-29T14:17:39.715Z"},"temporaryPassword":"[REDACTED]"}}

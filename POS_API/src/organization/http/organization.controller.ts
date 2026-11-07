@@ -48,7 +48,7 @@ export class DiningTablesController {
   constructor(private readonly organization: OrganizationService) {}
 
   @Get()
-  @RequirePermission('table.manage')
+  @RequirePermission('table.read')
   @ApiListQuery([{ name: 'branchId', required: false, type: String, format: 'uuid', description: 'OWNER lọc; MANAGER bị ép về chi nhánh mình.' }])
   @ApiResponse({ status: 200, schema: listSchema(TableOutputDto) })
   async list(@Req() request: AuthenticatedRequest) {

@@ -28,6 +28,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { RecipeModal } from './RecipeModal';
 
 export const ProductsScreen: React.FC = () => {
   const { session } = useAuth();
@@ -92,6 +93,8 @@ export const ProductsScreen: React.FC = () => {
 
   // 7. Category-Topping Mapping Modal
   const [mappingTopping, setMappingTopping] = useState<MenuTopping | null>(null);
+  const [recipeTarget, setRecipeTarget] = useState<{ productName?: string; sizeName?: string; productSizeId?: string;
+    toppingName?: string; toppingId?: string } | null>(null);
 
   // Load data from real API
   const loadData = useCallback(async () => {
@@ -622,6 +625,8 @@ export const ProductsScreen: React.FC = () => {
           >
             Gán danh mục
           </Button>
+          {session.permissions.includes('inventory.view') && <Button variant="text" size="sm"
+            onClick={() => setRecipeTarget({ toppingName: t.name, toppingId: t.id })}>Công thức</Button>}
           <Button
             variant="text"
             size="sm"
@@ -671,6 +676,8 @@ export const ProductsScreen: React.FC = () => {
 
   return (
     <div style={{ flex: 1, padding: 'clamp(14px, 2.5vw, 24px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {recipeTarget && <RecipeModal isOpen={true} onClose={() => setRecipeTarget(null)}
+        {...recipeTarget} onSuccess={loadData} />}
       {/* Hidden file input for uploading product image */}
       <input
         type="file"
@@ -1026,6 +1033,9 @@ export const ProductsScreen: React.FC = () => {
                             >
                               <Edit2 size={12} />
                             </button>
+                            {session.permissions.includes('inventory.view') && <Button variant="text" size="sm"
+                              onClick={() => setRecipeTarget({ productName: product.name, sizeName: s.sizeName, productSizeId: s.id })}>
+                              Công thức</Button>}
                           </div>
 
                           <Button

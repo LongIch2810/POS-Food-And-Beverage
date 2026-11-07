@@ -1,2 +1,0 @@
-﻿pos_ui Up 50 seconds
-pos_api Up About an hour (healthy)

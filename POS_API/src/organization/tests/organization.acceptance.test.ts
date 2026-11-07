@@ -290,23 +290,24 @@ test('PB-04 acceptance evidence AUD-01..05 with PostgreSQL and captured app logs
         for (const [code, paths] of [
           ['branch.read', operations(a1.id, ta1.id, staffA1.id).slice(0, 1)],
           ['branch.manage', operations(a1.id, ta1.id, staffA1.id).slice(1, 3)],
-          ['table.manage', operations(a1.id, ta1.id, staffA1.id).slice(3, 6)],
+          ['table.read', operations(a1.id, ta1.id, staffA1.id).slice(3, 4)],
+          ['table.manage', operations(a1.id, ta1.id, staffA1.id).slice(4, 6)],
           ['user.manage', operations(a1.id, ta1.id, staffA1.id).slice(6)],
         ] as Array<[string, Array<[string, Options]>]>) {
           await permission('OWNER', code, false);
           try { for (const [path, options] of paths) await denied(owner, path, options, 403, 'PERMISSION_DENIED'); }
           finally { await permission('OWNER', code, true); }
         }
-        for (const [path, options] of operations(a1.id, ta1.id, staffA1.id)) {
+        for (const [path, options] of operations(a1.id, ta1.id, staffA1.id).filter((_, index) => index !== 3)) {
           await denied(cashier, path, options, 403, 'PERMISSION_DENIED');
         }
         for (const [path, options] of [...operations(a1.id, ta1.id, staffA1.id).slice(1, 3),
           ...operations(a1.id, ta1.id, staffA1.id).slice(6)]) {
           await denied(manager, path, options, 403, 'PERMISSION_DENIED');
         }
-        await permission('MANAGER', 'table.manage', false);
+        await permission('MANAGER', 'table.read', false);
         try { await denied(manager, '/dining-tables', {}, 403, 'PERMISSION_DENIED'); }
-        finally { await permission('MANAGER', 'table.manage', true); }
+        finally { await permission('MANAGER', 'table.read', true); }
         await db.query('UPDATE users SET branch_id=$2 WHERE id=$1', [managerA1.id, a2.id]);
         try {
           assert.deepEqual(ids(await call(manager, '/branches')), [a2.id]);

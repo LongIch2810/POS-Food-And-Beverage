@@ -380,7 +380,7 @@ test('PB-02 login creates a hashed refresh session and cookie-only tokens', { ti
       const updatedMe = await fetch(`http://127.0.0.1:${port}/api/v1/auth/me`, { headers: { Cookie: thirdCookieHeader } });
       assert.equal(updatedMe.status, 200);
       assert.ok((await updatedMe.json()).data.user.permissions.includes('store.create'));
-      await db.query("INSERT INTO permissions (id, code) VALUES (gen_random_uuid(), 'pos.sell')");
+      await db.query("INSERT INTO permissions (id, code) VALUES (gen_random_uuid(), 'pos.sell') ON CONFLICT (code) DO NOTHING");
       await db.query(`INSERT INTO role_permissions (role_id, permission_id)
         SELECT r.id, p.id FROM roles r, permissions p WHERE r.name = 'PLATFORM_ADMIN' AND p.code = 'pos.sell'`);
       await assert.rejects(auth.authorizeAccess(access, 'pos.sell'), (error: any) => error.getResponse().code === 'PERMISSION_DENIED');

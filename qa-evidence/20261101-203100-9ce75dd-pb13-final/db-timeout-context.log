@@ -1,4 +1,0 @@
-﻿2026-11-01 13:36:35.902 UTC [663] ERROR:  canceling statement due to statement timeout
-2026-11-01 13:36:35.902 UTC [663] STATEMENT:  SELECT pg_sleep(10)
-2026-11-01 13:36:40.912 UTC [663] ERROR:  canceling statement due to statement timeout
-2026-11-01 13:36:40.912 UTC [663] STATEMENT:  DROP DATABASE "pos_pb01_test_4e4fd11fe5e5" WITH (FORCE)

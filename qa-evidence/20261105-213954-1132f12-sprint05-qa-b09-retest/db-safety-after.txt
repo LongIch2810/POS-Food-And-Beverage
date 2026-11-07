@@ -1,2 +1,0 @@
-﻿test_db_store_count=1
-base_db_store_count=0

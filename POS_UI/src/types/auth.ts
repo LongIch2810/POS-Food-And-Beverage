@@ -16,6 +16,7 @@ export type PermissionCode =
   | 'user.manage'
   | 'branch.manage' // Quản lý chi nhánh & nhân viên
   | 'table.manage' // Quản lý bàn
+  | 'table.read'
   | 'menu.read' // Xem danh mục, kích cỡ, món, topping
   | 'menu.manage' // Quản lý danh mục, kích cỡ, món, topping, ảnh
   | 'product.manage' // Quản lý menu, size, topping, công thức, mã giảm giá
@@ -25,9 +26,12 @@ export type PermissionCode =
   | 'shift.open_close' // Quyền chỉ còn trong dữ liệu demo
   | 'shift.force_close' // Đóng cưỡng chế ca của người khác (MANAGER, OWNER)
   | 'pos.sell' // Bán hàng, tạo đơn, thanh toán
+  | 'invoice.read'
   | 'invoice.cancel_open' // Hủy đơn OPEN
   | 'invoice.cancel_paid' // Hủy đơn PAID (cần quyền quản lý & ca còn mở)
   | 'inventory.view' // Xem tồn kho và sổ kho
+  | 'inventory.manage'
+  | 'promotion.manage'
   | 'report.view_shift' // Xem báo cáo ca của mình
   | 'report.view_branch' // Xem báo cáo chi nhánh của mình
   | 'report.view_all'; // Xem báo cáo toàn cửa hàng

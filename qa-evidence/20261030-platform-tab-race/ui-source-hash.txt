@@ -1,8 +1,0 @@
-﻿
-
-Algorithm : SHA256
-Hash      : 75EF00DD3FD5E6C0704C7290A88C0E237665E9F43EAD44F97A6A629EDBBB9117
-Path      : D:\saved\Project\POS-F&B\POS_UI\src\features\platform\PlatformAdminScreen.tsx
-
-
-

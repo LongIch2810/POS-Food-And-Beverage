@@ -1,0 +1,41 @@
+import { request } from '../http/client.ts';
+
+export interface InvoiceTopping {
+  id: string; toppingId: string; toppingName: string; unitPrice: number; quantity: number; lineTotal: number;
+}
+export interface InvoiceItem {
+  id: string; productSizeId: string; productName: string; sizeName: string; unitPrice: number;
+  quantity: number; lineTotal: number; note: string | null; toppings: InvoiceTopping[];
+}
+export interface InvoiceDetail {
+  id: string; invoiceCode: string; branchId: string; workShiftId: string; tableId: string | null;
+  orderType: 'DINE_IN' | 'TAKEAWAY'; status: 'OPEN' | 'CANCELLED' | 'PAID';
+  subtotal: number; discountAmount: number; totalAmount: number; note: string | null;
+  cancelReason: string | null; cancelledAt: string | null; createdAt: string; updatedAt: string;
+  items: InvoiceItem[];
+}
+export interface OpenInvoice {
+  id: string; invoiceCode: string; branchId: string; tableId: string | null;
+  orderType: 'DINE_IN' | 'TAKEAWAY'; status: 'OPEN'; totalAmount: number;
+  itemCount: number; createdAt: string;
+}
+interface InvoicePage { data: OpenInvoice[]; meta: { limit: number; nextCursor: string | null; total: number } }
+const id = encodeURIComponent;
+
+export const salesService = {
+  listOpen: (branchId?: string, cursor?: string) => request<InvoicePage>(
+    `invoices?${new URLSearchParams({ status: 'OPEN', limit: '100', ...(branchId ? { branchId } : {}), ...(cursor ? { cursor } : {}) })}`,
+    'GET', undefined, true, true),
+  get: (invoiceId: string) => request<InvoiceDetail>(`invoices/${id(invoiceId)}`),
+  create: (input: { orderType: 'DINE_IN' | 'TAKEAWAY'; tableId?: string }) =>
+    request<InvoiceDetail>('invoices', 'POST', input),
+  addItem: (invoiceId: string, input: { productSizeId: string; quantity: number; toppings?: { toppingId: string; quantity: number }[]; note?: string }) =>
+    request<InvoiceDetail>(`invoices/${id(invoiceId)}/items`, 'POST', input),
+  updateItem: (itemId: string, input: { quantity?: number; note?: string | null }) =>
+    request<InvoiceDetail>(`invoice-items/${id(itemId)}`, 'PATCH', input),
+  removeItem: (itemId: string) => request<void>(`invoice-items/${id(itemId)}`, 'DELETE'),
+  transfer: (invoiceId: string, tableId: string) =>
+    request<InvoiceDetail>(`invoices/${id(invoiceId)}/transfer-table`, 'POST', { tableId }),
+  cancel: (invoiceId: string, reason: string) =>
+    request<InvoiceDetail>(`invoices/${id(invoiceId)}/cancel`, 'POST', { reason }),
+};

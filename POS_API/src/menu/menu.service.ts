@@ -729,7 +729,11 @@ export class MenuService {
     if (usageCount > 0) {
       throw httpError(409, 'RESOURCE_IN_USE', 'Topping đã được gán vào danh mục món, không thể xóa.');
     }
-    await this.toppingRepo.delete({ id });
+    await this.withConstraintHandling(
+      () => this.toppingRepo.delete({ id }),
+      undefined,
+      'Topping đã phát sinh dữ liệu đơn hàng, không thể xóa.'
+    );
   }
 
   // --- CATEGORY TOPPING LINKS ---
