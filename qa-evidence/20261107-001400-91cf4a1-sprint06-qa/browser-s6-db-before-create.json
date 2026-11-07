@@ -1,0 +1,8 @@
+{
+  "query": "SELECT count(*) FROM invoices WHERE branch_id=$1",
+  "rows": [
+    {
+      "count": 12
+    }
+  ]
+}

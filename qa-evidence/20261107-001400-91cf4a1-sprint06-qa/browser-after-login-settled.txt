@@ -1,0 +1,22 @@
+Bán hàng
+Sơ đồ bàn
+Hóa đơn
+Ca làm
+Thực đơn
+Chi nhánh Nam Lý
+Chưa có ca đang mở
+Thu ngân A
+Thu ngân
+Đăng xuất
+Thực đơn
+Sơ đồ bàn
+Đơn đang mở
+Tải lại đơn
+Đồ uống
+
+Chọn bàn hoặc mở đơn mang đi trước khi thêm món. Tạo đơn mang đi
+
+Trà thử
+10.000đ
+
+Chưa chọn đơn. Mở sơ đồ bàn hoặc danh sách đơn đang mở.

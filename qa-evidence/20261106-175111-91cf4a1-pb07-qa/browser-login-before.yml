@@ -1,0 +1,39 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - img "Logo Phin Cà Phê" [ref=e10]
+        - generic [ref=e17]:
+          - heading "POS & Quản lý Kho F&B" [level=1] [ref=e18]
+          - paragraph [ref=e19]: Cà phê • Trà sữa • Quán ăn
+      - paragraph [ref=e20]: Hệ thống bán hàng quầy cảm ứng và quản trị tồn kho đa chi nhánh theo thời gian thực.
+      - generic [ref=e21]:
+        - generic [ref=e28]:
+          - generic [ref=e29]: Bán hàng cảm ứng tại quầy
+          - generic [ref=e30]: Tối ưu tablet ngang, chọn món dưới 2 chạm, sơ đồ bàn trực quan.
+        - generic [ref=e36]:
+          - generic [ref=e37]: Đối soát ca đếm mù
+          - generic [ref=e38]: Mỗi chi nhánh 1 ca mở, bàn giao tiền mặt đếm mù chống thất thoát.
+        - generic [ref=e51]:
+          - generic [ref=e52]: Định mức trừ kho tự động
+          - generic [ref=e53]: Trừ nguyên vật liệu theo công thức từng ly nước, cảnh báo tồn kho an toàn.
+    - generic [ref=e54]:
+      - generic [ref=e55]: Bản quyền © Hệ thống F&B
+      - generic [ref=e56]: Múi giờ Asia/Ho_Chi_Minh
+  - generic [ref=e57]:
+    - generic [ref=e58]:
+      - heading "Đăng nhập tài khoản" [level=2] [ref=e59]
+      - paragraph [ref=e60]: Nhập tên đăng nhập và mật khẩu được cấp bởi cửa hàng
+    - generic [ref=e61]:
+      - generic [ref=e62]:
+        - generic [ref=e63]: Tên đăng nhập
+        - textbox "Tên đăng nhập" [ref=e65]:
+          - /placeholder: Nhập tên đăng nhập...
+      - generic [ref=e66]:
+        - generic [ref=e67]: Mật khẩu
+        - generic [ref=e68]:
+          - textbox "Mật khẩu" [ref=e69]:
+            - /placeholder: Nhập mật khẩu...
+          - button "Hiện mật khẩu" [ref=e70] [cursor=pointer]
+      - button "Đăng nhập hệ thống" [ref=e74] [cursor=pointer]
+    - generic [ref=e76]: Mật khẩu mã hóa an toàn. Tài khoản mới tạo bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.

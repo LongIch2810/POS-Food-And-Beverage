@@ -1,0 +1,17 @@
+[
+  {
+    "name": "__Host-pos_refresh",
+    "secure": true,
+    "sameSite": "Strict"
+  },
+  {
+    "name": "__Host-pos_access",
+    "secure": true,
+    "sameSite": "Strict"
+  },
+  {
+    "name": "__Host-pos_csrf",
+    "secure": true,
+    "sameSite": "Strict"
+  }
+]

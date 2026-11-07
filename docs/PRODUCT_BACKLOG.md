@@ -1,8 +1,8 @@
 # PRODUCT_BACKLOG
 
-**Trạng thái:** Product Backlog còn được refinement. Thứ tự dưới đây là ưu tiên đề xuất cho MVP; [Sprint 2 đã kết thúc ngày 30/10/2026](../sprints/sprint-02/SPRINT.md#kết-luận-sprint-2--2026-10-30). [Sprint 3 đã kết thúc và được Product Owner nghiệm thu local ngày 01/11/2026](../sprints/sprint-03/SPRINT.md#kết-luận-sprint-3--2026-11-01): PB-04 + PB-13 tổ chức. Lịch ban đầu 30/10–05/11/2026 được giữ trong hồ sơ; sprint kết thúc sớm. [Sprint 4](../sprints/sprint-04/SPRINT.md) đã hoàn thành triển khai và kiểm thử PB-05 (Thực đơn) + lát cắt PB-13 thực đơn ngày 02/11/2026, sẵn sàng nghiệm thu. [Sprint 5](../sprints/sprint-05/SPRINT.md#kết-luận-đóng-sprint-05--05112026) đã kết thúc và được nghiệm thu local ngày 05/11/2026 cho PB-06 (Ca làm) + lát cắt PB-13 ca làm, 19/19 tiêu chí PASS. Bảng này không thay thế đặc tả endpoint.
+**Trạng thái:** Product Backlog còn được refinement. Thứ tự dưới đây là ưu tiên đề xuất cho MVP; [Sprint 2 đã kết thúc ngày 30/10/2026](../sprints/sprint-02/SPRINT.md#kết-luận-sprint-2--2026-10-30). [Sprint 3 đã kết thúc và được Product Owner nghiệm thu local ngày 01/11/2026](../sprints/sprint-03/SPRINT.md#kết-luận-sprint-3--2026-11-01): PB-04 + PB-13 tổ chức. Lịch ban đầu 30/10–05/11/2026 được giữ trong hồ sơ; sprint kết thúc sớm. [Sprint 4](../sprints/sprint-04/SPRINT.md) đã hoàn thành triển khai và kiểm thử PB-05 (Thực đơn) + lát cắt PB-13 thực đơn ngày 02/11/2026, sẵn sàng nghiệm thu. [Sprint 5](../sprints/sprint-05/SPRINT.md#kết-luận-đóng-sprint-05--05112026) đã kết thúc và được nghiệm thu local ngày 05/11/2026 cho PB-06 (Ca làm) + lát cắt PB-13 ca làm, 19/19 tiêu chí PASS. [Sprint 6](../sprints/sprint-06/SPRINT.md) đã kết thúc và được nghiệm thu local ngày 07/11/2026 cho PB-07 + lát cắt PB-13 bán hàng, S6-01..09 PASS. Bảng này không thay thế đặc tả endpoint.
 
-Nguồn phạm vi: [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md) mục 5; quy tắc chi tiết ở [BUSINESS_RULES.md](BUSINESS_RULES.md). PB-01, PB-02 và lát cắt xác thực của PB-13 đã được Product Owner nghiệm thu. Ngày30/10/2026, PB-03 và PB-13 lát cắt quản trị nền tảng được nghiệm thu local theo phạm vi và bằng chứng trong [Sprint 2](../sprints/sprint-02/SPRINT.md). Ngày01/11/2026, PB-04 và PB-13 tổ chức được nghiệm thu local trong Sprint 3. UI đăng nhập/quản trị nền tảng/Cài đặt tổ chức, Thực đơn và Ca làm dùng API thật theo các lát cắt đã triển khai; màn bán hàng POS phía sau cổng ca, hóa đơn, kho và báo cáo vẫn dùng dữ liệu demo/mock. Mỗi item cần refinement và spec đã chốt trong `specs/` trước khi code phần tương ứng.
+Nguồn phạm vi: [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md) mục 5; quy tắc chi tiết ở [BUSINESS_RULES.md](BUSINESS_RULES.md). PB-01, PB-02 và lát cắt xác thực của PB-13 đã được Product Owner nghiệm thu. Ngày30/10/2026, PB-03 và PB-13 lát cắt quản trị nền tảng được nghiệm thu local theo phạm vi và bằng chứng trong [Sprint 2](../sprints/sprint-02/SPRINT.md). Ngày01/11/2026, PB-04 và PB-13 tổ chức được nghiệm thu local trong Sprint 3. UI đăng nhập/quản trị nền tảng/Cài đặt tổ chức, Thực đơn, Ca làm và lát cắt Bán hàng/Sơ đồ bàn của Sprint 6 dùng API thật; thanh toán, khuyến mãi, kho, báo cáo và các màn ngoài lát cắt đã nối API vẫn chưa được nghiệm thu. Mỗi item cần refinement và spec đã chốt trong `specs/` trước khi code phần tương ứng.
 
 ## Product Backlog MVP
 
@@ -53,15 +53,26 @@ PB-03 và PB-13 quản trị nền tảng đã nghiệm thu trong phạm vi đã
 | --- | --- | --- |
 | Ca làm và UI tương ứng | PB-06 + PB-13 | Triển khai ngày 03/11; đã nghiệm thu local 19/19 tiêu chí và đóng [Sprint 5](../sprints/sprint-05/SPRINT.md) ngày 05/11/2026. |
 | Khóa sửa quỹ sau ca CASHIER đầu tiên | PB-06 | Đã hoàn thành và kiểm thử xác minh trong Sprint 5 (409 INITIAL_CASH_LOCKED). |
-| Bán hàng và đơn hàng | PB-07 | Sẵn sàng triển khai trong Sprint 6 sau khi PB-06 đã cung cấp `work_shift_id`. |
+| Bán hàng và đơn hàng | PB-07 | Ghi nhận lịch sử dependency sau Sprint 4: PB-06 đã cung cấp `work_shift_id`; PB-07 sau đó hoàn tất và nghiệm thu local trong [Sprint 6](../sprints/sprint-06/SPRINT.md). |
 | Màn vận hành còn mock; vận hành production và sao lưu | Các lát cắt PB-13 còn lại; PB-14 | Tiếp tục theo dependency sau PB-06/PB-07. |
 
 ## Việc theo dõi sau Sprint 5
 
 | Việc | Theo dõi tại | Điều kiện tiếp tục |
 | --- | --- | --- |
-| Bán hàng và đơn hàng (Invoices, Bàn, Món) | PB-07 + PB-13 | Đề xuất cho Sprint 6; cần refinement và chốt spec trước khi triển khai. |
+| Bán hàng và đơn hàng (Invoices, Bàn, Món) | PB-07 + PB-13 | Đã nghiệm thu local và đóng [Sprint 6](../sprints/sprint-06/SPRINT.md) ngày 07/11/2026 theo yêu cầu Product Owner; QA cấp sprint S6-01..09 PASS. Phạm vi gồm chuyển bàn BR-92, hủy đơn `OPEN` BR-28 và UI bán hàng/bàn dùng API thật. |
 | Chi phí két & Đối soát tiền mặt chi tiết | PB-10 | Phụ thuộc vào PB-07 (bán hàng) và PB-09 (thanh toán). |
 | Màn vận hành còn mock; vận hành production và sao lưu | Các lát cắt PB-13 còn lại; PB-14 | Tiếp tục theo dependency sau PB-07. |
 
-Hồ sơ sprint: [Sprint 1 (đã kết thúc)](../sprints/sprint-01/SPRINT.md), [Sprint 2 (đã kết thúc)](../sprints/sprint-02/SPRINT.md), [Sprint 3 (đã kết thúc, nghiệm thu local)](../sprints/sprint-03/SPRINT.md), [Sprint 4 (hoàn thành triển khai, sẵn sàng nghiệm thu)](../sprints/sprint-04/SPRINT.md), [Sprint 5 (đã kết thúc, nghiệm thu local)](../sprints/sprint-05/SPRINT.md).
+## Việc theo dõi sau Sprint 6
+
+| Việc | Theo dõi tại | Điều kiện tiếp tục |
+| --- | --- | --- |
+| Nguyên liệu, công thức và tồn kho theo chi nhánh | PB-08 | Phụ thuộc PB-04/PB-05 đã có; cần refinement/spec và quyết định phạm vi sprint kế tiếp. Chưa coi PB-08 đã triển khai. |
+| Khuyến mãi MVP | PB-08a | Phụ thuộc PB-04 đã có; cần refinement/spec trước khi làm. PB-09 thanh toán phụ thuộc cả PB-08 và PB-08a. |
+| Thanh toán, hóa đơn PAID và trừ kho | PB-09 | Chỉ lên kế hoạch sau PB-08/PB-08a theo dependency trong Product Backlog; Sprint 6 mới nghiệm thu đơn OPEN. |
+| Đối soát chi tiết, màn vận hành còn demo và production | PB-10, các lát cắt PB-13 còn lại, PB-14 | Giữ ngoài nghiệm thu Sprint 6; tiếp tục theo dependency và quyết định Product Owner. |
+
+Các dòng trên là việc còn lại để chọn khi lập sprint mới, **chưa phải Sprint 7 đã được chốt**. Nghiệm thu Sprint 6 chỉ là local trên working tree chưa commit; CI, merge và production còn là bước riêng.
+
+Hồ sơ sprint: [Sprint 1 (đã kết thúc)](../sprints/sprint-01/SPRINT.md), [Sprint 2 (đã kết thúc)](../sprints/sprint-02/SPRINT.md), [Sprint 3 (đã kết thúc, nghiệm thu local)](../sprints/sprint-03/SPRINT.md), [Sprint 4 (hoàn thành triển khai, sẵn sàng nghiệm thu)](../sprints/sprint-04/SPRINT.md), [Sprint 5 (đã kết thúc, nghiệm thu local)](../sprints/sprint-05/SPRINT.md), [Sprint 6 (đã kết thúc, nghiệm thu local)](../sprints/sprint-06/SPRINT.md).

@@ -1,0 +1,26 @@
+{
+  "method": "POST",
+  "path": "/api/v1/invoices",
+  "request": "{\"orderType\":\"DINE_IN\",\"tableId\":\"5d1c5c0b-e79f-4836-ba7f-6de79ba3c35d\"}",
+  "status": 201,
+  "response": {
+    "data": {
+      "id": "6b32d3a7-6be9-44c3-88f5-51d2a8963714",
+      "invoiceCode": "HDL9L3BQW3",
+      "branchId": "d2c47384-a2b7-4b40-83ae-615595b343b3",
+      "workShiftId": "a359640b-07d0-4a85-b7a7-b5dbb716f253",
+      "tableId": "5d1c5c0b-e79f-4836-ba7f-6de79ba3c35d",
+      "orderType": "DINE_IN",
+      "status": "OPEN",
+      "subtotal": 0,
+      "discountAmount": 0,
+      "totalAmount": 0,
+      "note": null,
+      "cancelReason": null,
+      "cancelledAt": null,
+      "createdAt": "2026-11-07T04:10:35.054Z",
+      "updatedAt": "2026-11-07T04:10:35.054Z",
+      "items": []
+    }
+  }
+}

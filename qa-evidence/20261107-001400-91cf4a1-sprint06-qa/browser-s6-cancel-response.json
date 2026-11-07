@@ -1,0 +1,38 @@
+{
+  "method": "POST",
+  "path": "/api/v1/invoices/6b32d3a7-6be9-44c3-88f5-51d2a8963714/cancel",
+  "request": "{\"reason\":\"QA Sprint 6 browser\"}",
+  "status": 200,
+  "response": {
+    "data": {
+      "id": "6b32d3a7-6be9-44c3-88f5-51d2a8963714",
+      "invoiceCode": "HDL9L3BQW3",
+      "branchId": "d2c47384-a2b7-4b40-83ae-615595b343b3",
+      "workShiftId": "a359640b-07d0-4a85-b7a7-b5dbb716f253",
+      "tableId": "163a120e-85b2-4d4f-80c2-e3206741178b",
+      "orderType": "DINE_IN",
+      "status": "CANCELLED",
+      "subtotal": 10000,
+      "discountAmount": 0,
+      "totalAmount": 10000,
+      "note": null,
+      "cancelReason": "QA Sprint 6 browser",
+      "cancelledAt": "2026-11-07T04:14:22.361Z",
+      "createdAt": "2026-11-07T04:10:35.054Z",
+      "updatedAt": "2026-11-07T04:14:22.361Z",
+      "items": [
+        {
+          "id": "0705a797-93c8-4e18-acfc-d0005c9d75d1",
+          "productSizeId": "ad9a852c-7c12-48ba-adbd-358b9985b015",
+          "productName": "Trà thử",
+          "sizeName": "M",
+          "unitPrice": 10000,
+          "quantity": 1,
+          "lineTotal": 10000,
+          "note": null,
+          "toppings": []
+        }
+      ]
+    }
+  }
+}

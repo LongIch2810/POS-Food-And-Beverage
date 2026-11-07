@@ -109,23 +109,49 @@ test('BR-71 OWNER selects a real branch before opening a cashier shift', async (
 
 test('BR-16 POS gate uses session branch and reloads the current API shift after opening', async () => {
   let current = null;
-  const session = { user: { id: 'cashier', branch_id: branchId }, permissions: ['shift.read'] };
-  const screen = mount('pos/PosScreen.tsx', 'PosScreen', {}, {
+  const session = { user: { id: 'cashier', branch_id: branchId }, permissions: ['shift.read', 'pos.sell'] };
+  const screen = mount('pos/LivePosScreen.tsx', 'LivePosScreen', {}, {
     '/AuthContext': { useAuth: () => ({ session, isOffline: false }) },
-    '/ToastContext': { useToast: () => ({ showToast() {} }) },
     '/shiftService': { shiftService: { getCurrentShift: async () => current } },
-    '/mockEngine': { MockEngine: { getCurrentUser: () => ({ store_id: 'demo-store' }), getEffectiveBranchId: () => 'branch-nl' } },
-    '/mockStorage': { mockStorage: { subscribe: () => () => {}, getState: () => ({ invoices: [], tables: [] }) } },
-    '/posService': { posService: { getMenuData: () => ({ categories: [], products: [], productSizes: [], toppings: [], categoryToppings: [] }), getTablesWithStatus: () => [] } },
+    '/menuService': { menuService: { getAllCategories: async () => [], getAllProducts: async () => [], getAllToppings: async () => [] } },
+    '/organizationService': { organizationService: { getTables: async () => ({ data: [], meta: { nextCursor: null } }) } },
+    '/salesService': { salesService: { listOpen: async () => ({ data: [], meta: { nextCursor: null } }) } },
     '/formatters': { formatVND: String },
   });
   await screen.flush();
   const gate = screen.find('OpenShiftGate');
   assert.equal(gate.props.branchId, branchId);
-  current = { id: 'real-shift', status: 'OPEN', shiftType: 'CASHIER', startedAt: new Date().toISOString() };
+  current = { id: 'real-shift', status: 'OPEN', shiftType: 'CASHIER', branchId, startedAt: new Date().toISOString() };
   gate.props.onShiftOpened();
   await screen.flush();
   assert.equal(screen.find('OpenShiftGate'), undefined);
+});
+
+test('PB-07 lost add response reloads invoice detail before another write', async () => {
+  const invoiceId = 'invoice-1';
+  const session = { user: { id: 'cashier', branch_id: branchId }, permissions: ['pos.sell', 'invoice.read'] };
+  let persisted = false;
+  const detail = () => ({ id: invoiceId, invoiceCode: 'HDA1B2C3D4', branchId, tableId: null, orderType: 'TAKEAWAY',
+    status: 'OPEN', totalAmount: persisted ? 10000 : 0, items: persisted ? [{ id: 'item-1', productName: 'Trà', sizeName: 'M',
+      quantity: 1, lineTotal: 10000, toppings: [] }] : [] });
+  const screen = mount('pos/LivePosScreen.tsx', 'LivePosScreen', { initialInvoiceId: invoiceId }, {
+    '/AuthContext': { useAuth: () => ({ session, isOffline: false }) },
+    '/shiftService': { shiftService: { getCurrentShift: async () => ({ id: 'shift', branchId, shiftType: 'CASHIER', status: 'OPEN' }) } },
+    '/menuService': { menuService: { getAllCategories: async () => [{ id: 'cat', isActive: true, name: 'Đồ uống' }],
+      getAllProducts: async () => [{ id: 'product', categoryId: 'cat', isActive: true, name: 'Trà', sizes: [{ id: 'size', isActive: true, sizeName: 'M', price: 10000 }] }],
+      getAllToppings: async () => [], getCategoryToppings: async () => [] } },
+    '/organizationService': { organizationService: { getTables: async () => ({ data: [], meta: { nextCursor: null } }) } },
+    '/salesService': { salesService: { listOpen: async () => ({ data: [{ id: invoiceId, tableId: null }], meta: { nextCursor: null } }),
+      get: async () => detail(), addItem: async () => { persisted = true; throw new Error('NETWORK_ERROR'); } } },
+    '/formatters': { formatVND: String },
+  });
+  await screen.flush();
+  assert.ok(screen.text(screen.find('aside')).includes('Tổng: 0'));
+  await screen.find('button', props => screen.text(props.children).includes('Trà')).props.onClick();
+  await screen.flush();
+  await screen.find('button', props => screen.text(props.children).includes('Thêm vào đơn')).props.onClick();
+  await screen.flush();
+  assert.ok(screen.text(screen.find('aside')).includes('Tổng: 10000'), 'reloaded detail reflects committed item');
 });
 
 test('BR-71 OWNER check-in STAFF sends selected branch', async () => {

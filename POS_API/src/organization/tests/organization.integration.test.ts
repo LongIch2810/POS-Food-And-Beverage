@@ -238,7 +238,7 @@ test('PB-04 organization and staff HTTP with PostgreSQL', { timeout: 180_000 }, 
         t.diagnostic(JSON.stringify({ case: 'USR-02', db: 'before/after role change', before: beforeRoleChange, after: await snapshots(staffId) }));
         for (const session of [deviceA, deviceB]) assert.equal((await request(session, '/auth/me')).status, 401);
         const cashier = await login('staff', staffPassword);
-        assert.equal((await request(cashier, '/dining-tables')).status, 403);
+        assert.equal((await request(cashier, '/dining-tables')).status, 200, 'CASHIER can read tables without table.manage');
         assert.equal((await request(owner, `/users/${staffId}`, 'PATCH', { role: 'CASHIER' })).status, 200);
         assert.equal((await request(cashier, '/auth/me')).status, 200, 'no-op preserves session');
         assert.equal((await request(owner, `/users/${staffId}`, 'PATCH', { isActive: false })).status, 200);

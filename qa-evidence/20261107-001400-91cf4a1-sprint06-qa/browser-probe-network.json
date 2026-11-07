@@ -1,0 +1,68 @@
+[
+  {
+    "at": "2026-11-07T04:04:25.709Z",
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 401
+  },
+  {
+    "at": "2026-11-07T04:04:25.712Z",
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 401
+  },
+  {
+    "at": "2026-11-07T04:04:25.741Z",
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 401
+  },
+  {
+    "at": "2026-11-07T04:04:25.747Z",
+    "method": "GET",
+    "path": "/api/v1/auth/csrf",
+    "status": 401
+  },
+  {
+    "at": "2026-11-07T04:04:25.753Z",
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 401
+  },
+  {
+    "at": "2026-11-07T04:04:25.759Z",
+    "method": "GET",
+    "path": "/api/v1/auth/csrf",
+    "status": 401
+  },
+  {
+    "at": "2026-11-07T04:04:27.661Z",
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:04:27.709Z",
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:04:27.736Z",
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:04:27.766Z",
+    "method": "GET",
+    "path": "/api/v1/invoices?status=OPEN&limit=100&branchId=d2c47384-a2b7-4b40-83ae-615595b343b3",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:04:27.766Z",
+    "method": "GET",
+    "path": "/api/v1/dining-tables?limit=100&branchId=d2c47384-a2b7-4b40-83ae-615595b343b3",
+    "status": 200
+  }
+]

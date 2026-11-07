@@ -1,0 +1,156 @@
+﻿ M .gitignore
+ M POS_API/src/app.module.ts
+ M POS_API/src/auth/tests/auth.integration.test.ts
+ M POS_API/src/database/data-source.ts
+ M POS_API/src/foundation.test.ts
+ M POS_API/src/menu/menu.service.ts
+ M POS_API/src/organization/http/organization.controller.ts
+ M POS_API/src/organization/tests/organization.acceptance.test.ts
+ M POS_API/src/organization/tests/organization.integration.test.ts
+ M POS_API/src/shifts/shifts.service.ts
+ M POS_UI/src/app/App.tsx
+ M POS_UI/src/app/navigation.ts
+ M POS_UI/src/types/auth.ts
+ M POS_UI/test/shift-screen.test.mjs
+ M docs/PRODUCT_BACKLOG.md
+?? POS_API/src/database/migrations/20261106000000-Sales.ts
+?? POS_API/src/sales/entities/invoice-item-topping.entity.ts
+?? POS_API/src/sales/entities/invoice-item.entity.ts
+?? POS_API/src/sales/entities/invoice.entity.ts
+?? POS_API/src/sales/http/sales.dto.ts
+?? POS_API/src/sales/sales.controller.ts
+?? POS_API/src/sales/sales.module.ts
+?? POS_API/src/sales/sales.service.ts
+?? POS_API/src/sales/tests/sales.integration.test.ts
+?? POS_UI/src/features/pos/LivePosScreen.tsx
+?? POS_UI/src/services/salesService.ts
+?? POS_UI/test/sales-service.test.mjs
+?? errors/2026-11-06-pb07-active-resource-race.md
+?? errors/2026-11-06-pb07-inactive-branch-cancel.md
+?? errors/2026-11-06-pb07-lost-mutation-response.md
+?? errors/2026-11-06-pb07-sold-topping-delete.md
+?? errors/2026-11-06-pb07-uppercase-topping.md
+?? plans/completed/2026-11-06-sprint-06-open-orders.md
+?? qa-evidence/20261106-164335-91cf4a1-pb07-tdd-red/run.md
+?? qa-evidence/20261106-164601-91cf4a1-pb07-tdd-red-sandbox/backend-test.log.gz
+?? qa-evidence/20261106-164601-91cf4a1-pb07-tdd-red-sandbox/run.md
+?? qa-evidence/20261106-165414-91cf4a1-pb07-backend-green-check/backend-test.log.gz
+?? qa-evidence/20261106-165414-91cf4a1-pb07-backend-green-check/run.md
+?? qa-evidence/20261106-170041-91cf4a1-pb07-backend-regression/backend-retest.log.gz
+?? qa-evidence/20261106-170041-91cf4a1-pb07-backend-regression/backend-test.log.gz
+?? qa-evidence/20261106-170041-91cf4a1-pb07-backend-regression/review1-red.log.gz
+?? qa-evidence/20261106-170041-91cf4a1-pb07-backend-regression/run.md
+?? qa-evidence/20261106-174110-91cf4a1-pb07-review1-green/backend-test.log.gz
+?? qa-evidence/20261106-174110-91cf4a1-pb07-review1-green/run.md
+?? qa-evidence/20261106-174949-91cf4a1-pb07-ui-review2/run.md
+?? qa-evidence/20261106-174949-91cf4a1-pb07-ui-review2/ui-build.log
+?? qa-evidence/20261106-174949-91cf4a1-pb07-ui-review2/ui-test.log
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/api-end.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/api-server.log
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/api-start.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/backend-end.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/backend-exit.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/backend-log.sha256
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/backend-start.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/backend-test-list.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/backend-test.log.gz
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-195-request-body.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-195-response-body.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-197-request-body.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-197-response-body.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-199-request-body.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-199-response-body.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-99-request-body.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-after-cancel.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-after-login.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-after-logout.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-after-open-shift.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-after-reload.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-after-transfer.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-before-transfer.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-cashier-b-after-switch.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-cashier-b-open-list.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-db-after-cancel.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-db-before-table.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-item-modal.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-loading.png
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-login-before.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-network-01.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-network-02.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-network-03.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-network-04.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-network-05.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-network-error.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-network-error.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-reload-open-list.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-reload-order-detail.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-session-metadata-after-logout.json
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-session-metadata-before-logout.json
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-table-a-created.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-table-a-menu.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-table-before.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-table-item-modal.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-takeaway-created.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/browser-takeaway-item-added.yml
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/commit-final.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/commit.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/db-baseline.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/db-invoice-code-constraints.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/fixture.cjs
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/git-status-final.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/git-status-short.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-api-end.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-api-exit.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-api-start.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-api.cjs
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-api.log
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-edge-end.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-edge-exit.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-edge-start.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-edge.cjs
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-edge.log
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-extra-end.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-extra-exit.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-extra-retry-end.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-extra-retry-exit.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-extra-retry-start.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-extra-retry.log
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-extra-start.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-extra.cjs
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-extra.log
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-postcancel-end.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-postcancel-exit.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-postcancel-start.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-postcancel.cjs
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-postcancel.log
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-scope-end.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-scope-exit.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-scope-start.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-scope.cjs
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-scope.log
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-transfer-end.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-transfer-exit.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-transfer-start.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-transfer.cjs
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/manual-transfer.log
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/matrix.md
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/report.md
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/run.md
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/ui-build-end.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/ui-build-exit.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/ui-build-start.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/ui-build.log
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/ui-end.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/ui-exit.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/ui-start.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/ui-test-list.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/ui-test.log
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/vite-end.txt
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/vite-server.log
+?? qa-evidence/20261106-175111-91cf4a1-pb07-qa/vite-start.txt
+?? qa-evidence/20261107-001400-91cf4a1-sprint06-qa/commit-before.txt
+?? specs/sales.md
+?? sprints/sprint-06/SPRINT.md
+?? tasks/active/2026-11-07-sprint-06-qa.md
+?? tasks/completed/2026-11-06-create-sprint-06.md
+?? tasks/completed/2026-11-06-pb07-open-orders.md

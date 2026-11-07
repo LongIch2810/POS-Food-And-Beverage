@@ -1,0 +1,9 @@
+{
+  "query": "SELECT subtotal,total_amount FROM invoices WHERE id=$1",
+  "rows": [
+    {
+      "subtotal": "10000",
+      "total_amount": "10000"
+    }
+  ]
+}

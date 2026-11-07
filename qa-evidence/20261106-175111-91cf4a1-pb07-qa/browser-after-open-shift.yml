@@ -1,0 +1,39 @@
+- generic [ref=e2]:
+  - generic [ref=e78]:
+    - navigation "Điều hướng chính" [ref=e79]:
+      - generic "Hệ thống Cà phê F&B" [ref=e80]:
+        - img "Logo Phin Cà Phê" [ref=e81]
+      - button "Bán hàng" [ref=e88] [cursor=pointer]
+      - button "Sơ đồ bàn" [ref=e94] [cursor=pointer]
+      - button "Hóa đơn" [ref=e102] [cursor=pointer]
+      - button "Ca làm" [ref=e108] [cursor=pointer]
+      - button "Thực đơn" [ref=e114] [cursor=pointer]
+    - generic [ref=e122]:
+      - banner [ref=e123]:
+        - generic [ref=e124]: Chi nhánh Nam Lý
+        - generic [ref=e126]: Ca thu ngân (0 phút)
+        - generic [ref=e132]:
+          - generic [ref=e133]:
+            - generic [ref=e134]: Thu ngân A
+            - generic [ref=e135]: Thu ngân
+          - button "Đăng xuất" [ref=e136] [cursor=pointer]
+      - main [ref=e141]:
+        - generic [ref=e163]:
+          - main [ref=e164]:
+            - generic [ref=e165]:
+              - button "Thực đơn" [ref=e166]
+              - button "Sơ đồ bàn" [ref=e167]
+              - button "Đơn đang mở" [ref=e168]
+              - button "Tải lại đơn" [ref=e169]
+            - button "Đồ uống" [ref=e171]
+            - paragraph [ref=e172]:
+              - text: Chọn bàn hoặc mở đơn mang đi trước khi thêm món.
+              - button "Tạo đơn mang đi" [ref=e173]
+            - button [disabled] [ref=e175]:
+              - strong [ref=e176]: Trà thử
+              - text: 10.000đ
+          - complementary [ref=e177]:
+            - paragraph [ref=e178]: Chưa chọn đơn. Mở sơ đồ bàn hoặc danh sách đơn đang mở.
+  - status [ref=e180]:
+    - generic [ref=e185]: Mở ca thu ngân thành công! Bắt đầu phiên bán hàng.
+    - button "Đóng thông báo" [ref=e186] [cursor=pointer]

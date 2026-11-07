@@ -1,0 +1,31 @@
+60. [GET] http://localhost:5173/api/v1/auth/me => [401] Unauthorized
+61. [GET] http://localhost:5173/api/v1/auth/me => [401] Unauthorized
+62. [GET] http://localhost:5173/api/v1/auth/me => [401] Unauthorized
+63. [GET] http://localhost:5173/api/v1/auth/csrf => [401] Unauthorized
+67. [GET] http://localhost:5173/api/v1/auth/me => [401] Unauthorized
+68. [GET] http://localhost:5173/api/v1/auth/csrf => [401] Unauthorized
+75. [POST] http://localhost:5173/api/v1/auth/login => [200] OK
+76. [GET] http://localhost:5173/api/v1/auth/me => [200] OK
+77. [GET] http://localhost:5173/api/v1/work-shifts/current => [200] OK
+78. [GET] http://localhost:5173/api/v1/categories?limit=100 => [200] OK
+79. [GET] http://localhost:5173/api/v1/products?limit=100 => [200] OK
+80. [GET] http://localhost:5173/api/v1/toppings?limit=100 => [200] OK
+81. [GET] http://localhost:5173/api/v1/dining-tables?limit=100&branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+82. [GET] http://localhost:5173/api/v1/invoices?status=OPEN&limit=100&branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+83. [GET] http://localhost:5173/api/v1/work-shifts/current => [200] OK
+84. [GET] http://localhost:5173/api/v1/work-shifts/current => [200] OK
+85. [GET] http://localhost:5173/api/v1/categories?limit=100 => [200] OK
+86. [GET] http://localhost:5173/api/v1/products?limit=100 => [200] OK
+87. [GET] http://localhost:5173/api/v1/toppings?limit=100 => [200] OK
+88. [GET] http://localhost:5173/api/v1/dining-tables?limit=100&branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+89. [GET] http://localhost:5173/api/v1/invoices?status=OPEN&limit=100&branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+90. [GET] http://localhost:5173/api/v1/work-shifts/current => [200] OK
+91. [GET] http://localhost:5173/api/v1/work-shifts/opening-cash-info?branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+92. [GET] http://localhost:5173/api/v1/work-shifts/opening-cash-info?branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+96. [POST] http://localhost:5173/api/v1/work-shifts => [201] Created
+97. [GET] http://localhost:5173/api/v1/work-shifts/current => [200] OK
+98. [GET] http://localhost:5173/api/v1/work-shifts/current => [200] OK
+99. [POST] http://localhost:5173/api/v1/invoices => [201] Created
+100. [GET] http://localhost:5173/api/v1/invoices?status=OPEN&limit=100&branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+
+Note: 71 static requests not shown, run with "static" option to see them.

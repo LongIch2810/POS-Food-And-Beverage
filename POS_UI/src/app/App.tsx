@@ -8,7 +8,7 @@ import { ForcePasswordModal } from '../features/auth/ForcePasswordModal';
 import { LoginScreen } from '../features/auth/LoginScreen';
 
 // Features
-import { PosScreen } from '../features/pos/PosScreen';
+import { LivePosScreen } from '../features/pos/LivePosScreen';
 import { InvoicesScreen } from '../features/invoices/InvoicesScreen';
 import { ShiftsScreen } from '../features/shifts/ShiftsScreen';
 import { ProductsScreen } from '../features/products/ProductsScreen';
@@ -70,9 +70,10 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
   const renderContent = () => {
     switch (currentTab) {
       case 'pos':
-        if (!has('pos.sell')) return <AccessDenied message="Yêu cầu quyền bán hàng (pos.sell)." />;
+        if (!has('pos.sell') && !has('invoice.read')) return <AccessDenied message="Yêu cầu quyền đọc đơn hoặc bán hàng." />;
         return (
-          <PosScreen
+          <LivePosScreen
+            key={`${session.user.id}:${session.user.branch_id}:${session.permissions.join(',')}`}
             activeMode="pos"
             initialInvoiceId={targetInvoiceId}
             onSwitchToTables={() => setCurrentTab('tables')}
@@ -80,9 +81,10 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
           />
         );
       case 'tables':
-        if (!has('pos.sell') && !has('table.manage')) return <AccessDenied message="Yêu cầu quyền pos.sell hoặc table.manage." />;
+        if (!has('pos.sell') && !has('table.read')) return <AccessDenied message="Yêu cầu quyền đọc bàn hoặc bán hàng." />;
         return (
-          <PosScreen
+          <LivePosScreen
+            key={`${session.user.id}:${session.user.branch_id}:${session.permissions.join(',')}`}
             activeMode="tables"
             initialInvoiceId={targetInvoiceId}
             onSwitchToTables={() => setCurrentTab('tables')}
@@ -90,7 +92,7 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
           />
         );
       case 'invoices':
-        if (!has('pos.sell') && !has('invoice.cancel_open') && !has('invoice.cancel_paid')) {
+        if (!has('invoice.read') && !has('invoice.cancel_open') && !has('invoice.cancel_paid')) {
           return <AccessDenied message="Yêu cầu quyền xem hoặc xử lý hóa đơn." />;
         }
         return <InvoicesScreen />;
@@ -139,7 +141,7 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
         );
       default:
         return (
-          <PosScreen
+          <LivePosScreen
             activeMode="pos"
             onSwitchToTables={() => setCurrentTab('tables')}
             onSwitchToPos={() => setCurrentTab('pos')}
@@ -150,7 +152,7 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {currentTab !== 'settings' && currentTab !== 'products' && currentTab !== 'shifts' && !currentTab.startsWith('platform_') && (
+      {currentTab !== 'pos' && currentTab !== 'tables' && currentTab !== 'settings' && currentTab !== 'products' && currentTab !== 'shifts' && !currentTab.startsWith('platform_') && (
         <div role="status" style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning)', padding: '8px 16px', textAlign: 'center' }}>
           Màn hình này dùng dữ liệu mẫu, chưa kết nối API.
         </div>

@@ -1,0 +1,12 @@
+{
+  "query": "SELECT id,status,table_id,subtotal,cancel_reason FROM invoices WHERE id=$1",
+  "rows": [
+    {
+      "id": "6b32d3a7-6be9-44c3-88f5-51d2a8963714",
+      "status": "OPEN",
+      "table_id": "163a120e-85b2-4d4f-80c2-e3206741178b",
+      "subtotal": "10000",
+      "cancel_reason": null
+    }
+  ]
+}

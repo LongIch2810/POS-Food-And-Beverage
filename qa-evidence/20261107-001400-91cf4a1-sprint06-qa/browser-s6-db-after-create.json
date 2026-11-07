@@ -1,0 +1,13 @@
+{
+  "query": "SELECT id,invoice_code,order_type,status,table_id,subtotal FROM invoices WHERE id=$1",
+  "rows": [
+    {
+      "id": "87fd47a3-e519-465e-87e3-8070062be618",
+      "invoice_code": "HDYCP3I7V8",
+      "order_type": "TAKEAWAY",
+      "status": "OPEN",
+      "table_id": null,
+      "subtotal": "0"
+    }
+  ]
+}

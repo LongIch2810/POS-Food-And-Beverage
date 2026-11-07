@@ -1,0 +1,28 @@
+175. [GET] http://localhost:5173/api/v1/auth/me => [200] OK
+176. [GET] http://localhost:5173/api/v1/auth/me => [200] OK
+177. [GET] http://localhost:5173/api/v1/work-shifts/current => [200] OK
+178. [GET] http://localhost:5173/api/v1/categories?limit=100 => [200] OK
+179. [GET] http://localhost:5173/api/v1/products?limit=100 => [200] OK
+180. [GET] http://localhost:5173/api/v1/toppings?limit=100 => [200] OK
+181. [GET] http://localhost:5173/api/v1/dining-tables?limit=100&branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+182. [GET] http://localhost:5173/api/v1/invoices?status=OPEN&limit=100&branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+183. [GET] http://localhost:5173/api/v1/work-shifts/current => [200] OK
+184. [GET] http://localhost:5173/api/v1/work-shifts/current => [200] OK
+185. [GET] http://localhost:5173/api/v1/categories?limit=100 => [200] OK
+186. [GET] http://localhost:5173/api/v1/products?limit=100 => [200] OK
+187. [GET] http://localhost:5173/api/v1/toppings?limit=100 => [200] OK
+188. [GET] http://localhost:5173/api/v1/dining-tables?limit=100&branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+189. [GET] http://localhost:5173/api/v1/invoices?status=OPEN&limit=100&branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+190. [GET] http://localhost:5173/api/v1/work-shifts/current => [200] OK
+191. [GET] http://localhost:5173/api/v1/invoices/5a3ff4fa-930f-4dfe-b95f-d1d87f5d47af => [200] OK
+192. [POST] http://localhost:5173/api/v1/invoices => [201] Created
+193. [GET] http://localhost:5173/api/v1/invoices?status=OPEN&limit=100&branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+194. [GET] http://localhost:5173/api/v1/categories/630e4749-4c15-43c0-8184-72014cf8b4a9/toppings => [200] OK
+195. [POST] http://localhost:5173/api/v1/invoices/f1b3cf40-c90d-4df0-b3f7-c200a4b30fe9/items => [201] Created
+196. [GET] http://localhost:5173/api/v1/invoices?status=OPEN&limit=100&branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+197. [POST] http://localhost:5173/api/v1/invoices/f1b3cf40-c90d-4df0-b3f7-c200a4b30fe9/transfer-table => [200] OK
+198. [GET] http://localhost:5173/api/v1/invoices?status=OPEN&limit=100&branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+199. [POST] http://localhost:5173/api/v1/invoices/f1b3cf40-c90d-4df0-b3f7-c200a4b30fe9/cancel => [200] OK
+200. [GET] http://localhost:5173/api/v1/invoices?status=OPEN&limit=100&branchId=4f5474e5-9281-4c17-b457-d4b650d35e35 => [200] OK
+
+Note: 71 static requests not shown, run with "static" option to see them.

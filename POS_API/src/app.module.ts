@@ -12,9 +12,10 @@ import { OrganizationModule } from './organization/organization.module';
 import { UsersModule } from './users/users.module';
 import { MenuModule } from './menu/menu.module';
 import { ShiftsModule } from './shifts/shifts.module';
+import { SalesModule } from './sales/sales.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, PlatformModule, OrganizationModule, UsersModule, MenuModule, ShiftsModule],
+  imports: [DatabaseModule, AuthModule, PlatformModule, OrganizationModule, UsersModule, MenuModule, ShiftsModule, SalesModule],
   controllers: [HealthController],
   providers: [{ provide: APP_FILTER, useClass: ApiErrorFilter }],
 })

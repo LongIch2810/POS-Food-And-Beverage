@@ -1,0 +1,11 @@
+{
+  "query": "SELECT table_id,status,subtotal,total_amount FROM invoices WHERE id=$1",
+  "rows": [
+    {
+      "table_id": "5d1c5c0b-e79f-4836-ba7f-6de79ba3c35d",
+      "status": "OPEN",
+      "subtotal": "10000",
+      "total_amount": "10000"
+    }
+  ]
+}

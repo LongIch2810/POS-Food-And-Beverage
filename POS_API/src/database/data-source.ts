@@ -17,6 +17,9 @@ import { Topping } from '../menu/entities/topping.entity';
 import { User } from '../auth/entities/user.entity';
 import { WorkShift } from '../shifts/entities/work-shift.entity';
 import { CashReconciliation } from '../shifts/entities/cash-reconciliation.entity';
+import { Invoice } from '../sales/entities/invoice.entity';
+import { InvoiceItem } from '../sales/entities/invoice-item.entity';
+import { InvoiceItemTopping } from '../sales/entities/invoice-item-topping.entity';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is required');
@@ -39,6 +42,9 @@ export const entities = [
   CategoryTopping,
   WorkShift,
   CashReconciliation,
+  Invoice,
+  InvoiceItem,
+  InvoiceItemTopping,
 ];
 
 export const dataSource = new DataSource({

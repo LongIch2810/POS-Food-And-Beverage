@@ -1,0 +1,262 @@
+[
+  {
+    "at": "2026-11-07T04:08:51.745Z",
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 401
+  },
+  {
+    "at": "2026-11-07T04:08:51.755Z",
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 401
+  },
+  {
+    "at": "2026-11-07T04:08:51.767Z",
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 401
+  },
+  {
+    "at": "2026-11-07T04:08:51.776Z",
+    "method": "GET",
+    "path": "/api/v1/auth/csrf",
+    "status": 401
+  },
+  {
+    "at": "2026-11-07T04:08:51.784Z",
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 401
+  },
+  {
+    "at": "2026-11-07T04:08:51.792Z",
+    "method": "GET",
+    "path": "/api/v1/auth/csrf",
+    "status": 401
+  },
+  {
+    "at": "2026-11-07T04:08:53.674Z",
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:08:53.733Z",
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:08:53.781Z",
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:08:53.820Z",
+    "method": "GET",
+    "path": "/api/v1/categories?limit=100",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:08:53.839Z",
+    "method": "GET",
+    "path": "/api/v1/toppings?limit=100",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:08:53.848Z",
+    "method": "GET",
+    "path": "/api/v1/invoices?status=OPEN&limit=100&branchId=d2c47384-a2b7-4b40-83ae-615595b343b3",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:08:53.849Z",
+    "method": "GET",
+    "path": "/api/v1/products?limit=100",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:08:53.859Z",
+    "method": "GET",
+    "path": "/api/v1/dining-tables?limit=100&branchId=d2c47384-a2b7-4b40-83ae-615595b343b3",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:08:53.869Z",
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:53.911Z",
+    "method": "GET",
+    "path": "/api/v1/categories?limit=100",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:53.924Z",
+    "method": "GET",
+    "path": "/api/v1/toppings?limit=100",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:53.937Z",
+    "method": "GET",
+    "path": "/api/v1/invoices?status=OPEN&limit=100&branchId=d2c47384-a2b7-4b40-83ae-615595b343b3",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:53.945Z",
+    "method": "GET",
+    "path": "/api/v1/products?limit=100",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:53.948Z",
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:53.952Z",
+    "method": "GET",
+    "path": "/api/v1/dining-tables?limit=100&branchId=d2c47384-a2b7-4b40-83ae-615595b343b3",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:53.979Z",
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:54.184Z",
+    "method": "GET",
+    "path": "/api/v1/invoices/87fd47a3-e519-465e-87e3-8070062be618",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:08:54.393Z",
+    "method": "GET",
+    "path": "/api/v1/categories/cf640363-5443-4507-b235-b1b3009a52b0/toppings",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:08:54.557Z",
+    "method": "POST",
+    "path": "/api/v1/invoices/87fd47a3-e519-465e-87e3-8070062be618/items",
+    "status": 201,
+    "request": "{\"productSizeId\":\"ad9a852c-7c12-48ba-adbd-358b9985b015\",\"quantity\":1,\"toppings\":[]}",
+    "response": "{\"data\":{\"id\":\"87fd47a3-e519-465e-87e3-8070062be618\",\"invoiceCode\":\"HDYCP3I7V8\",\"branchId\":\"d2c47384-a2b7-4b40-83ae-615595b343b3\",\"workShiftId\":\"a359640b-07d0-4a85-b7a7-b5dbb716f253\",\"tableId\":null,\"orderType\":\"TAKEAWAY\",\"status\":\"OPEN\",\"subtotal\":10000,\"discountAmount\":0,\"totalAmount\":10000,\"note\":null,\"cancelReason\":null,\"cancelledAt\":null,\"createdAt\":\"2026-11-07T04:06:52.920Z\",\"updatedAt\":\"2026-11-07T04:08:54.522Z\",\"items\":[{\"id\":\"38b6a8ea-e97d-461e-8fce-5c645aef42d5\",\"productSizeId\":\"ad9a852c-7c12-48ba-adbd-358b9985b015\",\"productName\":\"Trà thử\",\"sizeName\":\"M\",\"unitPrice\":10000,\"quantity\":1,\"lineTotal\":10000,\"note\":null,\"toppings\":[]}]}}"
+  },
+  {
+    "at": "2026-11-07T04:08:54.595Z",
+    "method": "GET",
+    "path": "/api/v1/invoices?status=OPEN&limit=100&branchId=d2c47384-a2b7-4b40-83ae-615595b343b3",
+    "status": 200
+  },
+  {
+    "at": "2026-11-07T04:08:55.094Z",
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.094Z",
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.238Z",
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.244Z",
+    "method": "GET",
+    "path": "/api/v1/categories?limit=100",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.254Z",
+    "method": "GET",
+    "path": "/api/v1/toppings?limit=100",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.265Z",
+    "method": "GET",
+    "path": "/api/v1/invoices?status=OPEN&limit=100&branchId=d2c47384-a2b7-4b40-83ae-615595b343b3",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.278Z",
+    "method": "GET",
+    "path": "/api/v1/products?limit=100",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.278Z",
+    "method": "GET",
+    "path": "/api/v1/dining-tables?limit=100&branchId=d2c47384-a2b7-4b40-83ae-615595b343b3",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.321Z",
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.331Z",
+    "method": "GET",
+    "path": "/api/v1/categories?limit=100",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.341Z",
+    "method": "GET",
+    "path": "/api/v1/toppings?limit=100",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.343Z",
+    "method": "GET",
+    "path": "/api/v1/invoices?status=OPEN&limit=100&branchId=d2c47384-a2b7-4b40-83ae-615595b343b3",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.358Z",
+    "method": "GET",
+    "path": "/api/v1/products?limit=100",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.359Z",
+    "method": "GET",
+    "path": "/api/v1/dining-tables?limit=100&branchId=d2c47384-a2b7-4b40-83ae-615595b343b3",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.372Z",
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:55.406Z",
+    "method": "GET",
+    "path": "/api/v1/work-shifts/current",
+    "status": 304
+  },
+  {
+    "at": "2026-11-07T04:08:56.098Z",
+    "method": "GET",
+    "path": "/api/v1/invoices/87fd47a3-e519-465e-87e3-8070062be618",
+    "status": 200
+  }
+]

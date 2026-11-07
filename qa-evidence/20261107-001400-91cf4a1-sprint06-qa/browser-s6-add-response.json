@@ -1,0 +1,38 @@
+{
+  "status": 201,
+  "method": "POST",
+  "path": "/api/v1/invoices/87fd47a3-e519-465e-87e3-8070062be618/items",
+  "request": "{\"productSizeId\":\"ad9a852c-7c12-48ba-adbd-358b9985b015\",\"quantity\":1,\"toppings\":[]}",
+  "response": {
+    "data": {
+      "id": "87fd47a3-e519-465e-87e3-8070062be618",
+      "invoiceCode": "HDYCP3I7V8",
+      "branchId": "d2c47384-a2b7-4b40-83ae-615595b343b3",
+      "workShiftId": "a359640b-07d0-4a85-b7a7-b5dbb716f253",
+      "tableId": null,
+      "orderType": "TAKEAWAY",
+      "status": "OPEN",
+      "subtotal": 10000,
+      "discountAmount": 0,
+      "totalAmount": 10000,
+      "note": null,
+      "cancelReason": null,
+      "cancelledAt": null,
+      "createdAt": "2026-11-07T04:06:52.920Z",
+      "updatedAt": "2026-11-07T04:08:54.522Z",
+      "items": [
+        {
+          "id": "38b6a8ea-e97d-461e-8fce-5c645aef42d5",
+          "productSizeId": "ad9a852c-7c12-48ba-adbd-358b9985b015",
+          "productName": "Trà thử",
+          "sizeName": "M",
+          "unitPrice": 10000,
+          "quantity": 1,
+          "lineTotal": 10000,
+          "note": null,
+          "toppings": []
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,39 @@
+- generic [ref=f1e150]:
+  - generic [ref=f1e151]:
+    - generic [ref=f1e152]:
+      - generic [ref=f1e153]:
+        - img "Logo Phin Cà Phê" [ref=f1e155]
+        - generic [ref=f1e162]:
+          - heading "POS & Quản lý Kho F&B" [level=1] [ref=f1e163]
+          - paragraph [ref=f1e164]: Cà phê • Trà sữa • Quán ăn
+      - paragraph [ref=f1e165]: Hệ thống bán hàng quầy cảm ứng và quản trị tồn kho đa chi nhánh theo thời gian thực.
+      - generic [ref=f1e166]:
+        - generic [ref=f1e173]:
+          - generic [ref=f1e174]: Bán hàng cảm ứng tại quầy
+          - generic [ref=f1e175]: Tối ưu tablet ngang, chọn món dưới 2 chạm, sơ đồ bàn trực quan.
+        - generic [ref=f1e181]:
+          - generic [ref=f1e182]: Đối soát ca đếm mù
+          - generic [ref=f1e183]: Mỗi chi nhánh 1 ca mở, bàn giao tiền mặt đếm mù chống thất thoát.
+        - generic [ref=f1e196]:
+          - generic [ref=f1e197]: Định mức trừ kho tự động
+          - generic [ref=f1e198]: Trừ nguyên vật liệu theo công thức từng ly nước, cảnh báo tồn kho an toàn.
+    - generic [ref=f1e199]:
+      - generic [ref=f1e200]: Bản quyền © Hệ thống F&B
+      - generic [ref=f1e201]: Múi giờ Asia/Ho_Chi_Minh
+  - generic [ref=f1e202]:
+    - generic [ref=f1e203]:
+      - heading "Đăng nhập tài khoản" [level=2] [ref=f1e204]
+      - paragraph [ref=f1e205]: Nhập tên đăng nhập và mật khẩu được cấp bởi cửa hàng
+    - generic [ref=f1e206]:
+      - generic [ref=f1e207]:
+        - generic [ref=f1e208]: Tên đăng nhập
+        - textbox "Tên đăng nhập" [ref=f1e210]:
+          - /placeholder: Nhập tên đăng nhập...
+      - generic [ref=f1e211]:
+        - generic [ref=f1e212]: Mật khẩu
+        - generic [ref=f1e213]:
+          - textbox "Mật khẩu" [ref=f1e214]:
+            - /placeholder: Nhập mật khẩu...
+          - button "Hiện mật khẩu" [ref=f1e215] [cursor=pointer]
+      - button "Đăng nhập hệ thống" [ref=f1e219] [cursor=pointer]
+    - generic [ref=f1e221]: Mật khẩu mã hóa an toàn. Tài khoản mới tạo bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.

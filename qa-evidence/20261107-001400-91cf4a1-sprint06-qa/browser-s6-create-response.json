@@ -1,0 +1,26 @@
+{
+  "status": 201,
+  "method": "POST",
+  "path": "/api/v1/invoices",
+  "request": "{\"orderType\":\"TAKEAWAY\"}",
+  "response": {
+    "data": {
+      "id": "87fd47a3-e519-465e-87e3-8070062be618",
+      "invoiceCode": "HDYCP3I7V8",
+      "branchId": "d2c47384-a2b7-4b40-83ae-615595b343b3",
+      "workShiftId": "a359640b-07d0-4a85-b7a7-b5dbb716f253",
+      "tableId": null,
+      "orderType": "TAKEAWAY",
+      "status": "OPEN",
+      "subtotal": 0,
+      "discountAmount": 0,
+      "totalAmount": 0,
+      "note": null,
+      "cancelReason": null,
+      "cancelledAt": null,
+      "createdAt": "2026-11-07T04:06:52.920Z",
+      "updatedAt": "2026-11-07T04:06:52.920Z",
+      "items": []
+    }
+  }
+}
