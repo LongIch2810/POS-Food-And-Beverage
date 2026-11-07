@@ -59,3 +59,9 @@
 - Áp dụng: Lấy khóa bi quan (pessimistic write) trong PostgreSQL và chạy bộ test tích hợp backend.
 - Bài học: (1) PostgreSQL cấm `FOR UPDATE` trên nullable side của `LEFT JOIN`. Luôn tách thành câu lệnh khóa base entity (`innerJoin`) với `.setLock('pessimistic_write', undefined, ['alias'])`, rồi đọc quan hệ nullable ở câu lệnh tiếp theo trong cùng transaction. (2) Runner `node --test` mặc định chạy song song các file test; khi nhiều integration test cùng chạy trên một DB PostgreSQL có khóa dòng dài sẽ gây nghẽn `statement_timeout (57014)`. Cần chỉ định `--test-concurrency=1` để chạy tuần tự các suite kiểm thử cơ sở dữ liệu.
 - Căn cứ: Sửa lỗi 500 đóng ca trong `shifts.service.ts` (SHIFT-01) và cấu hình `--test-concurrency=1` trong `POS_API/package.json` tại Sprint 5. Xác minh qua 65/65 pass toàn bộ 15 test suites `npm --prefix POS_API test`.
+
+## Đọc đúng kết quả UPDATE RETURNING của TypeORM PostgreSQL
+
+- Áp dụng: Dùng `manager.query()` hoặc QueryRunner với SQL `UPDATE ... RETURNING *` trong backend.
+- Bài học: Kết quả là `[rows, rowCount]`; lấy `rows[0]` để đọc bản ghi, không destructure phần tử đầu trực tiếp thành row. Thêm test PATCH qua PostgreSQL khi thay đổi mẫu truy vấn này.
+- Căn cứ: `errors/2026-11-07-sprint07-update-returning.md`; test đỏ `qa-evidence/20261107-sprint07-backend-check/review-green.log` và suite xanh 74/74 ở `qa-evidence/20261107-204250-5ada010f-s7-sprint-qa/api-test-log.zip`.

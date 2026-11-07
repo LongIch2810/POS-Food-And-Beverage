@@ -30,6 +30,8 @@ export type PermissionCode =
   | 'invoice.cancel_open' // Hủy đơn OPEN
   | 'invoice.cancel_paid' // Hủy đơn PAID (cần quyền quản lý & ca còn mở)
   | 'inventory.view' // Xem tồn kho và sổ kho
+  | 'inventory.manage'
+  | 'promotion.manage'
   | 'report.view_shift' // Xem báo cáo ca của mình
   | 'report.view_branch' // Xem báo cáo chi nhánh của mình
   | 'report.view_all'; // Xem báo cáo toàn cửa hàng

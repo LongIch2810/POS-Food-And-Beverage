@@ -65,6 +65,8 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
   }, [JSON.stringify(availableTabs), currentTab]);
 
   const perms = session?.permissions || [];
+  const identityKey = JSON.stringify([session.user.id,session.user.store_id,session.user.branch_id,
+    session.user.role_code,session.user.must_change_password,[...perms].sort()]);
   const has = (p: string) => perms.includes(p as any);
 
   const renderContent = () => {
@@ -105,10 +107,10 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
         if (!has('menu.read') && !has('menu.manage') && !has('product.manage')) {
           return <AccessDenied message="Yêu cầu quyền xem hoặc quản lý thực đơn (menu.read hoặc menu.manage)." />;
         }
-        return <ProductsScreen />;
+        return <ProductsScreen key={identityKey} />;
       case 'inventory':
         if (!has('inventory.view')) return <AccessDenied message="Yêu cầu quyền xem kho hàng (inventory.view)." />;
-        return <InventoryScreen />;
+        return <InventoryScreen key={identityKey} />;
       case 'reports':
         if (!has('report.view_branch') && !has('report.view_all')) {
           return <AccessDenied message="Yêu cầu quyền xem báo cáo doanh thu (report.view_branch hoặc report.view_all)." />;
@@ -152,7 +154,7 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {currentTab !== 'pos' && currentTab !== 'tables' && currentTab !== 'settings' && currentTab !== 'products' && currentTab !== 'shifts' && !currentTab.startsWith('platform_') && (
+      {currentTab !== 'pos' && currentTab !== 'tables' && currentTab !== 'settings' && currentTab !== 'products' && currentTab !== 'shifts' && currentTab !== 'inventory' && !currentTab.startsWith('platform_') && (
         <div role="status" style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning)', padding: '8px 16px', textAlign: 'center' }}>
           Màn hình này dùng dữ liệu mẫu, chưa kết nối API.
         </div>

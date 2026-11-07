@@ -2,7 +2,7 @@ import type { AuthSession } from '../types/auth';
 import type { NavTab } from '../components/common/AppShell';
 
 export const canOpenSettings = (permissions: readonly string[]) =>
-  ['branch.manage', 'table.manage', 'user.manage'].some(permission => permissions.includes(permission));
+  ['branch.manage', 'table.manage', 'user.manage', 'promotion.manage'].some(permission => permissions.includes(permission));
 
 export function accessibleTabs(session: AuthSession): NavTab[] {
   const has = (permission: string) => session.permissions.includes(permission as typeof session.permissions[number]);

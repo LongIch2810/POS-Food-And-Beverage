@@ -43,9 +43,13 @@ test('PB-07 BR-16/22/24/26/74/75/90/92 invoices on PostgreSQL', { timeout: 120_0
       branchId: branch, permissions: ['pos.sell', 'invoice.read', 'invoice.cancel_open', 'table.read'], mustChangePassword: false };
     const sales = new SalesService(db);
     const dineIn = await sales.create(actor, { orderType: 'DINE_IN', tableId: tableA });
+    assert.equal(Number((await db.query('SELECT count(*)::int AS count FROM stock_movements WHERE branch_id=$1',[branch]))[0].count),0,
+      'BR-42 OPEN order must not create a stock movement');
     assert.match(dineIn.invoiceCode, /^HD[A-Z0-9]{8}$/);
     await assert.rejects(sales.create(actor, { orderType: 'DINE_IN', tableId: tableA }), (error: any) => error.getResponse().code === 'TABLE_HAS_OPEN_INVOICE');
     const withItem = await sales.addItem(actor, dineIn.id, { productSizeId: productSize, quantity: 2, toppings: [{ toppingId: topping, quantity: 1 }] });
+    assert.equal(Number((await db.query('SELECT count(*)::int AS count FROM stock_movements WHERE branch_id=$1',[branch]))[0].count),0,
+      'BR-42 editing OPEN order must not deduct stock');
     assert.equal(withItem.subtotal, 24000, 'BR-24 server price and topping');
     assert.equal(withItem.items.length, 1);
     await db.query('UPDATE product_sizes SET price=15000 WHERE id=$1', [productSize]);

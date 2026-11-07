@@ -7,6 +7,8 @@ dist-ssr/
 .playwright-mcp/
 .DS_Store
 /graphify-out/
+# QA artifacts remain local; documentation may refer to their local paths.
+/qa-evidence/
 
 # Published losslessly as .log.gz; keep the original local QA output.
 /qa-evidence/20261030-214100-9ce75dd-pb13-organization-ui/api-tests-1.log
