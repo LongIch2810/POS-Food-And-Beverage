@@ -1,6 +1,0 @@
-{
-  "url": "https://localhost:5443/",
-  "viewport": {"width": 1024, "height": 768, "scrollWidth": 1024},
-  "snapshot": "POS & Quản lý Kho F&B\n\nCà phê • Trà sữa • Quán ăn\n\nHệ thống bán hàng quầy cảm ứng và quản trị tồn kho đa chi nhánh theo thời gian thực.\n\nBán hàng cảm ứng tại quầy\nTối ưu tablet ngang, chọn món dưới 2 chạm, sơ đồ bàn trực quan.\nĐối soát ca đếm mù\nMỗi chi nhánh 1 ca mở, bàn giao tiền mặt đếm mù chống thất thoát.\nĐịnh mức trừ kho tự động\nTrừ nguyên vật liệu theo công thức từng ly nước, cảnh báo tồn kho an toàn.\nBản quyền © Hệ thống F&B\nMúi giờ Asia/Ho_Chi_Minh\nĐăng nhập tài khoản\n\nNhập tên đăng nhập và mật khẩu được cấp bởi cửa hàng\n\nTên đăng nhập\nMật khẩu\nĐăng nhập hệ thống\nMật khẩu mã hóa an toàn. Tài khoản mới tạo bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên.",
-  "file": "tablet-login.png"
-}

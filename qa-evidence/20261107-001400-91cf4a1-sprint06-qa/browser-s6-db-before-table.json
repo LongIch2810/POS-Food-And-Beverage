@@ -1,4 +1,0 @@
-{
-  "query": "SELECT id,status,table_id,subtotal FROM invoices WHERE table_id=$1 AND status='OPEN'",
-  "rows": []
-}

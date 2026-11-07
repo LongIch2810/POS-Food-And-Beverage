@@ -1,9 +1,0 @@
-239. [GET] http://localhost:5173/api/v1/platform/stores => [200] OK
-240. [GET] http://localhost:5173/api/v1/users?role=OWNER => [200] OK
-241. [GET] http://localhost:5173/api/v1/platform/stores => [200] OK
-242. [GET] http://localhost:5173/api/v1/users?role=OWNER => [200] OK
-246. [POST] http://localhost:5173/api/v1/platform/stores => [201] Created
-247. [GET] http://localhost:5173/api/v1/platform/stores => [200] OK
-248. [GET] http://localhost:5173/api/v1/users?role=OWNER => [200] OK
-
-Note: 221 static requests not shown, run with "static" option to see them.

@@ -1,2 +1,0 @@
-﻿UI 200
-API proxy 200 {"data":{"status":"ok"}}

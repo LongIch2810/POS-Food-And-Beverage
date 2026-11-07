@@ -81,3 +81,5 @@
 6. Graphify semantic update cho Markdown vừa sửa và xác minh `graphify-out/needs_update` không còn tồn tại trước khi kết thúc. Sau mốc này chuyển chính file task sang `tasks/completed/` cùng tên; không tạo bản sao active. Không có blocker còn lại cho việc đóng hồ sơ.
 
 **Bàn giao:** Sprint 07 đã đóng trong phạm vi local. Việc tiếp theo ngoài task là review tích hợp, commit/CI/push/merge khi người dùng yêu cầu và lập kế hoạch PB-09 riêng; chưa xác nhận production.
+
+**Cập nhật sau bàn giao:** Người dùng đã yêu cầu commit/push; mã Sprint 07 có ở `8bc11be770f68b3ff5944e5f8a9c65f4feaf03dd` trên `feat/sprint-07-inventory-promotions`. Báo cáo QA Markdown được đưa lên Git, artifact gốc không phải Markdown chỉ giữ local. CI của commit, merge và production chưa xác minh.

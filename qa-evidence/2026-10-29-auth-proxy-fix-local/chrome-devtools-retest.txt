@@ -1,6 +1,0 @@
-﻿Chrome DevTools MCP, 2026-10-29 12:34 +07, isolatedContext pb13-proxy-error-retest
-URL: http://localhost:5175/
-Request reqid 63: GET /api/v1/auth/me -> HTTP 500; content-type text/plain; response body empty.
-Request reqid 64: GET /api/v1/auth/me -> HTTP 500.
-Visible alert: Có lỗi xảy ra. Vui lòng thử lại.
-Expected: Vietnamese error for empty proxy response. Actual: matched.

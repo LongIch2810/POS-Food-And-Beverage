@@ -1,7 +1,0 @@
-80. [GET] http://localhost:5173/api/v1/platform/stores?page=1 => [200] OK
-81. [GET] http://localhost:5173/api/v1/users?role=OWNER&page=1 => [200] OK
-82. [GET] http://localhost:5173/api/v1/platform/stores?page=1 => [200] OK
-83. [GET] http://localhost:5173/api/v1/users?role=OWNER&page=1 => [200] OK
-84. [POST] http://localhost:5173/api/v1/platform/stores => [409] Conflict
-
-Note: 75 static requests not shown, run with "static" option to see them.

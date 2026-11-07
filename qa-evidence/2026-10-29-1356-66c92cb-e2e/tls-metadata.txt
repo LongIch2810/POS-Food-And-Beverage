@@ -1,3 +1,0 @@
-﻿temp=C:\Users\Admin\AppData\Local\Temp\pos-pb13-qa-20261029-1356
-thumbprint=1F0AAF51781F3F87B637A3F0951708FD65A4D24E
-created=2026-10-29 13:05:04 +07:00

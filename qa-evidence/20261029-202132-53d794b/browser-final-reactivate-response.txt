@@ -1,1 +1,0 @@
-{"data":{"store":{"id":"669d5244-2278-46aa-aeca-5357b42d9717","name":"QA PB03 browser 20261029-2201","phone":null,"email":null,"address":null,"status":"ACTIVE","suspendedAt":null,"suspendedReason":null,"createdAt":"2026-10-29T13:52:52.338Z","updatedAt":"2026-10-29T14:16:45.835Z"}}}

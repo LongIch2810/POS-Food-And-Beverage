@@ -1,6 +1,6 @@
 # Sprint 07 — Kho, công thức và khuyến mãi MVP
 
-**Trạng thái:** **Đã đóng ngày 07/11/2026 theo yêu cầu người dùng, kết thúc sớm trước lịch kế hoạch 13–19/11/2026.** Sprint Goal đạt trong phạm vi nghiệm thu local; QA task AC-1..7 và QA sprint S7-01..07 PASS trên sandbox. Sprint Review và retrospective tổng hợp từ hồ sơ thực thi ở cuối file; chưa có CI cho working tree dirty, chưa commit/push/merge hoặc xác nhận production. Artifact `qa-evidence/` chỉ lưu trong workspace local, không đưa lên Git theo yêu cầu người dùng; liên kết QA trong file này không có đích trên remote. **Nguồn:** [Product Backlog](../../docs/PRODUCT_BACKLOG.md) PB-08, PB-08a; [Product Overview](../../docs/PRODUCT_OVERVIEW.md) mục 5–6; [Business Rules](../../docs/BUSINESS_RULES.md) mục 11–12 và 17.
+**Trạng thái:** **Đã đóng ngày 07/11/2026 theo yêu cầu người dùng, kết thúc sớm trước lịch kế hoạch 13–19/11/2026.** Sprint Goal đạt trong phạm vi nghiệm thu local; QA task AC-1..7 và QA sprint S7-01..07 PASS trên sandbox. Sprint Review và retrospective tổng hợp từ hồ sơ thực thi ở cuối file; QA chạy trên working tree dirty; mã Sprint 07 đã commit/push ở `8bc11be770f68b3ff5944e5f8a9c65f4feaf03dd`, CI của commit chưa xác minh, chưa merge hoặc xác nhận production. Báo cáo Markdown trong `qa-evidence/` được đưa lên Git; log/script/ảnh/JSON gốc giữ local, không có đích trên remote. **Nguồn:** [Product Backlog](../../docs/PRODUCT_BACKLOG.md) PB-08, PB-08a; [Product Overview](../../docs/PRODUCT_OVERVIEW.md) mục 5–6; [Business Rules](../../docs/BUSINESS_RULES.md) mục 11–12 và 17.
 
 ## Cơ sở và quyết định phạm vi
 
@@ -26,7 +26,7 @@ Chủ cửa hàng và quản lý có thể cấu hình nguyên liệu, công th�
 
 ## Tiêu chí nghiệm thu cấp Sprint 07 — đã chốt
 
-**Trạng thái hiện tại:** S7-01..S7-07 đã được QA cấp sprint kiểm trên sandbox và kết luận PASS ngày 07/11/2026; báo cáo và artifact gốc ở `qa-evidence/20261107-204250-5ada010f-s7-sprint-qa/run.md` cùng `supplement/run.md`. Bản code còn dirty, chưa có CI cho thay đổi này. Các ô dưới đây phản ánh QA local, không phải quyết định đóng sprint. Mã S7 và nội dung tiêu chí đã chốt không đổi; task AC-1..7 có QA riêng trong cùng báo cáo.
+**Trạng thái hiện tại:** S7-01..S7-07 đã được QA cấp sprint kiểm trên sandbox và kết luận PASS ngày 07/11/2026; báo cáo và artifact gốc ở `qa-evidence/20261107-204250-5ada010f-s7-sprint-qa/run.md` cùng `supplement/run.md`. Snapshot QA là working tree dirty; mã đã commit/push sau đó, CI của commit chưa xác minh. Các ô dưới đây phản ánh QA local, không phải quyết định đóng sprint. Mã S7 và nội dung tiêu chí đã chốt không đổi; task AC-1..7 có QA riêng trong cùng báo cáo.
 
 | Mã | Tiêu chí sprint | Nguồn | Bằng chứng cần thu | Nghiệm thu |
 | --- | --- | --- | --- | --- |
@@ -48,13 +48,13 @@ Chủ cửa hàng và quản lý có thể cấu hình nguyên liệu, công th�
 
 1. **Refinement spec:** Product Owner đã chốt `specs/inventory.md` và `specs/promotions.md` trước code; hai spec ghi route/payload/lỗi/quyền, cách ngưng dùng và khóa unit, sổ kho và làm tròn giảm giá. AC task đã khóa trước TDD trong [task triển khai](../../tasks/completed/2026-11-07-sprint-07-implementation.md).
 2. **Thiết kế UI PB-13:** Màn Kho/Recipe/Khuyến mãi đã nối API thật theo spec/plan, kiểm browser trên UI cuối, network và DB trước/sau ở [QA Sprint 07](../../qa-evidence/20261107-204250-5ada010f-s7-sprint-qa/run.md). UI demo/mock không được dùng làm chứng cứ backend.
-3. **Phụ thuộc tích hợp:** Nhánh triển khai `feat/sprint-07-inventory-promotions` lấy nền `5ada010f61d76ae5a0bf55a2224081513ad762bb` đã có PB-07. Sprint 06 chưa merge `master`; code Sprint 07 còn dirty và chưa commit/push, nên Review cần xác nhận trạng thái Git trước bước tích hợp.
+3. **Phụ thuộc tích hợp:** Nhánh triển khai `feat/sprint-07-inventory-promotions` lấy nền `5ada010f61d76ae5a0bf55a2224081513ad762bb` đã có PB-07. Sprint 06 chưa merge `master`; snapshot QA Sprint 07 từng dirty; mã đã commit/push ở `8bc11be`, cần CI và review trước merge.
 
 ## Theo dõi thực hiện, QA và Sprint Review
 
 - **Quyết định chốt planning:** Product Owner yêu cầu “chốt sprint” trong phiên ngày 07/11/2026 sau khi đã chọn PB-08, PB-08a, PB-13 UI Kho/Khuyến mãi, lịch 13–19/11 và giữ BR-50 ở Giai đoạn 2. Quyết định này chốt kế hoạch và S7-01..S7-07; không phải kết luận nghiệm thu.
 - Hồ sơ lập sprint: [task planning](../../tasks/completed/2026-11-07-create-sprint-07.md). Khi triển khai, tạo plan chi tiết trong `plans/active/` và task tương ứng trong `tasks/active/`; ghi branch, HEAD, baseline dirty, AC và mã S7 trước code.
-- QA task AC-1..7 và QA sprint S7-01..07 đều PASS trên sandbox; từng mã, nguồn, BR và artifact ở [báo cáo QA cấp sprint](../../qa-evidence/20261107-204250-5ada010f-s7-sprint-qa/run.md) và [bổ sung UI](../../qa-evidence/20261107-204250-5ada010f-s7-sprint-qa/supplement/run.md). Backend 74/74 test, UI 40/40 test, UI build exit 0. Không có FAIL sản phẩm còn mở; bằng chứng local của working tree dirty, chưa có CI commit này.
+- QA task AC-1..7 và QA sprint S7-01..07 đều PASS trên sandbox; từng mã, nguồn, BR và artifact ở [báo cáo QA cấp sprint](../../qa-evidence/20261107-204250-5ada010f-s7-sprint-qa/run.md) và [bổ sung UI](../../qa-evidence/20261107-204250-5ada010f-s7-sprint-qa/supplement/run.md). Backend 74/74 test, UI 40/40 test, UI build exit 0. Không có FAIL sản phẩm còn mở; bằng chứng QA local trên working tree dirty; mã đã commit/push sau đó, CI commit chưa xác minh.
 - Sprint Review/retrospective và quyết định đóng sprint đã được ghi bên dưới ngày 07/11/2026 theo yêu cầu người dùng. Đây là tổng hợp từ hồ sơ thực thi và QA local, không ghi nhận một cuộc họp hay phản hồi Product Owner khác ngoài yêu cầu trong phiên.
 
 ## Sprint Review — 07/11/2026
@@ -80,4 +80,4 @@ Chủ cửa hàng và quản lý có thể cấu hình nguyên liệu, công th�
 
 Theo yêu cầu người dùng “Sprint Review/retrospective và quyết định đóng sprint vẫn là bước riêng làm luôn đi”, **nghiệm thu local PB-08, PB-08a và lát cắt PB-13 UI Kho/Khuyến mãi; đóng Sprint 07 ngày 07/11/2026, kết thúc sớm so với lịch 13–19/11/2026**. Bảy tiêu chí S7-01..S7-07 đều PASS ở lượt QA cấp sprint độc lập, task AC-1..7 PASS ở tầng riêng. Không có item trong phạm vi Sprint 07 bị trả lại vì FAIL hành vi sản phẩm.
 
-Sau sprint: PB-09 thanh toán/áp mã/trừ kho là phần việc mới; PB-10, PB-11, PB-12 và các lát cắt PB-13 còn lại theo dependency của Product Backlog. Working tree Sprint 07 chưa commit/push/merge; review tích hợp, CI trên commit và production là các bước riêng, không nằm trong quyết định nghiệm thu local này. Không ghi nhận cuộc họp Sprint Review hay phản hồi Product Owner nào khác ngoài yêu cầu đóng trong phiên.
+Sau sprint: PB-09 thanh toán/áp mã/trừ kho là phần việc mới; PB-10, PB-11, PB-12 và các lát cắt PB-13 còn lại theo dependency của Product Backlog. Mã Sprint 07 đã commit/push ở `8bc11be`; review tích hợp, CI của commit, merge và production là các bước riêng, không nằm trong quyết định nghiệm thu local này. Không ghi nhận cuộc họp Sprint Review hay phản hồi Product Owner nào khác ngoài yêu cầu đóng trong phiên.

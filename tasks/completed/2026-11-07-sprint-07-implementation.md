@@ -66,3 +66,5 @@ Các trạng thái và bước tiếp trong mục này phản ánh thời điể
 | AC-7 · PB-13 · S7-07 | **PASS** | `run.md` QA-S7-07 và `supplement/run.md`; browser snapshot/ảnh/network/DB trước-sau cho nguyên liệu, recipe, stock, sổ, mã, đổi phiên, loading/error và reload. |
 
 - Không có FAIL hành vi sản phẩm còn mở. Lỗi TypeORM `UPDATE ... RETURNING` đã sửa và kiểm chứng trong `errors/2026-11-07-sprint07-update-returning.md`. Tất cả AC task đạt nên task và plan đã chuyển sang `completed/`. Theo yêu cầu riêng sau đó của người dùng, Sprint Review/retrospective và quyết định đóng sớm ngày 07/11/2026 đã ghi ở [Sprint 07](../../sprints/sprint-07/SPRINT.md); commit/push/merge và CI trên commit là các bước tích hợp riêng, chỉ làm khi được yêu cầu theo `rules/git.md`.
+
+**Cập nhật sau QA:** Mã Sprint 07 đã commit/push ở `8bc11be770f68b3ff5944e5f8a9c65f4feaf03dd`. Các trạng thái working tree dirty và “chưa commit/push” bên trên là mốc lịch sử lúc QA. Báo cáo Markdown QA được đưa lên Git; artifact gốc không phải Markdown chỉ giữ local. CI của commit, merge và production chưa xác minh.
