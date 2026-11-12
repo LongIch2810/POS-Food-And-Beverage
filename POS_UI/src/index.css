@@ -1,3 +1,6 @@
+@import './styles/ui.css';
+@import './styles/pos.css';
+
 /* POS-F&B Design Tokens per DESIGN.md §4 & §12.1 + ui-ux-pro-max + taste-skill */
 :root {
   /* Bề mặt và chữ ("Quầy pha chế sạch và sáng" - nền đá xám lạnh, bề mặt trắng) */
@@ -11,6 +14,8 @@
   --color-text: #1a2226;
   --color-text-muted: #55636a;
   --color-text-disabled: #98a3a9;
+  --color-on-brand: #ffffff;
+  --color-overlay: rgba(26, 34, 38, 0.48);
 
   /* Thương hiệu (nâu phin) */
   --color-brand-900: #2c1a11;
@@ -77,6 +82,16 @@ html, body {
   width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+/* Bề mặt của trình duyệt cũng theo palette: bôi chọn, con trỏ, ô chọn */
+::selection {
+  background: var(--color-brand-100);
+  color: var(--color-brand-800);
+}
+input, textarea, select {
+  caret-color: var(--color-brand-600);
+  accent-color: var(--color-brand-600);
 }
 
 /* Số tiền & số liệu luôn tabular */
