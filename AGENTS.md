@@ -20,6 +20,30 @@
 - Đường dẫn dự án có ký tự `&` (`POS-F&B`) từng làm hỏng script cài đặt native (xem `.devloopflow/errors/2026-10-28-argon2-install-path.md`); dùng dấu nháy cho đường dẫn và tránh phụ thuộc cần biên dịch native.
 - Nguồn chi tiết: `docs/architecture/TECH_STACK.md` (phiên bản, vai trò từng thư viện) và `.devloopflow/devloopflow.md` mục 2 (lệnh đầy đủ). Đổi công nghệ hoặc lệnh thì cập nhật bảng này cùng các file đó.
 
+### Cấu trúc mã
+
+- `POS_API/src/<module>/`: mỗi module nghiệp vụ một thư mục (`auth`, `platform`, `organization`, `users`, `menu`, `inventory`, `promotions`, `shifts`, `sales`). Bên trong: `*.module.ts`, `*.service.ts`, `*.controller.ts` (hoặc `http/` chứa controller và DTO), `entities/`, `*.pagination.ts` khi có danh sách, và `tests/`. Mã dùng chung: `src/http/` (envelope `api-response.ts`, lỗi `http-error.ts` và `api-error.filter.ts`, validation, health), `src/database/` (`data-source.ts`, `database.module.ts`, `entities/`, `migrations/`), `src/main.ts`, `src/app.module.ts`, `src/swagger-docs.ts`, `src/bootstrap-admin.ts`.
+- Controller đặt route đầy đủ ngay trong decorator, ví dụ `@Controller('api/v1/ingredients')`; không có global prefix. Thêm module mới thì đăng ký vào `src/app.module.ts`.
+- Migration: file `YYYYMMDDHHMMSS-Ten.ts` trong `POS_API/src/database/migrations/` (ví dụ `20261111000000-ManagerCancelOpen.ts`); chỉ thêm migration mới, không sửa migration đã chạy; không dùng `schema:sync`.
+- Test cùng module trong `tests/` (`*.test.ts`, `*.integration.test.ts`); `npm test` chạy `dist/**/*.test.js` tuần tự (`--test-concurrency=1`). Tên test mang mã tình huống (`ST-4.AC-1`, `PB-04`, `BR-xx`...) để nối với tiêu chí nghiệm thu.
+- `POS_UI/src/`: `app/` (`App.tsx`, `navigation.ts`, không dùng router riêng), `features/<màn>/` (auth, platform, settings, products, shifts, pos, invoices, inventory, reports), `services/*Service.ts` (gọi API), `http/client.ts` (fetch cùng origin; tự lấy cookie `__Host-pos_csrf` và gửi `X-CSRF-Token`; service truyền thêm header như `Idempotency-Key`), `auth/` (phiên), `context/`, `components/`, `types/`, `utils/`, `mock/` (dữ liệu mô phỏng cho phần chưa nối API). Test UI: `POS_UI/test/*.test.mjs`.
+- UI đã nối API thật: đăng nhập, quản trị nền tảng, cài đặt tổ chức, thực đơn, ca, bán hàng và thanh toán. Còn mô phỏng (`src/mock/`): màn Hóa đơn, Báo cáo và tab lịch sử biến động của Kho. Phần nào dùng mock hay API thật thì kiểm `README.md` và mã, không đoán.
+
+### Chạy local và cấu hình
+
+- Cổng: API `3000` (`GET /api/v1/health` trả `{ data: { status: 'ok' } }`), UI `5173`, PostgreSQL `5432`. Compose chỉ bind `127.0.0.1`.
+- Biến môi trường API (`POS_API/.env.example`): `NODE_ENV`, `PORT`, `DATABASE_URL`, `PUBLIC_ORIGIN`, `JWT_SECRET`, `CSRF_SECRET`, `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_FULL_NAME`, `BOOTSTRAP_ADMIN_PASSWORD`, `SEPAY_ENV`, `SEPAY_WEBHOOK_SECRET`. `POS_INFRA/.env.example` thêm `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`. UI cần `VITE_API_TARGET` (`POS_UI/.env`) để Vite proxy `/api`; thiếu biến này `npm run dev` báo lỗi. Chỉ dùng giá trị mẫu cho môi trường local; không đưa secret thật vào file hay commit.
+- Swagger/OpenAPI chỉ bật khi `NODE_ENV=development`.
+- Tài khoản local đầu tiên là `PLATFORM_ADMIN` lấy từ `BOOTSTRAP_ADMIN_*`; tài khoản này không đọc dữ liệu vận hành của store. Muốn thử bán hàng phải tạo store và `OWNER` qua nền tảng, rồi chi nhánh, nhân viên.
+
+### Quy ước API (tóm tắt, nguồn là `docs/api-spec.md`)
+
+- Base path `/api/v1`; route danh từ số nhiều `kebab-case`; field JSON và tham số `camelCase`; enum `UPPER_SNAKE_CASE`; ID là `uuid`.
+- Thành công bọc trong `{ data }`, danh sách có `meta: { limit, nextCursor, total }` (cursor, mặc định 20, tối đa 100, `sort=-createdAt`). Lỗi là `{ error: { code, message, details, requestId } }`; `code` ổn định (client dựa vào), `message` tiếng Việt. `204` cho xóa/hành động không trả dữ liệu.
+- Xác thực bằng cookie HttpOnly (`__Host-pos_access`, không dùng Bearer); mọi request đổi trạng thái cần `Origin` đúng và `X-CSRF-Token`. Thanh toán và hoàn tất đơn 0đ cần `Idempotency-Key`; trùng key trả lại kết quả cũ với header `Idempotent-Replay: true`. Access token 30 phút, refresh 7 ngày.
+- Vai trò: `PLATFORM_ADMIN` (không thuộc store), `OWNER` (một store), `MANAGER` và `CASHIER` (một chi nhánh). Quyền kiểm theo mã permission (ví dụ `pos.sell`, `shift.open`, `invoice.cancel_open`, `branch.access_all`), không kiểm theo tên vai trò cứng.
+- Thêm hoặc đổi endpoint: đọc `docs/api-spec.md`, cập nhật spec trong `.devloopflow/specs/`, thêm mã lỗi mới vào danh mục lỗi và test tương ứng.
+
 ## Conversation Onboarding
 
 - Khi bắt đầu conversation mới, khám phá tổng quan dự án trước khi thực hiện nhiệm vụ: tìm hiểu cấu trúc repository, tech stack, kiến trúc và các quy ước hiện có theo bản đồ bên dưới.
