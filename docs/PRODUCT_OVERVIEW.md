@@ -1,5 +1,8 @@
 # PRODUCT_OVERVIEW
 
+> Quyết định Sprint 08 ngày 09/11/2026: chuyển khoản dùng QR và SePay tự xác nhận, kèm xác nhận thủ công của MANAGER/OWNER khi cần. Quy tắc chi tiết tại [spec thanh toán](../.devloopflow/specs/invoices.md); phần mô tả cũ trái quyết định này là lịch sử.
+
+
 Tài liệu tổng quan sản phẩm dành cho agent. Đọc file này **trước tiên** để hiểu sản phẩm là gì, ai dùng, làm gì, và những điều không được vi phạm. File này không mô tả chi tiết bảng, API hay giao diện, các phần đó nằm ở tài liệu riêng (xem mục 12).
 
 ---
@@ -227,6 +230,6 @@ Công thức: `tiền kỳ vọng = tiền đầu ca + tiền mặt từ hóa đ
 | `DESIGN.md`                    | Thiết kế giao diện: token, bố cục, component, nội dung chữ   | Có sẵn     |
 | `docs/BUSINESS_RULES.md`       | Danh sách business rule (BR-xx) theo module                  | Có sẵn     |
 | `docs/api-spec.md`             | Quy ước chung của API (định dạng, lỗi, phân trang, xác thực) | Có sẵn     |
-| `specs/`                       | Đặc tả chi tiết từng chức năng và endpoint đã chốt           | Chưa có    |
+| `.devloopflow/specs/` | Đặc tả chi tiết từng chức năng và endpoint (hiện hành và bản lịch sử `legacy-*`) | Có sẵn |
 | `docs/architecture/`           | Tài liệu kiến trúc                                            | Đang soạn  |
 | `docs/architecture/auth.md`    | Quy tắc xác thực, mật khẩu và giới hạn tần suất               | Có sẵn     |

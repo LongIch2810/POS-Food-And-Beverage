@@ -1,6 +1,9 @@
 # api-spec
 
-Quy ước chung của REST API cho hệ thống POS và kho. File này **chỉ chứa phần chung**: định dạng, xác thực, phân quyền, lỗi, phân trang, idempotency, danh mục nhóm route. **Chi tiết từng endpoint đã chốt** (request, response, lỗi, ví dụ) viết riêng trong `specs/<module>.md` ở gốc repository.
+> Sprint 08 đã chốt chuyển khoản qua QR/SePay và xác nhận thủ công dự phòng của MANAGER/OWNER. Các route, quyền, lỗi và idempotency hiện hành cho thanh toán được chốt tại [spec thanh toán](../.devloopflow/specs/invoices.md), thay cho mô tả chuyển khoản cũ bên dưới; code Sprint 08 đã triển khai và kiểm trên local (verify-ac vòng 10, 10/11/2026).
+
+
+Quy ước chung của REST API cho hệ thống POS và kho. File này **chỉ chứa phần chung**: định dạng, xác thực, phân quyền, lỗi, phân trang, idempotency, danh mục nhóm route. **Chi tiết từng endpoint đã chốt trước khi chuyển sang devloopflow** (request, response, lỗi, ví dụ) được lưu tại `.devloopflow/specs/legacy-<module>.md`; spec thiết kế mới ghi trong `.devloopflow/specs/`. Khi sửa endpoint cũ, đối chiếu cả hợp đồng lịch sử và spec hiện hành.
 
 ## Cách dùng
 
@@ -217,7 +220,7 @@ type ErrorResponse = {
 };
 ```
 
-`T` là DTO response của endpoint, không phải entity DB. Spec module khai báo schema request và `T` cụ thể, kể cả các field `null` hoặc tùy chọn; không dùng một DTO chung mơ hồ cho mọi endpoint. `ErrorResponse` áp dụng cho mọi lỗi theo mục 6. Các schema PB-02 xem [specs/auth.md](../specs/auth.md).
+`T` là DTO response của endpoint, không phải entity DB. Spec module khai báo schema request và `T` cụ thể, kể cả các field `null` hoặc tùy chọn; không dùng một DTO chung mơ hồ cho mọi endpoint. `ErrorResponse` áp dụng cho mọi lỗi theo mục 6. Các schema PB-02 xem [.devloopflow/specs/auth.md](../.devloopflow/specs/auth.md).
 
 ### Kiểu dữ liệu
 
@@ -248,7 +251,7 @@ type ErrorResponse = {
 - Request body bị **whitelist** trong NestJS (`ValidationPipe` với `whitelist` và `forbidNonWhitelisted`). Field lạ trả `422`.
 - Mỗi spec endpoint ghi tên DTO/schema request và response cụ thể, gồm path/query/header/body khi có; kiểu JSON, bắt buộc/tùy chọn, `null`, mặc định, giới hạn và quan hệ điều kiện giữa các field. Ghi rõ route không nhận body/query và response `204` không có body. Schema lỗi dùng envelope ở mục 6 và liệt kê mã HTTP/code của endpoint.
 - DTO request trong NestJS dùng class và `class-validator`; `ValidationPipe` không âm thầm ép kiểu sai hoặc bỏ field lạ. `exceptionFactory` chuyển lỗi dữ liệu thành `422 VALIDATION_ERROR` và `details` với `location`, `field`, `message`. `400 BAD_REQUEST` dành cho JSON/Content-Type không đọc được. Response DTO và decorator `@nestjs/swagger` mô tả schema OpenAPI; không dùng entity DB làm DTO trả ra.
-- Swagger UI `/api/docs` và OpenAPI JSON `/api/docs-json` chỉ đăng ký khi `NODE_ENV=development`; không mở các route này ở môi trường khác. Schema auth cụ thể xem [specs/auth.md](../specs/auth.md).
+- Swagger UI `/api/docs` và OpenAPI JSON `/api/docs-json` chỉ đăng ký khi `NODE_ENV=development`; không mở các route này ở môi trường khác. Schema auth cụ thể xem [.devloopflow/specs/auth.md](../.devloopflow/specs/auth.md).
 - **Giá và tổng tiền do máy chủ tính** (BR-24). Không route nào nhận `unitPrice`, `lineTotal`, `subtotal`, `discountAmount`, `totalAmount`, `expectedCash`, `difference` từ client. Gửi lên thì trả `422`.
 - Chuỗi được cắt khoảng trắng đầu cuối. Độ dài tối đa theo cột DB.
 
@@ -347,7 +350,7 @@ Mỗi mã gắn với một business rule. Danh sách đầy đủ và `message`
 | `SHIFT_HAS_OPEN_INVOICES`      | 409  | BR-19         | Đóng ca khi còn đơn `OPEN`. Kèm danh sách mã đơn trong `details`       |
 | `FORCE_CLOSE_COUNT_REQUIRED`   | 422  | BR-88         | Đóng cưỡng chế thiếu tiền đã đếm                                       |
 | `RECONCILIATION_NOTE_REQUIRED` | 422  | BR-60         | Ca lệch mà thiếu ghi chú                                               |
-| `INVOICE_NOT_OPEN`             | 409  | BR-22         | Sửa món, thêm món khi đơn không còn `OPEN`                             |
+| `INVOICE_NOT_OPEN`             | 409  | BR-22         | Sửa món, thêm món, xem trước thanh toán khi đơn không còn `OPEN`       |
 | `INVOICE_EMPTY`                | 422  | BR-27         | Thanh toán đơn chưa có món                                             |
 | `INVOICE_BRANCH_MISMATCH`      | 422  | BR-69         | Chi nhánh của ca, bàn, đơn không khớp                                  |
 | `TABLE_REQUIRED`               | 422  | BR-69         | Đơn tại chỗ thiếu bàn                                                  |
@@ -362,6 +365,13 @@ Mỗi mã gắn với một business rule. Danh sách đầy đủ và `message`
 | `TENDERED_INSUFFICIENT`        | 422  | BR-32         | Tiền khách đưa nhỏ hơn số tiền cần trả                                 |
 | `PROMOTION_NOT_APPLICABLE`     | 422  | BR-36         | Mã hết hạn, chưa đủ đơn tối thiểu, hết lượt, ngưng dùng                |
 | `PROMOTION_ALREADY_APPLIED`    | 409  | BR-40         | Hóa đơn đã có mã giảm giá                                               |
+| `TRANSFER_PENDING` | 409  | BR-33         | Đơn còn lượt QR chờ (sửa món, mã giảm, thanh toán bị chặn) hoặc đổi tài khoản nhận khi cửa hàng còn QR chờ |
+| `TRANSFER_NOT_PENDING` | 409  | BR-33         | Hủy hoặc xác nhận một lượt QR không còn `PENDING` |
+| `BANK_ACCOUNT_REQUIRED` | 409  | BR-33         | Tạo QR khi cửa hàng chưa cài tài khoản nhận |
+| `BANK_TRANSACTION_REUSED` | 409  | BR-33         | Mã giao dịch ngân hàng đã dùng cho đơn khác |
+| `TRANSFER_AMOUNT_INSUFFICIENT` | 422  | BR-33         | Xác nhận thủ công với số tiền thực nhận nhỏ hơn tổng đơn |
+| `INVALID_WEBHOOK_SIGNATURE` | 401  | BR-33         | Webhook SePay thiếu hoặc sai chữ ký (không dùng cookie/CSRF) |
+| `INVALID_WEBHOOK_PAYLOAD` | 400  | BR-33         | Timestamp webhook thiếu, sai định dạng hoặc lệch quá ±300 giây (kiểm trước HMAC; chữ ký sai trả 401) hoặc nội dung không hợp lệ |
 | `EXPENSE_REASON_REQUIRED`      | 422  | BR-52         | Chi phí thiếu lý do                                                    |
 
 
@@ -399,6 +409,7 @@ Các điểm cần xử lý khi cài đặt:
 - Key nằm trong `payments` nên **tồn tại cùng khoản thanh toán**, không có hạn xóa. Hóa đơn bị hủy sau đó thì gửi lại key cũ vẫn trả kết quả gốc (khoản thanh toán vẫn là bản ghi lịch sử, xem BR-29).
 - `POST /invoices/{id}/complete-zero`: chỉ nhận hóa đơn `OPEN`, có món, `totalAmount = 0`; không nhận body, bắt buộc `Idempotency-Key`. Ghi key vào `invoices.zero_completion_key`, đổi sang `PAID`, trừ kho trong một transaction. Thành công trả `204`; gửi lại cùng key trên cùng hóa đơn trả `204` và `Idempotent-Replay: true`, kể cả khi hóa đơn đã bị hủy sau đó. Key đã dùng cho hóa đơn 0đ khác trả `409` `IDEMPOTENCY_KEY_REUSED`; thiếu hoặc sai key trả `422`. Kiểm tra quyền và phạm vi cửa hàng trước khi trả replay.
 - `POST /invoices/{id}/payments` chỉ nhận hóa đơn `OPEN` có `totalAmount > 0`, một lần thanh toán đủ tổng tiền bằng một phương thức. Đơn 0đ dùng `complete-zero`.
+- `POST /invoices/{id}/transfer-attempts` và `POST /transfer-attempts/{id}/confirm-manual` cũng bắt buộc `Idempotency-Key` (`uuid`); trùng key với cùng nội dung trả kết quả cũ kèm `Idempotent-Replay: true`, khác nội dung trả `409` `IDEMPOTENCY_KEY_REUSED`.
 - Thiếu header hoặc key không phải `uuid`: `422` `VALIDATION_ERROR` với `location` là `header`.
 - Các `POST` khác chưa bắt buộc idempotency. Thêm vào route nào thì ghi trong spec của route đó.
 
@@ -440,7 +451,7 @@ Các điểm cần xử lý khi cài đặt:
 - **Đếm mù** (BR-58): `expectedCash` và `difference` của ca đang mở **không** xuất hiện ở bất kỳ response nào. Chỉ có trong response của hành động đóng ca và trong chi tiết ca đã `CLOSED`.
 - **Mật khẩu tạm** (BR-84): trả trong field `temporaryPassword` **đúng một lần** ở response tạo tài khoản, tạo cửa hàng (kèm chủ cửa hàng) và đặt lại mật khẩu. Không route nào đọc lại được. Không ghi vào log.
 - **Transaction**: ghi thanh toán (nếu có), đổi `status` hóa đơn sang `PAID` và trừ kho nằm trong **một transaction** (BR-35, BR-104). Hành động thêm hoặc sửa món khóa dòng hóa đơn trong transaction (BR-90).
-- **Ảnh món**: `POST /products/{id}/image` nhận `multipart/form-data` với một file ảnh tối đa 2 MB (2.000.000 byte); mỗi món có tối đa một ảnh đại diện. Người gọi phải có quyền sửa món và món phải thuộc cửa hàng của họ. Server kiểm tra file rồi mã hóa Base64 thuần (không kèm tiền tố `data:`) vào `products.image_base64` (`text`), lưu MIME ở `image_mime`; không nhận chuỗi Base64 từ client. Response trả `imageUrl` trỏ tới `GET /products/{id}/image` cùng origin, không trả đường dẫn lưu nội bộ. Route GET yêu cầu access cookie và kiểm tra cùng store, giải mã Base64 rồi trả bytes với MIME phù hợp thay vì JSON; web có thể hiển thị ảnh cùng origin bằng `<img src>` vì browser tự gửi cookie. Định dạng file cụ thể ghi trong `specs/catalog.md` khi viết endpoint.
+- **Ảnh món**: `POST /products/{id}/image` nhận `multipart/form-data` với một file ảnh tối đa 2 MB (2.000.000 byte); mỗi món có tối đa một ảnh đại diện. Người gọi phải có quyền sửa món và món phải thuộc cửa hàng của họ. Server kiểm tra file rồi mã hóa Base64 thuần (không kèm tiền tố `data:`) vào `products.image_base64` (`text`), lưu MIME ở `image_mime`; không nhận chuỗi Base64 từ client. Response trả `imageUrl` trỏ tới `GET /products/{id}/image` cùng origin, không trả đường dẫn lưu nội bộ. Route GET yêu cầu access cookie và kiểm tra cùng store, giải mã Base64 rồi trả bytes với MIME phù hợp thay vì JSON; web có thể hiển thị ảnh cùng origin bằng `<img src>` vì browser tự gửi cookie. Định dạng file cụ thể ghi trong `.devloopflow/specs/legacy-catalog.md` khi viết endpoint.
 - **Sổ kho** chỉ thêm dòng, **không có** route sửa hoặc xóa `stock_movements` (BR-44).
 - **Nội dung đã khóa**: hóa đơn `PAID` hoặc `CANCELLED` không sửa món, giá, tổng tiền. Ca `CLOSED` không sửa. Chuyển trạng thái chỉ qua hành động đã định nghĩa. Hóa đơn `PAID` chỉ chuyển được sang `CANCELLED` bằng `POST /invoices/{id}/cancel` theo BR-29 (cần quyền, lý do, ca còn mở). Các khoản `payments` đã nhận **giữ nguyên**, không sửa, không xóa (BR-17, BR-21, BR-29).
 - **Trừ kho** theo `invoices.branch_id` (BR-72), không theo chi nhánh của người gọi.
@@ -456,33 +467,34 @@ Các điểm cần xử lý khi cài đặt:
 
 ## 11. Danh mục nhóm route
 
-Chỉ liệt kê **nhóm route** và người dùng chính. Danh sách endpoint, request và response chi tiết nằm trong `specs/<module>.md`.
+Chỉ liệt kê **nhóm route** và người dùng chính. Danh sách endpoint, request và response chi tiết nằm trong `.devloopflow/specs/<module>.md`.
 
 
 | Nhóm               | Đường dẫn gốc                                                                | Người dùng chính                               | Spec chi tiết                                          |
 | ------------------ | ---------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------ |
-| Xác thực           | `/auth`                                                                      | Mọi người dùng                                 | `specs/auth.md`                 |
-| Quản trị nền tảng  | `/platform/stores`                                                           | `PLATFORM_ADMIN`                               | `specs/platform.md`         |
-| Chi nhánh          | `/branches`                                                                  | `OWNER`                                        | `specs/organization.md` |
-| Bàn                | `/dining-tables`                                                             | `OWNER`, `MANAGER`                             | `specs/organization.md` |
-| Tài khoản          | `/users`                                                                     | `OWNER` (và `PLATFORM_ADMIN` cho chủ cửa hàng) | `specs/users.md`               |
-| Vai trò và quyền   | `/roles`, `/permissions`                                                     | Đọc: người có quyền                            | `specs/users.md`               |
-| Danh mục sản phẩm  | `/categories`, `/products`, `/sizes`, `/toppings`, `/products/{id}/image`   | `OWNER`, `MANAGER`                             | `specs/catalog.md`           |
-| Mã giảm giá        | `/promotion-codes`                                                           | `OWNER`, `MANAGER`                             | `specs/promotions.md`     |
-| Hóa đơn            | `/invoices`, `/invoices/{id}/items`, `/invoices/{id}/payments`, `/invoices/{id}/complete-zero` | `CASHIER`, `MANAGER`, `OWNER` | `specs/invoices.md` |
-| Ca làm và đối soát | `/work-shifts`, `/work-shifts/{id}/expenses`                                 | Mọi vai trò theo phạm vi                       | `specs/shifts.md`             |
-| Kho và công thức   | `/ingredients`, `/ingredient-stocks`, `/stock-movements`, công thức theo món | `OWNER`, `MANAGER`                             | `specs/inventory.md`       |
-| Báo cáo            | `/reports`                                                                   | Theo vai trò (BR-65)                           | `specs/reports.md`           |
+| Xác thực           | `/auth`                                                                      | Mọi người dùng                                 | `.devloopflow/specs/auth.md`                 |
+| Quản trị nền tảng  | `/platform/stores`                                                           | `PLATFORM_ADMIN`                               | `.devloopflow/specs/platform.md`         |
+| Chi nhánh          | `/branches`                                                                  | `OWNER`                                        | `.devloopflow/specs/organization.md` |
+| Bàn                | `/dining-tables`                                                             | `OWNER`, `MANAGER`                             | `.devloopflow/specs/organization.md` |
+| Tài khoản          | `/users`                                                                     | `OWNER` (và `PLATFORM_ADMIN` cho chủ cửa hàng) | `.devloopflow/specs/users.md`               |
+| Vai trò và quyền   | `/roles`, `/permissions`                                                     | Đọc: người có quyền                            | `.devloopflow/specs/users.md`               |
+| Danh mục sản phẩm  | `/categories`, `/products`, `/sizes`, `/toppings`, `/products/{id}/image`   | `OWNER`, `MANAGER`                             | `.devloopflow/specs/legacy-catalog.md`           |
+| Mã giảm giá        | `/promotion-codes`                                                           | `OWNER`, `MANAGER`                             | `.devloopflow/specs/promotions.md`     |
+| Hóa đơn            | `/invoices`, `/invoices/{id}/items`, `/invoices/{id}/payments`, `/invoices/{id}/complete-zero`, `/invoices/{id}/payment-preview`, `/invoices/{id}/apply-promotion`, `/invoices/{id}/remove-promotion` | `CASHIER`, `MANAGER`, `OWNER` | `.devloopflow/specs/invoices.md` |
+| Chuyển khoản QR | `/store-bank-account`, `/invoices/{id}/transfer-attempts`, `/transfer-attempts/{id}/confirm-manual`, `/transfer-attempts/{id}/cancel`, `/bank-transfer-exceptions`, `/payments/sepay/webhook` (webhook không dùng cookie/CSRF, xác thực bằng HMAC) | `OWNER` (tài khoản nhận), `CASHIER`/`MANAGER`/`OWNER` (QR), `MANAGER`/`OWNER` (xác nhận thủ công, ngoại lệ), SePay (webhook) | `.devloopflow/specs/invoices.md` |
+| Ca làm và đối soát | `/work-shifts`, `/work-shifts/{id}/expenses`                                 | Mọi vai trò theo phạm vi                       | `.devloopflow/specs/shifts.md`             |
+| Kho và công thức   | `/ingredients`, `/ingredient-stocks`, `/stock-movements`, công thức theo món | `OWNER`, `MANAGER`                             | `.devloopflow/specs/inventory.md`       |
+| Báo cáo            | `/reports`                                                                   | Theo vai trò (BR-65)                           | `.devloopflow/specs/legacy-reports.md`           |
 
 
-- Kiểm tra trạng thái từng file spec ở cột cuối: `specs/auth.md` đã chốt cho PB-02; các file khác có thể chưa được tạo hoặc chưa chốt.
+- Kiểm tra trạng thái từng file spec ở cột cuối và spec thiết kế tương ứng trong `.devloopflow/specs/` nếu có; `.devloopflow/specs/auth.md` đã chốt cho PB-02 theo hồ sơ cũ.
 - Nhóm route phải khớp với phạm vi MVP và giai đoạn 2 trong [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md). Không tạo route cho tính năng chưa được yêu cầu.
 
 ---
 
 ## 12. Mẫu cho một spec endpoint
 
-Mỗi endpoint trong `specs/<module>.md` phải có đủ các mục sau, theo thứ tự:
+Mỗi endpoint trong `.devloopflow/specs/<module>.md` phải có đủ các mục sau, theo thứ tự:
 
 1. **Phương thức và đường dẫn**, ví dụ `POST /invoices/{id}/items`.
 2. **Mô tả** một hai câu.
