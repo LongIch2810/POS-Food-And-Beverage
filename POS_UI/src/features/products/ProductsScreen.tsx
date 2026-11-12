@@ -513,7 +513,7 @@ export const ProductsScreen: React.FC = () => {
           <Button
             variant="text"
             size="sm"
-            style={{ height: 32, padding: '0 8px' }}
+            style={{ height: 44, padding: '0 10px' }}
             icon={<Edit2 size={14} />}
             onClick={() => handleOpenEditCategory(c)}
           >
@@ -522,7 +522,7 @@ export const ProductsScreen: React.FC = () => {
           <Button
             variant="text"
             size="sm"
-            style={{ height: 32, padding: '0 8px', color: c.isActive ? 'var(--color-danger)' : 'var(--color-success)' }}
+            style={{ height: 44, padding: '0 10px', color: c.isActive ? 'var(--color-danger)' : 'var(--color-success)' }}
             icon={<Power size={14} />}
             onClick={() => handleToggleCategoryActive(c)}
           >
@@ -531,7 +531,7 @@ export const ProductsScreen: React.FC = () => {
           <Button
             variant="text"
             size="sm"
-            style={{ height: 32, padding: '0 8px', color: 'var(--color-danger)' }}
+            style={{ height: 44, padding: '0 10px', color: 'var(--color-danger)' }}
             icon={<Trash2 size={14} />}
             onClick={() => handleDeleteCategory(c)}
           >
@@ -554,7 +554,7 @@ export const ProductsScreen: React.FC = () => {
           <Button
             variant="text"
             size="sm"
-            style={{ height: 32, padding: '0 8px' }}
+            style={{ height: 44, padding: '0 10px' }}
             icon={<Edit2 size={14} />}
             onClick={() => handleOpenEditSize(s)}
           >
@@ -563,7 +563,7 @@ export const ProductsScreen: React.FC = () => {
           <Button
             variant="text"
             size="sm"
-            style={{ height: 32, padding: '0 8px', color: 'var(--color-danger)' }}
+            style={{ height: 44, padding: '0 10px', color: 'var(--color-danger)' }}
             icon={<Trash2 size={14} />}
             onClick={() => handleDeleteSize(s)}
           >
@@ -619,7 +619,7 @@ export const ProductsScreen: React.FC = () => {
           <Button
             variant="text"
             size="sm"
-            style={{ height: 32, padding: '0 8px' }}
+            style={{ height: 44, padding: '0 10px' }}
             icon={<Layers size={14} />}
             onClick={() => setMappingTopping(t)}
           >
@@ -630,7 +630,7 @@ export const ProductsScreen: React.FC = () => {
           <Button
             variant="text"
             size="sm"
-            style={{ height: 32, padding: '0 8px' }}
+            style={{ height: 44, padding: '0 10px' }}
             icon={<Edit2 size={14} />}
             onClick={() => handleOpenEditTopping(t)}
           >
@@ -639,7 +639,7 @@ export const ProductsScreen: React.FC = () => {
           <Button
             variant="text"
             size="sm"
-            style={{ height: 32, padding: '0 8px', color: t.isActive ? 'var(--color-danger)' : 'var(--color-success)' }}
+            style={{ height: 44, padding: '0 10px', color: t.isActive ? 'var(--color-danger)' : 'var(--color-success)' }}
             icon={<Power size={14} />}
             onClick={() => handleToggleToppingActive(t)}
           >
@@ -648,7 +648,7 @@ export const ProductsScreen: React.FC = () => {
           <Button
             variant="text"
             size="sm"
-            style={{ height: 32, padding: '0 8px', color: 'var(--color-danger)' }}
+            style={{ height: 44, padding: '0 10px', color: 'var(--color-danger)' }}
             icon={<Trash2 size={14} />}
             onClick={() => handleDeleteTopping(t)}
           >
@@ -984,7 +984,7 @@ export const ProductsScreen: React.FC = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 10, borderTop: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>
-                        CÁC KÍCH CỠ & GIÁ:
+                        Kích cỡ và giá
                       </span>
                       <Button
                         variant="text"

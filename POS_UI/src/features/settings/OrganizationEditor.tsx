@@ -55,7 +55,7 @@ export function OrganizationEditor(props: Props) {
       {props.allowedRoles.map(role => <option key={role} value={role}>{role === 'MANAGER' ? 'Quản lý' : 'Thu ngân'}</option>)}
     </SelectField>}
     {props.kind === 'role' && <p>Đổi vai trò sẽ thu hồi mọi phiên đăng nhập của tài khoản này.</p>}
-    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+    <div className="form-actions">
       <Button type="button" variant="secondary" disabled={props.busy} onClick={props.onCancel}>Hủy</Button>
       <Button type="submit" isLoading={props.busy} disabled={props.blocked || props.busy} style={{ minHeight: 56 }}>
         {props.editing || props.kind === 'role' ? 'Lưu thay đổi' : props.kind === 'staff' ? 'Cấp tài khoản' : 'Tạo mới'}

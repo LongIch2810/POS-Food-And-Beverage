@@ -193,57 +193,23 @@ export const BlindCountCloseShiftModal: React.FC<BlindCountCloseShiftModalProps>
                       borderRadius: 'var(--radius-control)',
                     }}
                   >
-                    <span style={{ fontWeight: 600, width: 100 }}>{formatVND(denom)}</span>
+                    <span className="money" style={{ fontWeight: 600, width: 110 }}>{formatVND(denom)}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button
-                        type="button"
-                        onClick={() => handleDenomChange(denom, -1)}
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 6,
-                          border: '1px solid var(--color-border)',
-                          background: 'var(--color-surface)',
-                          cursor: 'pointer',
-                          fontWeight: 700,
-                        }}
-                      >
-                        -
-                      </button>
+                      <button type="button" className="btn btn-secondary btn-step" aria-label={`Giảm ${formatVND(denom)}`} onClick={() => handleDenomChange(denom, -1)}>−</button>
                       <input
                         type="number"
                         min="0"
+                        className="input input-qty"
+                        aria-label={`Số tờ ${formatVND(denom)}`}
                         value={qty}
                         onChange={(e) => {
                           const val = Math.max(0, parseInt(e.target.value, 10) || 0);
                           setCounts((prev) => ({ ...prev, [key]: val }));
                         }}
-                        style={{
-                          width: 60,
-                          textAlign: 'center',
-                          padding: '4px 6px',
-                          borderRadius: 6,
-                          border: '1px solid var(--color-border)',
-                          fontWeight: 600,
-                        }}
                       />
-                      <button
-                        type="button"
-                        onClick={() => handleDenomChange(denom, 1)}
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 6,
-                          border: '1px solid var(--color-border)',
-                          background: 'var(--color-surface)',
-                          cursor: 'pointer',
-                          fontWeight: 700,
-                        }}
-                      >
-                        +
-                      </button>
+                      <button type="button" className="btn btn-secondary btn-step" aria-label={`Tăng ${formatVND(denom)}`} onClick={() => handleDenomChange(denom, 1)}>+</button>
                     </div>
-                    <span style={{ minWidth: 90, textAlign: 'right', fontWeight: 600 }}>
+                    <span className="money" style={{ minWidth: 100, textAlign: 'right', fontWeight: 600 }}>
                       {formatVND(denom * BigInt(qty))}
                     </span>
                   </div>
