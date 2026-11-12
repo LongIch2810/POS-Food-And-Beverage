@@ -92,11 +92,11 @@ export const LoginScreen: React.FC = () => {
                 <p className="login-brand-sub">Cà phê • Trà sữa • Quán ăn</p>
               </div>
             </div>
-            <p className="login-brand-lead">Hệ thống bán hàng quầy cảm ứng và quản trị tồn kho đa chi nhánh theo thời gian thực.</p>
+            <p className="login-brand-lead">Bán hàng tại quầy và quản lý kho cho quán cà phê, trà sữa, quán ăn có nhiều chi nhánh.</p>
             <ul className="login-points">
-              <li><Store size={22} /><div><strong>Bán hàng cảm ứng tại quầy</strong><span>Tối ưu tablet ngang, chọn món dưới 2 chạm, sơ đồ bàn trực quan.</span></div></li>
-              <li><Clock size={22} /><div><strong>Đối soát ca đếm mù</strong><span>Mỗi chi nhánh 1 ca mở, bàn giao tiền mặt đếm mù chống thất thoát.</span></div></li>
-              <li><Boxes size={22} /><div><strong>Định mức trừ kho tự động</strong><span>Trừ nguyên vật liệu theo công thức từng ly nước, cảnh báo tồn kho an toàn.</span></div></li>
+              <li><Store size={22} /><div><strong>Bán hàng cảm ứng tại quầy</strong><span>Giao diện cho máy tính bảng ngang, có sơ đồ bàn.</span></div></li>
+              <li><Clock size={22} /><div><strong>Đối soát ca đếm mù</strong><span>Mỗi chi nhánh một ca thu ngân mở, đối soát tiền mặt theo kiểu đếm trước, xem số kỳ vọng sau.</span></div></li>
+              <li><Boxes size={22} /><div><strong>Định mức trừ kho tự động</strong><span>Trừ nguyên liệu theo công thức từng món, báo khi tồn kho dưới ngưỡng.</span></div></li>
             </ul>
           </div>
           <div className="login-brand-foot">
