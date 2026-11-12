@@ -1,4 +1,7 @@
 import { InputHTMLAttributes, SelectHTMLAttributes, forwardRef, ReactNode, useId } from 'react';
+import { AlertCircle } from 'lucide-react';
+
+// Kiểu ô nhập nằm trong styles/ui.css (.input, .select) và styles/components.css (.field-*), DESIGN.md §6.5
 
 export interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -9,7 +12,7 @@ export interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Field = forwardRef<HTMLInputElement, FieldProps>(
-  ({ label, error, hint, suffix, isNumericMoney = false, style, disabled, id, ...props }, ref) => {
+  ({ label, error, hint, suffix, isNumericMoney = false, style, disabled, id, className, ...props }, ref) => {
     const autoId = useId();
     const inputId = id || autoId;
     const errorId = error ? `${inputId}-error` : undefined;
@@ -17,29 +20,9 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(
     const describedBy = errorId || hintId || props['aria-describedby'];
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
-        {label && (
-          <label
-            htmlFor={inputId}
-            style={{
-              fontSize: 14,
-              fontWeight: 500,
-              color: 'var(--color-text-muted)',
-              display: 'block',
-              cursor: disabled ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {label}
-          </label>
-        )}
-        <div
-          style={{
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            width: '100%',
-          }}
-        >
+      <div className="field">
+        {label && <label htmlFor={inputId} className="field-label">{label}</label>}
+        <div className={`field-control${suffix ? ' has-suffix' : ''}`}>
           <input
             ref={ref}
             id={inputId}
@@ -47,45 +30,19 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(
             inputMode={isNumericMoney ? 'numeric' : props.inputMode}
             aria-invalid={Boolean(error)}
             aria-describedby={describedBy}
-            style={{
-              height: 48,
-              width: '100%',
-              padding: suffix ? '0 40px 0 16px' : '0 16px',
-              fontSize: 16,
-              color: 'var(--color-text)',
-              background: disabled ? 'var(--color-surface-sunken)' : 'var(--color-surface)',
-              border: `1px solid ${error ? 'var(--color-danger)' : 'var(--color-border-control)'}`,
-              borderRadius: 'var(--radius-control)',
-              textAlign: isNumericMoney ? 'right' : 'left',
-              fontVariantNumeric: isNumericMoney ? 'tabular-nums' : undefined,
-              ...style,
-            }}
+            className={`input${isNumericMoney ? ' input-money' : ''}${className ? ` ${className}` : ''}`}
+            style={style}
             {...props}
           />
-          {suffix && (
-            <div
-              style={{
-                position: 'absolute',
-                right: 14,
-                color: 'var(--color-text-muted)',
-                pointerEvents: 'none',
-                fontWeight: 600,
-              }}
-            >
-              {suffix}
-            </div>
-          )}
+          {suffix && <div className="field-suffix">{suffix}</div>}
         </div>
         {error && (
-          <span id={errorId} role="alert" style={{ fontSize: 13, color: 'var(--color-danger)', fontWeight: 500 }}>
-            {error}
+          <span id={errorId} role="alert" className="field-error">
+            <AlertCircle size={16} aria-hidden="true" />
+            <span>{error}</span>
           </span>
         )}
-        {hint && !error && (
-          <span id={hintId} style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-            {hint}
-          </span>
-        )}
+        {hint && !error && <span id={hintId} className="field-hint">{hint}</span>}
       </div>
     );
   }
@@ -101,7 +58,7 @@ export interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement
 }
 
 export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
-  ({ label, error, hint, children, style, disabled, id, ...props }, ref) => {
+  ({ label, error, hint, children, style, disabled, id, className, ...props }, ref) => {
     const autoId = useId();
     const selectId = id || autoId;
     const errorId = error ? `${selectId}-error` : undefined;
@@ -109,52 +66,27 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
     const describedBy = errorId || hintId || props['aria-describedby'];
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
-        {label && (
-          <label
-            htmlFor={selectId}
-            style={{
-              fontSize: 14,
-              fontWeight: 500,
-              color: 'var(--color-text-muted)',
-              cursor: disabled ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {label}
-          </label>
-        )}
+      <div className="field">
+        {label && <label htmlFor={selectId} className="field-label">{label}</label>}
         <select
           ref={ref}
           id={selectId}
           disabled={disabled}
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy}
-          style={{
-            height: 48,
-            width: '100%',
-            padding: '0 16px',
-            fontSize: 16,
-            color: 'var(--color-text)',
-            background: disabled ? 'var(--color-surface-sunken)' : 'var(--color-surface)',
-            border: `1px solid ${error ? 'var(--color-danger)' : 'var(--color-border-control)'}`,
-            borderRadius: 'var(--radius-control)',
-            cursor: disabled ? 'not-allowed' : 'pointer',
-            ...style,
-          }}
+          className={`select${className ? ` ${className}` : ''}`}
+          style={style}
           {...props}
         >
           {children}
         </select>
         {error && (
-          <span id={errorId} role="alert" style={{ fontSize: 13, color: 'var(--color-danger)', fontWeight: 500 }}>
-            {error}
+          <span id={errorId} role="alert" className="field-error">
+            <AlertCircle size={16} aria-hidden="true" />
+            <span>{error}</span>
           </span>
         )}
-        {hint && !error && (
-          <span id={hintId} style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-            {hint}
-          </span>
-        )}
+        {hint && !error && <span id={hintId} className="field-hint">{hint}</span>}
       </div>
     );
   }

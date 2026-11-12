@@ -87,7 +87,7 @@ export class MockEngine {
   public static setSelectedBranch(branchId: string) {
     const user = this.getCurrentUser();
     if (user.role_code !== 'OWNER') {
-      throw new Error('Chỉ Chủ cửa hàng (OWNER) mới có quyền đổi chi nhánh làm việc');
+      throw new Error('Chỉ Chủ cửa hàng mới có quyền đổi chi nhánh làm việc');
     }
     mockStorage.setState(() => ({ selectedBranchId: branchId }));
   }
@@ -964,7 +964,7 @@ export class MockEngine {
 
     // BR-103: Không được cấp branch.access_all cho vai trò khác OWNER
     if (roleCode !== 'OWNER' && permissions.includes('branch.access_all')) {
-      throw new Error('Quyền xem toàn cửa hàng (branch.access_all) chỉ áp dụng cho vai trò OWNER (BR-103)');
+      throw new Error('Quyền xem toàn cửa hàng chỉ áp dụng cho vai trò Chủ cửa hàng');
     }
 
     mockStorage.setState((prev) => ({
@@ -1184,7 +1184,7 @@ export class MockEngine {
     if (targetUser.role_code === 'OWNER' && targetUser.is_active) {
       const activeOwners = state.users.filter((u) => u.store_id === targetUser.store_id && u.role_code === 'OWNER' && u.is_active);
       if (activeOwners.length <= 1) {
-        throw new Error('Không được khóa tài khoản Chủ cửa hàng (OWNER) cuối cùng đang hoạt động (BR-85)');
+        throw new Error('Không được khóa tài khoản Chủ cửa hàng cuối cùng đang hoạt động');
       }
     }
 
@@ -1213,7 +1213,7 @@ export class MockEngine {
     if (targetUser.role_code === 'OWNER' && newRole !== 'OWNER' && targetUser.is_active) {
       const activeOwners = state.users.filter((u) => u.store_id === targetUser.store_id && u.role_code === 'OWNER' && u.is_active);
       if (activeOwners.length <= 1) {
-        throw new Error('Không được giáng chức tài khoản Chủ cửa hàng (OWNER) cuối cùng đang hoạt động (BR-85)');
+        throw new Error('Không được giáng chức tài khoản Chủ cửa hàng cuối cùng đang hoạt động');
       }
     }
 

@@ -42,6 +42,7 @@
 | M-25 | Đã học được | graphify, claude, hooks | Cài hoặc cấu hình Graphify cho Claude Code theo phạm vi dự án thay vì global. | Graphify không có cờ cài theo project: sao chép `~/.claude/skills/graphify` vào `.claude/skills/graphify`, chạy `graphify claude install`, rồi sửa lệnh hook trong `.claude/settings.json` từ đường dẫn tuyệt đối (`C:/Users/.../graphify.EXE`) thành `graphify hook-guard <search\|read\|compact>` để không gãy trên máy khác; kiểm bằng `graphify hook-guard <chế độ>` (exit 0) và `graphify query`. | 1 | có hiệu lực |
 | M-26 | Hay quên | records, tests, ci, paths | Di chuyển, đổi tên hoặc xóa thư mục tài liệu (`specs`, `plans`, `tasks`, `errors`, `qa-evidence`...) trong repo. | Trước khi commit, tìm cả tên thư mục trần (`specs`, `qa-evidence`...) trong `POS_API/src`, `POS_UI/src`, `POS_UI/test`, `.github`, vì test có thể đọc file bằng `resolve(__dirname, '../..', 'specs', file)` mà grep chuỗi `specs/` không thấy; rồi chạy toàn bộ `npm test` của POS_API (cần PostgreSQL) hoặc ít nhất các test không cần DB, và xem CI sau khi push. | 1 | có hiệu lực |
 | M-27 | Đã học được | ci, github, logs | Debug CI GitHub Actions khi `gh run view --log` hoặc `--log-failed` không hiện dòng `not ok`. | `gh` cắt log lớn (log step test của POS_API ~12 MB, `gh` chỉ trả ~2.200 dòng). Tải log gốc bằng `gh api repos/<owner>/<repo>/actions/runs/<run_id>/logs > logs.zip`, đọc file `Backend API (POS_API)/8_Run unit & integration tests.txt` trong zip (giải nén vào thư mục riêng, đọc bằng `python -I`), tìm `not ok`, `# fail`, `failureType` và `##[error]`. Tên repo trong URL là tên mới `POS-Food-And-Beverage`. | 1 | có hiệu lực |
+| M-28 | Hay quên | ui, tests, node-vm | Sửa giao diện của `LivePosScreen.tsx`, `LivePaymentDialog.tsx`, `SettingsScreen.tsx` hoặc màn nào có test nạp mã nguồn bằng `node:vm`. | Trước khi thêm import mới (kể cả `lucide-react`, `Dialog`) hoặc đổi cấu trúc nút, mở test của màn đó: `require` giả ném lỗi với module lạ, React giả không render component hàm tự định nghĩa, và nhiều câu kiểm so chuỗi chính xác nội dung nút (`'Đóng'`, `'Thanh toán'`, `'+'`, `'−'`). Thêm mock vào harness thay vì bỏ import; giữ chữ trên nút và đặt biểu tượng ngoài thẻ `<p role="alert">` khi test so cả nội dung thẻ. | 1 | có hiệu lực |
 
 Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY.md` gốc không có bộ đếm số lần cùng bài học tái diễn. Đây không phải 0 lần và không phải số test/chứng cứ. Khi có lần tái diễn mới, ghi căn cứ và ngày rồi bắt đầu đếm các lần **sau chuyển đổi**; không suy ngược số lần lịch sử.
 
@@ -375,6 +376,18 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - quy tắc: `gh` cắt log lớn (log step test của POS_API ~12 MB, `gh` chỉ trả khoảng 2.200 dòng). Tải log gốc bằng `gh api repos/<owner>/<repo>/actions/runs/<run_id>/logs > logs.zip`, đọc file `Backend API (POS_API)/8_Run unit & integration tests.txt` trong zip (đọc bằng `python -I`, không giải nén vào thư mục có script), tìm `not ok`, `# fail`, `failureType` và `##[error]`. Tên repo trong URL là tên mới `POS-Food-And-Beverage`.
 - vì sao: Lần đầu `gh run view --log-failed` chỉ cho thấy test 1 đến 14 đều `ok` và không thấy lỗi, nên suýt kết luận nhầm là process bị kill; annotation lỗi ở dòng 2863 trong khi log `gh` trả ngắn hơn đã gợi ý log bị cắt.
 - bằng chứng: Zip 843 KB từ run 43197181739 có file test 11,9 MB, 2.864 dòng với `# tests 155`, `# fail 1`, `not ok 16 - DOC-02 AUD-05 ...`; log `gh run view` chỉ có 14 dòng `ok`.
+- số lần: 1
+- ghi lần đầu: 2026-11-12
+- cập nhật gần nhất: 2026-11-12
+- trạng thái: có hiệu lực
+
+### M-28
+- loại: Hay quên
+- tag: ui, tests, node-vm
+- khi nào áp dụng: Sửa giao diện của màn có test nạp mã nguồn TSX bằng `node:vm` với React giả (`POS_UI/test/live-payment.test.mjs`, `organization-screen.test.mjs`, `platform-screen-race.test.mjs`, `shift-screen.test.mjs`, `dialog-focus.test.mjs`).
+- quy tắc: Trước khi thêm import mới hoặc đổi cấu trúc nút, đọc harness của test. (1) `require` giả ném `Unexpected dependency` với module lạ: thêm mock (`lucide-react`, `Dialog`) vào harness. (2) `React.createElement` giả chỉ ghi lại `{type, props, children}`, không chạy component hàm, nên chữ cần kiểm phải nằm trong phần tử gốc. (3) Nhiều câu kiểm so chuỗi chính xác nội dung nút (`'Đóng'`, `'Thanh toán'`, `'Tiền mặt'`) hoặc `[children].flat().join('')`: biểu tượng làm chuỗi thành `[object Object]...`, nên không đặt biểu tượng vào nút/thẻ mà test so cả nội dung. (4) Test tìm nút theo `includes`: đừng để ký tự `+`, `−` hay chữ `Xóa` ở nút khác nằm trước trong cây; dùng biểu tượng cho nút tăng giảm trong hộp thoại chọn món.
+- vì sao: Ngày 2026-11-12 viết lại `LivePosScreen.tsx` và `LivePaymentDialog.tsx` làm 37 test đỏ ngay lần chạy đầu (thiếu mock `lucide-react`/`Dialog`), sau đó còn 8 test đỏ do chữ `OPEN`/`PAID` đổi thành nhãn tiếng Việt, nút `+` trong hộp thoại chọn món bị test `PAID-DONE-4` coi là nút sửa đơn, và biểu tượng trong nút `Tiền mặt` làm hỏng `R5-1`; `B-29` đỏ vì biểu tượng nằm trong `<p role="alert">`.
+- bằng chứng: `npm test` trong `POS_UI`: lần đầu 48 pass, 37 fail; sau khi vá harness và đổi cấu trúc: 85 pass, 0 fail (commit `29bd158`, `ef926ea`).
 - số lần: 1
 - ghi lần đầu: 2026-11-12
 - cập nhật gần nhất: 2026-11-12

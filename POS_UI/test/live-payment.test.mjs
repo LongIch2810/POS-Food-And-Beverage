@@ -5,6 +5,9 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import {AuthError} from '../src/auth/client.ts';
 
+// Icon components are presentational only; the mocked React never renders them.
+const lucide=new Proxy({},{get:(_,key)=>String(key)});
+
 const path=new URL('../src/features/pos/LivePaymentDialog.tsx',import.meta.url);
 function mount(overrides={},permissions=['pos.sell']) {
   assert.ok(existsSync(path),'Live payment dialog must exist');
@@ -22,7 +25,7 @@ function mount(overrides={},permissions=['pos.sell']) {
     confirmTransferManually:async()=>({status:'PAID'}),...overrides};
   const exports={},intervals=new Map();let timer=0;
   vm.runInNewContext(compiled,{exports,Error,AuthError,crypto:{randomUUID:()=>`key-${++timer}`},setInterval:fn=>{intervals.set(++timer,fn);return timer;},clearInterval:id=>intervals.delete(id),
-    require:name=>{if(name==='react')return React;if(name.endsWith('/Dialog'))return {Dialog:'Dialog'};if(name.endsWith('/salesService'))return {salesService:service};if(name.endsWith('/auth/client'))return {AuthError};if(name.endsWith('/formatters'))return {formatVND:n=>`${n}đ`};throw Error('Unexpected dependency: '+name);}});
+    require:name=>{if(name==='react')return React;if(name.endsWith('/Dialog'))return {Dialog:'Dialog'};if(name.endsWith('/salesService'))return {salesService:service};if(name.endsWith('/auth/client'))return {AuthError};if(name.endsWith('/formatters'))return {formatVND:n=>`${n}đ`};if(name==='lucide-react')return lucide;throw Error('Unexpected dependency: '+name);}});
   const props={invoice:{id:'i1',status:'OPEN',invoiceCode:'HD00000001'},permissions,canSell:permissions.includes('pos.sell'),onClose:()=>calls.push(['close']),onPaid:()=>calls.push(['paid']),onChanged:()=>calls.push(['changed'])};
   function render(){for(let count=0;dirty;count++){assert.ok(count<40);dirty=false;index=0;effects=[];tree=exports.LivePaymentDialog(props);effects.forEach(f=>f());}}
   async function flush(){for(let n=0;n<20;n++){render();await Promise.resolve();}render();}
@@ -100,7 +103,7 @@ test('[R1-1] OWNER assigned to branch may select another branch and open its pay
     if(name.endsWith('/organizationService'))return {organizationService:{getBranchChoices:async()=>[{id:'b1',name:'A',isActive:true},{id:'b2',name:'B',isActive:true}],getTables:async()=>({data:[],meta:{nextCursor:null}})}};
     if(name.endsWith('/shiftService'))return {shiftService:{getCurrentShift:async()=>null}};
     if(name.endsWith('/salesService'))return {salesService:{listOpen:async id=>{listed.push(id);return {data:id==='b2'?[invoice]:[],meta:{nextCursor:null}};},get:async()=>invoice,getPendingTransferAttempt:async()=>({id:'a2',status:'PENDING'})}};
-    if(name.endsWith('/OpenShiftGate'))return {OpenShiftGate:'OpenShiftGate'};if(name.endsWith('/LivePaymentDialog'))return {LivePaymentDialog:'LivePaymentDialog'};if(name.endsWith('/formatters'))return {formatVND:n=>`${n}đ`};throw Error(name);
+    if(name.endsWith('/OpenShiftGate'))return {OpenShiftGate:'OpenShiftGate'};if(name.endsWith('/LivePaymentDialog'))return {LivePaymentDialog:'LivePaymentDialog'};if(name.endsWith('/formatters'))return {formatVND:n=>`${n}đ`};if(name.endsWith('/ui/Dialog'))return {Dialog:'Dialog'};if(name==='lucide-react')return lucide;throw Error(name);
   }});
   function render(){for(let n=0;dirty;n++){assert.ok(n<40);dirty=false;index=0;effects=[];tree=exports.LivePosScreen({});effects.forEach(f=>f());}}
   async function settle(){for(let n=0;n<30;n++){render();await Promise.resolve();}render();}
@@ -130,7 +133,7 @@ test('ST8 live POS exposes payment for selected order and permits manager to ins
     if(name.endsWith('/shiftService'))return {shiftService:{getCurrentShift:async()=>currentShift}};
     if(name.endsWith('/salesService'))return {salesService:{listOpen:async()=>({data:[invoice],meta:{nextCursor:null}}),get:async()=>invoice,getPendingTransferAttempt:async()=>({id:'a1',status:'PENDING'})}};
     if(name.endsWith('/OpenShiftGate'))return {OpenShiftGate:'OpenShiftGate'};if(name.endsWith('/LivePaymentDialog'))return {LivePaymentDialog:'LivePaymentDialog'};
-    if(name.endsWith('/formatters'))return {formatVND:n=>`${n}đ`};throw Error('Unexpected dependency '+name);
+    if(name.endsWith('/formatters'))return {formatVND:n=>`${n}đ`};if(name.endsWith('/ui/Dialog'))return {Dialog:'Dialog'};if(name==='lucide-react')return lucide;throw Error('Unexpected dependency '+name);
   }});
   function render(){for(let n=0;dirty;n++){assert.ok(n<40);dirty=false;index=0;effects=[];tree=exports.LivePosScreen({initialInvoiceId:'i1'});effects.forEach(f=>f());}}
   for(let n=0;n<30;n++){render();await Promise.resolve();}render();
@@ -304,7 +307,7 @@ async function mountPos({initialInvoiceId='i1',status='OPEN',pending=null,tables
       cancel:async(id,reason)=>{calls.push(['cancel',id,reason]);if(!state.keepListed)state.orders=state.orders.filter(o=>o.id!==id);return {...state.detail,status:'CANCELLED'};},
       updateItem:async(id,body)=>{calls.push(['updateItem',id,body]);return state.updated??state.detail;},removeItem:async id=>{calls.push(['removeItem',id]);state.detail=state.afterRemove??state.detail;}}};
     if(name.endsWith('/OpenShiftGate'))return {OpenShiftGate:'OpenShiftGate'};if(name.endsWith('/LivePaymentDialog'))return {LivePaymentDialog:'LivePaymentDialog'};
-    if(name.endsWith('/formatters'))return {formatVND:n=>`${n}đ`};throw Error('Unexpected dependency '+name);
+    if(name.endsWith('/formatters'))return {formatVND:n=>`${n}đ`};if(name.endsWith('/ui/Dialog'))return {Dialog:'Dialog'};if(name==='lucide-react')return lucide;throw Error('Unexpected dependency '+name);
   }});
   function render(){for(let n=0;dirty;n++){assert.ok(n<40);dirty=false;index=0;effects=[];tree=exports.LivePosScreen({initialInvoiceId});effects.forEach(f=>f());}}
   async function settle(){for(let n=0;n<40;n++){render();await Promise.resolve();}render();}
@@ -332,7 +335,7 @@ test('[PAID-DONE-3] OPEN order with pending QR keeps the lock',async()=>{
 test('[PAID-DONE-1] a selected order that is no longer OPEN cannot receive items or edits',async()=>{
   // Every in-app path now deselects non-OPEN orders (AC-5..AC-8); only the view-only initialInvoiceId path can show one.
   const screen=await mountPos({details:{i1:{id:'i1',branchId:'b1',invoiceCode:'HD00000001',status:'PAID',orderType:'TAKEAWAY',totalAmount:30000,items:[{id:'it',productName:'Trà',sizeName:'M',quantity:1,lineTotal:30000,toppings:[]}]}}});
-  assert.match(screen.text(),/PAID/,'precondition: PAID order is shown');
+  assert.match(screen.text(),/Đã thanh toán/,'precondition: PAID order is shown');
   const product=screen.button('Trà đào');assert.ok(product);
   assert.equal(product.props.disabled,true,'menu must be locked for a PAID order');
   await product.props.onClick();await screen.settle();
@@ -346,7 +349,7 @@ test('[PAID-DONE-2] reload that returns a PAID order deselects it so a new order
   assert.match(screen.text(),/HD00000001/,'precondition: order selected');
   screen.state.detail={...screen.state.detail,status:'PAID'};
   await screen.click('Tải lại đơn');
-  assert.doesNotMatch(screen.text(),/HD00000001 ·|PAID/,'PAID order must not stay selected');
+  assert.doesNotMatch(screen.text(),/HD00000001 ·|Đã thanh toán/,'PAID order must not stay selected');
   assert.match(screen.text(),/Chọn bàn hoặc mở đơn mang đi trước khi thêm món/);
   assert.equal(screen.button('Trà đào').props.disabled,true);
   assert.match(screen.text(),/Chưa chọn đơn/);
@@ -360,13 +363,19 @@ test('[PAID-DONE-4] an already PAID order opened by initialInvoiceId is view-onl
   for(const label of ['+','−','Xóa','Hủy đơn','Thanh toán'])assert.ok(!screen.button(label),`${label} hidden`);
 });
 
+async function cancelOrder(screen,reason='Khách đổi ý'){
+  await screen.click('Hủy đơn');
+  screen.find('textarea').props.onChange({target:{value:reason}});await screen.settle();
+  await screen.click('Xác nhận hủy đơn');
+}
+
 const lineItem={id:'it',productName:'Trà',sizeName:'M',quantity:1,lineTotal:30000,toppings:[]};
 const dineIn={tables:[{id:'t1',name:'Bàn 1',isActive:true}],orders:[{id:'i1',invoiceCode:'HD00000001',orderType:'DINE_IN',tableId:'t1',totalAmount:0}]};
 
 test('[PAID-DONE-5] cancelling an order deselects it at once, refreshes the list and keeps a result notice',async()=>{
   const screen=await mountPos();const before=screen.state.listCalls;
   screen.state.keepListed=true; // stale list: deselection must not depend on the refreshed list
-  await screen.click('Hủy đơn');
+  await cancelOrder(screen);
   assert.deepEqual(screen.calls.find(c=>c[0]==='cancel'),['cancel','i1','Khách đổi ý'],'precondition: cancel was sent');
   assert.match(screen.text(),/Chưa chọn đơn/,'CANCELLED order must not stay selected');
   assert.ok(screen.state.listCalls>before,'open orders must be refreshed');
@@ -391,13 +400,13 @@ test('[PAID-DONE-6] a table whose stored order is already PAID is treated as fre
   await screen.click('Sơ đồ bàn');await screen.click('Bàn 1');
   assert.equal(JSON.stringify(screen.calls.find(c=>c[0]==='create')),JSON.stringify(['create',{orderType:'DINE_IN',tableId:'t1'}]),'new DINE_IN order must be created');
   assert.ok(screen.state.listCalls>before,'open orders must be refreshed');
-  assert.match(screen.text(),/HD00000009/);assert.doesNotMatch(screen.text(),/PAID/);
+  assert.match(screen.text(),/HD00000009/);assert.doesNotMatch(screen.text(),/Đã thanh toán/);
 });
 
 test('[PAID-DONE-6] a table with a really OPEN order still opens that order',async()=>{
   const screen=await mountPos({initialInvoiceId:null,...dineIn});
   await screen.click('Sơ đồ bàn');await screen.click('Bàn 1');
-  assert.equal(screen.calls.filter(c=>c[0]==='create').length,0);assert.match(screen.text(),/HD00000001/);assert.match(screen.text(),/OPEN/);
+  assert.equal(screen.calls.filter(c=>c[0]==='create').length,0);assert.match(screen.text(),/HD00000001/);assert.match(screen.text(),/Đang mở/);
 });
 
 test('[PAID-DONE-7] clicking a listed order that is no longer OPEN does not select it, refreshes and explains',async()=>{
@@ -412,7 +421,7 @@ test('[PAID-DONE-7] clicking a listed order that is no longer OPEN does not sele
 test('[PAID-DONE-7] clicking a listed OPEN order still selects it',async()=>{
   const screen=await mountPos({initialInvoiceId:null});
   await screen.click('Đơn đang mở');await screen.click('HD00000001');
-  assert.match(screen.text(),/Mang đi · OPEN/);
+  assert.match(screen.text(),/Đang mở/);
 });
 
 test('[PAID-DONE-8] item removal whose follow-up read returns a PAID order deselects it',async()=>{
@@ -473,7 +482,7 @@ test('[B-39] the "Thanh toán thành công." notice of a paid order disappears w
 test('[B-39] "Đã hủy đơn." shows right after cancelling and disappears once another order is created',async()=>{
   const created={id:'i9',branchId:'b1',workShiftId:'s1',invoiceCode:'HD00000009',status:'OPEN',orderType:'TAKEAWAY',totalAmount:0,items:[]};
   const screen=await mountPos({created});
-  await screen.click('Hủy đơn');
+  await cancelOrder(screen);
   assert.match(screen.text(),/Đã hủy đơn\./,'cancel notice must stay visible right after cancelling');
   await screen.click('Tạo đơn mang đi');
   assert.match(screen.text(),/HD00000009/,'precondition: new order selected');
@@ -482,18 +491,18 @@ test('[B-39] "Đã hủy đơn." shows right after cancelling and disappears onc
 
 test('[B-39] "Đã hủy đơn." disappears when an OPEN order is chosen from the open-order list',async()=>{
   const screen=await mountPos();screen.state.keepListed=true;
-  await screen.click('Hủy đơn');assert.match(screen.text(),/Đã hủy đơn\./,'precondition: cancel notice shown');
+  await cancelOrder(screen);assert.match(screen.text(),/Đã hủy đơn\./,'precondition: cancel notice shown');
   await screen.click('Đơn đang mở');await screen.click('HD00000001');
-  assert.match(screen.text(),/Mang đi · OPEN/,'precondition: OPEN order selected');
+  assert.match(screen.text(),/Đang mở/,'precondition: OPEN order selected');
   assert.doesNotMatch(screen.text(),/Đã hủy đơn\./,'old cancel notice must not follow the chosen order');
 });
 
 test('[B-39] "Đã hủy đơn." disappears when an occupied table is opened from the table map',async()=>{
   const screen=await mountPos({initialInvoiceId:null,...dineIn});screen.state.keepListed=true;
   await screen.click('Sơ đồ bàn');await screen.click('Bàn 1');
-  await screen.click('Hủy đơn');assert.match(screen.text(),/Đã hủy đơn\./,'precondition: cancel notice shown');
+  await cancelOrder(screen);assert.match(screen.text(),/Đã hủy đơn\./,'precondition: cancel notice shown');
   await screen.click('Sơ đồ bàn');await screen.click('Bàn 1');
-  assert.match(screen.text(),/OPEN/,'precondition: OPEN order selected');
+  assert.match(screen.text(),/Đang mở/,'precondition: OPEN order selected');
   assert.doesNotMatch(screen.text(),/Đã hủy đơn\./,'old cancel notice must not follow the opened table order');
 });
 
@@ -503,7 +512,7 @@ test('[B-40] a DINE_IN order that is no longer OPEN has no table-transfer contro
   const open=await mountPos({tables,orders:[],details:{i1:{...paidDineIn,status:'OPEN'}}});
   assert.ok(open.find('select'),'control: transfer select exists for an OPEN DINE_IN order');
   const paid=await mountPos({tables,orders:[],details:{i1:paidDineIn}});
-  assert.match(paid.text(),/PAID/,'precondition: PAID DINE_IN order is shown');
+  assert.match(paid.text(),/Đã thanh toán/,'precondition: PAID DINE_IN order is shown');
   assert.equal(paid.find('select'),undefined,'transfer select must be hidden for a PAID DINE_IN order');
 });
 

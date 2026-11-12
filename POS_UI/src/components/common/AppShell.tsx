@@ -118,54 +118,24 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
     { id: 'shifts', label: 'Ca làm', icon: <Clock size={24} />, visible: !isPlatformAdmin && (has('shift.read') || has('shift.open') || has('shift.close') || has('shift.force_close')) },
     { id: 'inventory', label: 'Kho hàng', icon: <Boxes size={24} />, visible: !isPlatformAdmin && has('inventory.view') },
     { id: 'reports', label: 'Báo cáo', icon: <BarChart3 size={24} />, visible: !isPlatformAdmin && (has('report.view_branch') || has('report.view_all')) },
-    { id: 'products', label: 'Thực đơn', icon: <UtensilsCrossed size={24} />, visible: !isPlatformAdmin && (has('menu.read') || has('menu.manage') || has('product.manage')) },
+    { id: 'products', label: 'Thực đơn', icon: <UtensilsCrossed size={24} />, visible: !isPlatformAdmin && (has('menu.manage') || has('product.manage')) },
     { id: 'settings', label: 'Cài đặt', icon: <Settings size={24} />, visible: !isPlatformAdmin && canOpenSettings(perms) },
   ];
 
   const navItems = allNavItems.filter((item) => item.visible);
 
-  const currentBranchName = isDemo
+  // Ca đang mở lấy từ API nên tên chi nhánh của ca là tên thật; dữ liệu mẫu chỉ là phương án dự phòng.
+  const currentBranchName = currentShift?.branchName || (isDemo
     ? accessibleBranches.find((b) => b.id === selectedBranchId)?.name || session.branch_name || 'Chi nhánh'
-    : session.branch_name || 'Tất cả chi nhánh';
+    : session.branch_name || 'Tất cả chi nhánh');
 
   return (
-    <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
+    <div className="shell">
       {/* ===================== RAIL BÊN TRÁI (>= 768px: Desktop & Tablet) ===================== */}
       {!isMobile && (
-        <nav
-          aria-label="Điều hướng chính"
-          style={{
-            width: 80,
-            background: 'var(--color-brand-800)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            padding: '16px 0',
-            gap: 8,
-            flexShrink: 0,
-            userSelect: 'none',
-            overflowY: 'auto',
-          }}
-          className="no-scrollbar"
-        >
+        <nav aria-label="Điều hướng chính" className="rail no-scrollbar">
           {/* Logo Phin Cà Phê Việt Nam */}
-          <div
-            title={isPlatformAdmin ? 'Quản trị Nền tảng' : 'Hệ thống Cà phê F&B'}
-            style={{
-              height: 52,
-              width: 52,
-              borderRadius: 'var(--radius-tile)',
-              background: 'var(--color-brand-700)',
-              border: '1px solid var(--color-brand-500)',
-              color: '#FFFFFF',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 12,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-              flexShrink: 0,
-            }}
-          >
+          <div title={isPlatformAdmin ? 'Quản trị Nền tảng' : 'Hệ thống Cà phê F&B'} className="rail-logo">
             {isPlatformAdmin ? (
               <ShieldCheck size={28} color="#f8f0e9" />
             ) : (
@@ -191,32 +161,9 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onSelectTab(item.id)}
-                className="touch-press"
-                style={{
-                  width: 68,
-                  height: 64,
-                  borderRadius: 'var(--radius-control)',
-                  background: isActive ? 'var(--color-brand-600)' : 'transparent',
-                  color: isActive ? '#FFFFFF' : 'var(--color-brand-100)',
-                  border: isActive ? '1px solid var(--color-brand-500)' : '1px solid transparent',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 4,
-                  cursor: 'pointer',
-                  position: 'relative',
-                  flexShrink: 0,
-                }}
-              >
-                <div>{item.icon}</div>
-                <span style={{ fontSize: 11, fontWeight: isActive ? 600 : 500, letterSpacing: '0.2px' }}>
-                  {item.label}
-                </span>
+              <button key={item.id} type="button" onClick={() => onSelectTab(item.id)} className="rail-btn" aria-current={isActive ? 'page' : undefined}>
+                {item.icon}
+                <span>{item.label}</span>
               </button>
             );
           })}
@@ -292,24 +239,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setMobileNavOpen(false)}
-                aria-label="Đóng bảng điều hướng"
-                className="touch-press"
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 'var(--radius-control)',
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--color-brand-100)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                }}
-              >
+              <button type="button" onClick={() => setMobileNavOpen(false)} aria-label="Đóng bảng điều hướng" className="icon-btn" style={{ color: 'var(--color-brand-100)' }}>
                 <X size={22} />
               </button>
             </div>
@@ -357,25 +287,10 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
                       onSelectTab(item.id);
                       setMobileNavOpen(false);
                     }}
-                    className="touch-press"
-                    style={{
-                      height: 48,
-                      width: '100%',
-                      borderRadius: 'var(--radius-control)',
-                      background: isActive ? 'var(--color-brand-600)' : 'transparent',
-                      color: isActive ? '#FFFFFF' : 'var(--color-brand-100)',
-                      border: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 14,
-                      padding: '0 14px',
-                      fontSize: 15,
-                      fontWeight: isActive ? 600 : 500,
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                    }}
+                    className="nav-btn"
+                    aria-current={isActive ? 'page' : undefined}
                   >
-                    <div>{item.icon}</div>
+                    {item.icon}
                     <span>{item.label}</span>
                   </button>
                 );
@@ -438,25 +353,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
           {/* Bên trái: Nút Menu (nếu Mobile) + Tên Chi nhánh */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexShrink: 1, overflow: 'hidden' }}>
             {isMobile && (
-              <button
-                type="button"
-                onClick={() => setMobileNavOpen(true)}
-                aria-label="Mở danh mục điều hướng"
-                className="touch-press"
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 'var(--radius-control)',
-                  border: '1px solid var(--color-border)',
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
-              >
+              <button type="button" onClick={() => setMobileNavOpen(true)} aria-label="Mở danh mục điều hướng" className="icon-btn icon-btn-outline">
                 <Menu size={22} />
               </button>
             )}
@@ -468,25 +365,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
             ) : canSwitchBranch && isDemo ? (
               /* Người có quyền branch.access_all có dropdown đổi chi nhánh (BR-71b) */
               <div style={{ position: 'relative', minWidth: 0 }}>
-                <button
-                  type="button"
-                  onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
-                  style={{
-                    height: 44,
-                    padding: '0 10px',
-                    borderRadius: 'var(--radius-control)',
-                    border: '1px solid var(--color-border-control)',
-                    background: 'var(--color-surface)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    cursor: 'pointer',
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: 'var(--color-text)',
-                    maxWidth: isMobile ? 150 : 220,
-                  }}
-                >
+                <button type="button" onClick={() => setBranchDropdownOpen(!branchDropdownOpen)} aria-haspopup="menu" aria-expanded={branchDropdownOpen} className="btn btn-secondary" style={{ maxWidth: isMobile ? 150 : 220, minHeight: 44 }}>
                   <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentBranchName}</span>
                   <ChevronDown size={16} style={{ flexShrink: 0 }} />
                 </button>
@@ -515,24 +394,20 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
                         Chọn chi nhánh làm việc
                       </div>
                       {accessibleBranches.map((b) => (
-                        <div
+                        <button
                           key={b.id}
+                          type="button"
+                          role="menuitem"
+                          className="menu-item"
+                          aria-current={b.id === selectedBranchId ? 'true' : undefined}
                           onClick={() => {
                             MockEngine.setSelectedBranch(b.id);
                             setSelectedBranchId(b.id);
                             setBranchDropdownOpen(false);
                           }}
-                          style={{
-                            padding: '10px 16px',
-                            cursor: 'pointer',
-                            fontSize: 14,
-                            fontWeight: b.id === selectedBranchId ? 600 : 400,
-                            color: b.id === selectedBranchId ? 'var(--color-brand-600)' : 'var(--color-text)',
-                            background: b.id === selectedBranchId ? 'var(--color-brand-50)' : 'transparent',
-                          }}
                         >
                           {b.name}
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </>
@@ -597,26 +472,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={logout}
-              title="Đăng xuất khỏi tài khoản"
-              className="touch-press"
-              style={{
-                height: 48,
-                padding: isMobile ? '0 10px' : '0 14px',
-                borderRadius: 'var(--radius-control)',
-                border: '1px solid var(--color-border)',
-                background: 'var(--color-surface)',
-                color: 'var(--color-danger)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
+            <button type="button" onClick={logout} title="Đăng xuất khỏi tài khoản" className="topbar-btn">
               <LogOut size={16} />
               {!isMobile && <span>Đăng xuất</span>}
             </button>

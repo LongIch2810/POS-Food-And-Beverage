@@ -77,7 +77,7 @@ export const ProductCustomizeModal: React.FC<ProductCustomizeModalProps> = ({
         {/* Chọn Size */}
         <div>
           <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', display: 'block', marginBottom: 8 }}>
-            Kích cỡ (Size)
+            Kích cỡ
           </label>
           <div
             role="radiogroup"
@@ -92,7 +92,7 @@ export const ProductCustomizeModal: React.FC<ProductCustomizeModalProps> = ({
                   type="button"
                   role="radio"
                   aria-checked={isSelected}
-                  aria-label={`Size ${s.sizeName}, giá ${formatVND(s.price)}`}
+                  aria-label={`Kích cỡ ${s.sizeName}, giá ${formatVND(s.price)}`}
                   onClick={() => setSelectedSizeId(s.id)}
                   style={{
                     height: 52,
@@ -108,7 +108,7 @@ export const ProductCustomizeModal: React.FC<ProductCustomizeModalProps> = ({
                     gap: 2,
                   }}
                 >
-                  <span style={{ fontWeight: 700, fontSize: 15 }}>Size {s.sizeName}</span>
+                  <span style={{ fontWeight: 700, fontSize: 15 }}>Kích cỡ {s.sizeName}</span>
                   <span className="money" style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
                     {formatVND(s.price)}
                   </span>
@@ -122,7 +122,7 @@ export const ProductCustomizeModal: React.FC<ProductCustomizeModalProps> = ({
         {availableToppings.length > 0 && (
           <div>
             <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', display: 'block', marginBottom: 8 }}>
-              Topping kèm theo
+              Món thêm kèm theo
             </label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {availableToppings.map((top) => {
@@ -133,7 +133,7 @@ export const ProductCustomizeModal: React.FC<ProductCustomizeModalProps> = ({
                     role="checkbox"
                     aria-checked={isChecked}
                     tabIndex={0}
-                    aria-label={`Topping ${top.name}, cộng ${formatVND(top.price)}`}
+                    aria-label={`Món thêm ${top.name}, cộng ${formatVND(top.price)}`}
                     onClick={() => toggleTopping(top.id)}
                     onKeyDown={(e) => {
                       if (e.key === ' ' || e.key === 'Enter') {

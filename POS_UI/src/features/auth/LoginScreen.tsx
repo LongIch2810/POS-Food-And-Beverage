@@ -74,42 +74,11 @@ export const LoginScreen: React.FC = () => {
         }}
       >
         {/* ===================== CỘT TRÁI: THƯƠNG HIỆU & GIỚI THIỆU HỆ THỐNG ===================== */}
-        <div
-          className="login-brand-panel"
-          style={{
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-sheet)',
-            padding: '28px 24px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div>
-            {/* Logo phin cà phê thương hiệu */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 'var(--radius-tile)',
-                  background: 'var(--color-brand-800)',
-                  color: '#FFFFFF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <svg
-                  width="28"
-                  height="28"
-                  viewBox="0 0 32 32"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-label="Logo Phin Cà Phê"
-                >
+        <div className="login-brand-panel login-brand">
+          <div className="login-brand-top">
+            <div className="login-brand-logo">
+              <div className="login-brand-mark">
+                <svg width="30" height="30" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Logo Phin Cà Phê">
                   <circle cx="16" cy="5" r="1.8" fill="#f1e4d9" />
                   <path d="M9 8.5C9 7.8 10 7.2 16 7.2C22 7.2 23 7.8 23 8.5L22 10.5H10L9 8.5Z" fill="#f1e4d9" />
                   <path d="M10 11H22L20.8 19.5H11.2L10 11Z" fill="#f8f0e9" opacity="0.95" />
@@ -119,140 +88,18 @@ export const LoginScreen: React.FC = () => {
                 </svg>
               </div>
               <div>
-                <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0, lineHeight: '24px' }}>
-                  POS & Quản lý Kho F&B
-                </h1>
-                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
-                  Cà phê • Trà sữa • Quán ăn
-                </p>
+                <h1>POS & Quản lý Kho F&B</h1>
+                <p className="login-brand-sub">Cà phê • Trà sữa • Quán ăn</p>
               </div>
             </div>
-
-            <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: '21px', margin: '0 0 20px 0' }}>
-              Hệ thống bán hàng quầy cảm ứng và quản trị tồn kho đa chi nhánh theo thời gian thực.
-            </p>
-
-            {/* Danh sách 3 trụ cột nghiệp vụ */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 12,
-                  padding: '12px 14px',
-                  background: 'var(--color-surface-sunken)',
-                  borderRadius: 'var(--radius-control)',
-                }}
-              >
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 'var(--radius-control)',
-                    background: 'var(--color-brand-100)',
-                    color: 'var(--color-brand-700)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Store size={18} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
-                    Bán hàng cảm ứng tại quầy
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: '17px' }}>
-                    Tối ưu tablet ngang, chọn món dưới 2 chạm, sơ đồ bàn trực quan.
-                  </div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 12,
-                  padding: '12px 14px',
-                  background: 'var(--color-surface-sunken)',
-                  borderRadius: 'var(--radius-control)',
-                }}
-              >
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 'var(--radius-control)',
-                    background: 'var(--color-info-bg)',
-                    color: 'var(--color-info)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Clock size={18} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
-                    Đối soát ca đếm mù
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: '17px' }}>
-                    Mỗi chi nhánh 1 ca mở, bàn giao tiền mặt đếm mù chống thất thoát.
-                  </div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 12,
-                  padding: '12px 14px',
-                  background: 'var(--color-surface-sunken)',
-                  borderRadius: 'var(--radius-control)',
-                }}
-              >
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 'var(--radius-control)',
-                    background: 'var(--color-success-bg)',
-                    color: 'var(--color-success)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Boxes size={18} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
-                    Định mức trừ kho tự động
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: '17px' }}>
-                    Trừ nguyên vật liệu theo công thức từng ly nước, cảnh báo tồn kho an toàn.
-                  </div>
-                </div>
-              </div>
-            </div>
+            <p className="login-brand-lead">Hệ thống bán hàng quầy cảm ứng và quản trị tồn kho đa chi nhánh theo thời gian thực.</p>
+            <ul className="login-points">
+              <li><Store size={22} /><div><strong>Bán hàng cảm ứng tại quầy</strong><span>Tối ưu tablet ngang, chọn món dưới 2 chạm, sơ đồ bàn trực quan.</span></div></li>
+              <li><Clock size={22} /><div><strong>Đối soát ca đếm mù</strong><span>Mỗi chi nhánh 1 ca mở, bàn giao tiền mặt đếm mù chống thất thoát.</span></div></li>
+              <li><Boxes size={22} /><div><strong>Định mức trừ kho tự động</strong><span>Trừ nguyên vật liệu theo công thức từng ly nước, cảnh báo tồn kho an toàn.</span></div></li>
+            </ul>
           </div>
-
-          {/* Chân trang thông tin */}
-          <div
-            style={{
-              paddingTop: 16,
-              borderTop: '1px solid var(--color-border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              fontSize: 12,
-              color: 'var(--color-text-muted)',
-            }}
-          >
+          <div className="login-brand-foot">
             <span>Bản quyền © Hệ thống F&B</span>
             <span>Múi giờ Asia/Ho_Chi_Minh</span>
           </div>

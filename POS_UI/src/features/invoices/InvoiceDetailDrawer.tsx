@@ -111,7 +111,7 @@ export const InvoiceDetailDrawer: React.FC<InvoiceDetailDrawerProps> = ({
         {/* Danh sách món (Snapshot tên và giá lúc bán per BR-26) */}
         <div>
           <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 8 }}>
-            DANH SÁCH MÓN ĐÃ BÁN (SNAPSHOT)
+            Món đã bán (giữ tên và giá lúc bán)
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {invoice.items.map((item) => (
@@ -136,7 +136,7 @@ export const InvoiceDetailDrawer: React.FC<InvoiceDetailDrawerProps> = ({
                   </div>
                   {item.toppings.length > 0 && (
                     <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
-                      Topping: {item.toppings.map((t) => t.topping_name_snapshot).join(', ')}
+                      Món thêm: {item.toppings.map((t) => t.topping_name_snapshot).join(', ')}
                     </div>
                   )}
                   <div className="money" style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
@@ -196,7 +196,7 @@ export const InvoiceDetailDrawer: React.FC<InvoiceDetailDrawerProps> = ({
           {invoice.payments.length > 0 && (
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--color-border)' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 4 }}>
-                PHƯƠNG THỨC THANH TOÁN
+                Phương thức thanh toán
               </div>
               {invoice.payments.map((p) => (
                 <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>

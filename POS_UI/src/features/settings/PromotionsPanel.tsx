@@ -77,21 +77,24 @@ export const PromotionsPanel: React.FC = () => {
       <Button variant="text" size="sm" onClick={() => toggle(row)}>{row.isActive ? 'Tắt' : 'Bật'}</Button>
     </div> },
   ];
-  return <section style={{ display:'grid',gap:18 }}>
-    <header style={{ display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap' }}>
-      <div><h2 style={{ fontSize:24,fontWeight:700 }}>Mã giảm giá</h2>
-        <p style={{ color:'var(--color-text-muted)' }}>Cấu hình mã dùng khi thanh toán ở giai đoạn tiếp theo.</p></div>
-      <Button variant="primary" onClick={() => open()}>Thêm mã</Button>
+  return <section className="page">
+    <header className="page-head">
+      <div><h2 className="page-title">Mã giảm giá</h2>
+        <p className="page-sub">Cấu hình mã dùng khi thanh toán ở giai đoạn tiếp theo.</p></div>
+      <div className="page-actions">
+        <Button variant="secondary" onClick={refresh}>Tải lại</Button>
+        <Button variant="primary" onClick={() => open()}>Thêm mã</Button>
+      </div>
     </header>
-    <Button variant="text" onClick={refresh}>Tải lại</Button>
-    {error && <p role="alert">{error} <Button variant="text" onClick={refresh}>Thử lại</Button></p>}
-    {loading ? <p role="status">Đang tải mã giảm giá…</p> : !error &&
+    {error && <p role="alert" className="notice notice-danger"><span style={{ flex: 1 }}>{error}</span> <Button variant="secondary" onClick={refresh}>Thử lại</Button></p>}
+    {loading ? <div role="status"><span className="sr-only">Đang tải mã giảm giá…</span>
+      <div className="page-skeleton" aria-hidden="true"><span className="skeleton" /><span className="skeleton" /><span className="skeleton" /></div></div> : !error &&
       <DataTable columns={columns} data={rows} keyExtractor={row => row.id} emptyMessage="Chưa có mã giảm giá" />}
     <Dialog isOpen={editing !== undefined} onClose={() => setEditing(undefined)} title={editing ? 'Sửa mã giảm giá' : 'Thêm mã giảm giá'} maxWidth={520}>
       <form onSubmit={save} style={{ display:'grid',gap:12 }}>
         {!editing?.usedCount && <>
           <Field label="Mã" value={form.code} onChange={event => field('code',event.target.value)} required maxLength={50} />
-          <label>Loại giảm <select value={form.discountType} onChange={event => field('discountType',event.target.value)}>
+          <label className="field">Loại giảm <select className="select" value={form.discountType} onChange={event => field('discountType',event.target.value)}>
             <option value="PERCENT">Phần trăm</option><option value="FIXED">Số tiền</option></select></label>
           <Field label={form.discountType === 'PERCENT' ? 'Phần trăm (1–100)' : 'Số tiền giảm (VND)'} type="number" min="1"
             max={form.discountType === 'PERCENT' ? '100' : undefined} step="1" value={form.discountValue}
@@ -106,8 +109,11 @@ export const PromotionsPanel: React.FC = () => {
             onChange={event => field('usageLimit',event.target.value)} />
         </>}
         <Field label="Tên hiển thị (có thể để trống)" value={form.name} onChange={event => field('name',event.target.value)} />
-        <label><input type="checkbox" checked={form.isActive} onChange={event => field('isActive',event.target.checked)} /> Đang bật</label>
-        <Button type="submit" variant="primary" disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu mã'}</Button>
+        <label className="check-row"><input type="checkbox" checked={form.isActive} onChange={event => field('isActive',event.target.checked)} /> Đang bật</label>
+        <div className="form-actions">
+          <Button type="button" variant="secondary" onClick={() => setEditing(undefined)}>Hủy</Button>
+          <Button type="submit" variant="primary" size="lg" disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu mã'}</Button>
+        </div>
       </form>
     </Dialog>
   </section>;

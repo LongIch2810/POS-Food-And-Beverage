@@ -112,122 +112,33 @@ export const Dialog: React.FC<DialogProps> = ({
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 5000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 'min(16px, 3vw)',
-      }}
-    >
-      {/* Backdrop */}
-      <div
-        onClick={handleBackdropClick}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(26, 34, 38, 0.48)',
-          animation: 'fadeIn 180ms ease-out',
-        }}
-      />
-
-      {/* Sheet Modal */}
+    <div className="dialog-root">
+      <div className="dialog-backdrop" onClick={handleBackdropClick} />
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="animate-modal-pop"
-        style={{
-          position: 'relative',
-          background: 'var(--color-surface)',
-          borderRadius: 'var(--radius-sheet)',
-          boxShadow: 'var(--shadow-overlay)',
-          width: '100%',
-          maxWidth,
-          maxHeight: 'min(92vh, calc(100vh - 20px))',
-          display: 'flex',
-          flexDirection: 'column',
-          zIndex: 5001,
-          overflow: 'hidden',
-          outline: 'none',
-        }}
+        className="dialog-sheet animate-modal-pop"
+        style={{ maxWidth }}
       >
-        {/* Header - Sticky */}
-        <div
-          style={{
-            height: 64,
-            padding: '0 20px',
-            borderBottom: '1px solid var(--color-border)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexShrink: 0,
-          }}
-        >
-          <h2 id={titleId} style={{ fontSize: 20, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>
-            {title}
-          </h2>
+        <div className="dialog-head">
+          <h2 id={titleId} className="dialog-title">{title}</h2>
           <button
             type="button"
             onClick={disableClose ? undefined : onClose}
             disabled={disableClose}
             aria-disabled={disableClose}
             aria-label="Đóng hộp thoại"
-            className="touch-press"
-            style={{
-              height: 48,
-              width: 48,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'transparent',
-              border: 'none',
-              borderRadius: 'var(--radius-control)',
-              cursor: disableClose ? 'not-allowed' : 'pointer',
-              color: disableClose ? 'var(--color-border)' : 'var(--color-text-muted)',
-              opacity: disableClose ? 0.5 : 1,
-            }}
+            className="icon-btn"
           >
             <X size={22} />
           </button>
         </div>
-
-        {/* Content - Scrollable */}
-        <div
-          style={{
-            padding: 'min(20px, 4vw)',
-            overflowY: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            flex: 1,
-          }}
-        >
-          {children}
-        </div>
-
-        {/* Footer - Sticky */}
-        {footer && (
-          <div
-            style={{
-              padding: '14px 20px',
-              borderTop: '1px solid var(--color-border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              gap: 12,
-              background: 'var(--color-surface)',
-              flexShrink: 0,
-            }}
-          >
-            {footer}
-          </div>
-        )}
+        <div className="dialog-body">{children}</div>
+        {footer && <div className="dialog-foot">{footer}</div>}
       </div>
     </div>
   );
 };
-

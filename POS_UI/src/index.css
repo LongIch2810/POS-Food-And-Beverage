@@ -1,3 +1,7 @@
+@import './styles/ui.css';
+@import './styles/pos.css';
+@import './styles/components.css';
+
 /* POS-F&B Design Tokens per DESIGN.md §4 & §12.1 + ui-ux-pro-max + taste-skill */
 :root {
   /* Bề mặt và chữ ("Quầy pha chế sạch và sáng" - nền đá xám lạnh, bề mặt trắng) */
@@ -11,6 +15,8 @@
   --color-text: #1a2226;
   --color-text-muted: #55636a;
   --color-text-disabled: #98a3a9;
+  --color-on-brand: #ffffff;
+  --color-overlay: rgba(26, 34, 38, 0.48);
 
   /* Thương hiệu (nâu phin) */
   --color-brand-900: #2c1a11;
@@ -47,6 +53,19 @@
   --duration-fast: 120ms;
   --duration-normal: 200ms;
 
+  /* Tên token cũ còn dùng trong mã: trỏ về token chuẩn để không còn giá trị rỗng */
+  --shadow-card: none;
+  --radius-sm: 6px;
+  --color-warning-800: var(--color-warning);
+  --color-warning-100: var(--color-warning-bg);
+  --color-danger-subtle: var(--color-danger-bg);
+  --color-danger-700: var(--color-danger);
+  --color-danger-600: var(--color-danger);
+  --color-danger-100: var(--color-danger-bg);
+  --color-success-800: var(--color-success);
+  --color-success-100: var(--color-success-bg);
+  --color-neutral-100: var(--color-surface-sunken);
+
   /* Chữ */
   --font-sans: "Be Vietnam Pro", system-ui, "Segoe UI", Roboto, sans-serif;
   --font-numeric: var(--font-sans);
@@ -78,6 +97,32 @@ html, body {
   display: flex;
   flex-direction: column;
 }
+
+/* Bề mặt của trình duyệt cũng theo palette: bôi chọn, con trỏ, ô chọn */
+::selection {
+  background: var(--color-brand-100);
+  color: var(--color-brand-800);
+}
+input, textarea, select {
+  caret-color: var(--color-brand-600);
+  accent-color: var(--color-brand-600);
+}
+
+/* Điều khiển gốc của trình duyệt: kế thừa chữ, viền và bo góc theo token để màn nào quên gắn class vẫn đúng (DESIGN.md §6.5) */
+button, input, select, textarea { font: inherit; color: inherit; }
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+select,
+textarea {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border-control);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+textarea { min-height: 88px; padding: 10px 12px; line-height: 22px; resize: vertical; }
+input:disabled, select:disabled, textarea:disabled { background: var(--color-surface-sunken); color: var(--color-text-disabled); cursor: not-allowed; }
+input::placeholder, textarea::placeholder { color: var(--color-text-muted); opacity: 0.8; }
+input[type='checkbox'], input[type='radio'] { width: 20px; height: 20px; }
 
 /* Số tiền & số liệu luôn tabular */
 .money,
