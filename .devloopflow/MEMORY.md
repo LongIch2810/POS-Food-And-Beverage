@@ -40,6 +40,8 @@
 | M-23 | Ý của user | records, legacy, layout | Sắp xếp hồ sơ lịch sử nhập từ các thư mục gốc cũ (`specs`, `plans`, `tasks`, `errors`, `qa-evidence`) trong `.devloopflow/`. | Mỗi hồ sơ lịch sử chỉ có MỘT file, đúng byte, giữ tên gốc `YYYY-MM-DD-ten.md`, nằm trong `.devloopflow/specs|plans|tasks|errors/`. Không tạo `legacy-originals/`, không dùng tiền tố `legacy-`, không đổi tên sang `YYYYMMDD-` trừ khi user yêu cầu lại. QA lịch sử: mỗi lần chạy là `.devloopflow/verify/<tên lần chạy gốc>/` (báo cáo) + `evidence/` (raw), không tạo thư mục kiểu `legacy-qa-evidence/`. Tuân cấu trúc và tên của plugin, giữ tên gốc của hồ sơ, KHÔNG tự đặt tên mới; chưa rõ chỗ đặt thì hỏi. Đổi bố cục thì hỏi user trước, không thử lần lượt từng kiểu. | 3 | có hiệu lực |
 | M-24 | Đã học được | tooling, windows, python | Chạy script Python có ký tự gạch chéo ngược (`\`) qua heredoc của công cụ Bash trong Claude Code trên Windows. | Heredoc làm mất hoặc đổi `\`, gây `SyntaxError: unterminated string literal`. Ghi script bằng công cụ Write vào scratchpad rồi chạy `python <file>`, hoặc dùng `chr(92)`; không nhúng `\` vào heredoc. | 2 | có hiệu lực |
 | M-25 | Đã học được | graphify, claude, hooks | Cài hoặc cấu hình Graphify cho Claude Code theo phạm vi dự án thay vì global. | Graphify không có cờ cài theo project: sao chép `~/.claude/skills/graphify` vào `.claude/skills/graphify`, chạy `graphify claude install`, rồi sửa lệnh hook trong `.claude/settings.json` từ đường dẫn tuyệt đối (`C:/Users/.../graphify.EXE`) thành `graphify hook-guard <search\|read\|compact>` để không gãy trên máy khác; kiểm bằng `graphify hook-guard <chế độ>` (exit 0) và `graphify query`. | 1 | có hiệu lực |
+| M-26 | Hay quên | records, tests, ci, paths | Di chuyển, đổi tên hoặc xóa thư mục tài liệu (`specs`, `plans`, `tasks`, `errors`, `qa-evidence`...) trong repo. | Trước khi commit, tìm cả tên thư mục trần (`specs`, `qa-evidence`...) trong `POS_API/src`, `POS_UI/src`, `POS_UI/test`, `.github`, vì test có thể đọc file bằng `resolve(__dirname, '../..', 'specs', file)` mà grep chuỗi `specs/` không thấy; rồi chạy toàn bộ `npm test` của POS_API (cần PostgreSQL) hoặc ít nhất các test không cần DB, và xem CI sau khi push. | 1 | có hiệu lực |
+| M-27 | Đã học được | ci, github, logs | Debug CI GitHub Actions khi `gh run view --log` hoặc `--log-failed` không hiện dòng `not ok`. | `gh` cắt log lớn (log step test của POS_API ~12 MB, `gh` chỉ trả ~2.200 dòng). Tải log gốc bằng `gh api repos/<owner>/<repo>/actions/runs/<run_id>/logs > logs.zip`, đọc file `Backend API (POS_API)/8_Run unit & integration tests.txt` trong zip (giải nén vào thư mục riêng, đọc bằng `python -I`), tìm `not ok`, `# fail`, `failureType` và `##[error]`. Tên repo trong URL là tên mới `POS-Food-And-Beverage`. | 1 | có hiệu lực |
 
 Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY.md` gốc không có bộ đếm số lần cùng bài học tái diễn. Đây không phải 0 lần và không phải số test/chứng cứ. Khi có lần tái diễn mới, ghi căn cứ và ngày rồi bắt đầu đếm các lần **sau chuyển đổi**; không suy ngược số lần lịch sử.
 
@@ -349,6 +351,30 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - quy tắc: Graphify không có cờ cài theo project: sao chép `~/.claude/skills/graphify` vào `.claude/skills/graphify`, chạy `graphify claude install`, rồi sửa lệnh hook trong `.claude/settings.json` từ đường dẫn tuyệt đối (`C:/Users/.../graphify.EXE`) thành `graphify hook-guard <search|read|compact>` để không gãy trên máy khác; kiểm bằng `graphify hook-guard <chế độ>` (exit 0) và `graphify query`. `graphify claude install` còn ghi thêm mục vào `CLAUDE.md`; gộp mục đó với mục Graphify sẵn có của dự án.
 - vì sao: `graphify claude install` mặc định ghi đường dẫn tuyệt đối của máy hiện tại; `.claude/` chưa nằm trong `.gitignore` nên nếu commit sẽ lỗi trên máy khác.
 - bằng chứng: `.claude/settings.json` (3 hook: PreToolUse `Bash|Grep` và `Read|Glob`, SessionStart `compact`) sau khi sửa; `graphify hook-guard search|read|compact` đều exit 0 ngày 2026-11-12; `graphify --help` mục `claude install`. Tự chạy local.
+- số lần: 1
+- ghi lần đầu: 2026-11-12
+- cập nhật gần nhất: 2026-11-12
+- trạng thái: có hiệu lực
+
+### M-26
+- loại: Hay quên
+- tag: records, tests, ci, paths
+- khi nào áp dụng: Di chuyển, đổi tên hoặc xóa thư mục tài liệu (`specs`, `plans`, `tasks`, `errors`, `qa-evidence`...) trong repo.
+- quy tắc: Trước khi commit, tìm cả tên thư mục trần (`specs`, `qa-evidence`...) trong `POS_API/src`, `POS_UI/src`, `POS_UI/test`, `.github`, vì test có thể đọc file bằng `resolve(__dirname, '../..', 'specs', file)` mà grep chuỗi `specs/` không thấy; rồi chạy toàn bộ `npm test` của POS_API (cần PostgreSQL) hoặc ít nhất các test không cần DB, và xem CI sau khi push.
+- vì sao: Ngày 2026-11-12 mình chuyển `specs/` vào `.devloopflow/specs/` và push mà chỉ grep `specs/` trong mã; test `DOC-02 AUD-05` ở `POS_API/src/organization/tests/organization.spec-examples.test.ts:12` đọc `specs/organization.md` qua `resolve(...,'specs', file)` nên CI fail ENOENT. Test API cần PostgreSQL nên không chạy lại trước khi push.
+- bằng chứng: CI run 43197181739 (push, commit `29bd219`): 155 test, 154 pass, 1 fail, lỗi `ENOENT ... /specs/organization.md`; tái hiện cục bộ bằng `node --test dist/organization/tests/organization.spec-examples.test.js` (fail rồi pass sau sửa); sau commit `405ffb8` cả push run 43199441989 và pull_request run 43199455249 đều `success`.
+- số lần: 1
+- ghi lần đầu: 2026-11-12
+- cập nhật gần nhất: 2026-11-12
+- trạng thái: có hiệu lực
+
+### M-27
+- loại: Đã học được
+- tag: ci, github, logs
+- khi nào áp dụng: Debug CI GitHub Actions khi `gh run view --log` hoặc `--log-failed` không hiện dòng `not ok`.
+- quy tắc: `gh` cắt log lớn (log step test của POS_API ~12 MB, `gh` chỉ trả khoảng 2.200 dòng). Tải log gốc bằng `gh api repos/<owner>/<repo>/actions/runs/<run_id>/logs > logs.zip`, đọc file `Backend API (POS_API)/8_Run unit & integration tests.txt` trong zip (đọc bằng `python -I`, không giải nén vào thư mục có script), tìm `not ok`, `# fail`, `failureType` và `##[error]`. Tên repo trong URL là tên mới `POS-Food-And-Beverage`.
+- vì sao: Lần đầu `gh run view --log-failed` chỉ cho thấy test 1 đến 14 đều `ok` và không thấy lỗi, nên suýt kết luận nhầm là process bị kill; annotation lỗi ở dòng 2863 trong khi log `gh` trả ngắn hơn đã gợi ý log bị cắt.
+- bằng chứng: Zip 843 KB từ run 43197181739 có file test 11,9 MB, 2.864 dòng với `# tests 155`, `# fail 1`, `not ok 16 - DOC-02 AUD-05 ...`; log `gh run view` chỉ có 14 dòng `ok`.
 - số lần: 1
 - ghi lần đầu: 2026-11-12
 - cập nhật gần nhất: 2026-11-12
