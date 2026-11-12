@@ -124,9 +124,10 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
 
   const navItems = allNavItems.filter((item) => item.visible);
 
-  const currentBranchName = isDemo
+  // Ca đang mở lấy từ API nên tên chi nhánh của ca là tên thật; dữ liệu mẫu chỉ là phương án dự phòng.
+  const currentBranchName = currentShift?.branchName || (isDemo
     ? accessibleBranches.find((b) => b.id === selectedBranchId)?.name || session.branch_name || 'Chi nhánh'
-    : session.branch_name || 'Tất cả chi nhánh';
+    : session.branch_name || 'Tất cả chi nhánh');
 
   return (
     <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
