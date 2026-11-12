@@ -363,13 +363,19 @@ test('[PAID-DONE-4] an already PAID order opened by initialInvoiceId is view-onl
   for(const label of ['+','−','Xóa','Hủy đơn','Thanh toán'])assert.ok(!screen.button(label),`${label} hidden`);
 });
 
+async function cancelOrder(screen,reason='Khách đổi ý'){
+  await screen.click('Hủy đơn');
+  screen.find('textarea').props.onChange({target:{value:reason}});await screen.settle();
+  await screen.click('Xác nhận hủy đơn');
+}
+
 const lineItem={id:'it',productName:'Trà',sizeName:'M',quantity:1,lineTotal:30000,toppings:[]};
 const dineIn={tables:[{id:'t1',name:'Bàn 1',isActive:true}],orders:[{id:'i1',invoiceCode:'HD00000001',orderType:'DINE_IN',tableId:'t1',totalAmount:0}]};
 
 test('[PAID-DONE-5] cancelling an order deselects it at once, refreshes the list and keeps a result notice',async()=>{
   const screen=await mountPos();const before=screen.state.listCalls;
   screen.state.keepListed=true; // stale list: deselection must not depend on the refreshed list
-  await screen.click('Hủy đơn');
+  await cancelOrder(screen);
   assert.deepEqual(screen.calls.find(c=>c[0]==='cancel'),['cancel','i1','Khách đổi ý'],'precondition: cancel was sent');
   assert.match(screen.text(),/Chưa chọn đơn/,'CANCELLED order must not stay selected');
   assert.ok(screen.state.listCalls>before,'open orders must be refreshed');
@@ -476,7 +482,7 @@ test('[B-39] the "Thanh toán thành công." notice of a paid order disappears w
 test('[B-39] "Đã hủy đơn." shows right after cancelling and disappears once another order is created',async()=>{
   const created={id:'i9',branchId:'b1',workShiftId:'s1',invoiceCode:'HD00000009',status:'OPEN',orderType:'TAKEAWAY',totalAmount:0,items:[]};
   const screen=await mountPos({created});
-  await screen.click('Hủy đơn');
+  await cancelOrder(screen);
   assert.match(screen.text(),/Đã hủy đơn\./,'cancel notice must stay visible right after cancelling');
   await screen.click('Tạo đơn mang đi');
   assert.match(screen.text(),/HD00000009/,'precondition: new order selected');
@@ -485,7 +491,7 @@ test('[B-39] "Đã hủy đơn." shows right after cancelling and disappears onc
 
 test('[B-39] "Đã hủy đơn." disappears when an OPEN order is chosen from the open-order list',async()=>{
   const screen=await mountPos();screen.state.keepListed=true;
-  await screen.click('Hủy đơn');assert.match(screen.text(),/Đã hủy đơn\./,'precondition: cancel notice shown');
+  await cancelOrder(screen);assert.match(screen.text(),/Đã hủy đơn\./,'precondition: cancel notice shown');
   await screen.click('Đơn đang mở');await screen.click('HD00000001');
   assert.match(screen.text(),/Đang mở/,'precondition: OPEN order selected');
   assert.doesNotMatch(screen.text(),/Đã hủy đơn\./,'old cancel notice must not follow the chosen order');
@@ -494,7 +500,7 @@ test('[B-39] "Đã hủy đơn." disappears when an OPEN order is chosen from th
 test('[B-39] "Đã hủy đơn." disappears when an occupied table is opened from the table map',async()=>{
   const screen=await mountPos({initialInvoiceId:null,...dineIn});screen.state.keepListed=true;
   await screen.click('Sơ đồ bàn');await screen.click('Bàn 1');
-  await screen.click('Hủy đơn');assert.match(screen.text(),/Đã hủy đơn\./,'precondition: cancel notice shown');
+  await cancelOrder(screen);assert.match(screen.text(),/Đã hủy đơn\./,'precondition: cancel notice shown');
   await screen.click('Sơ đồ bàn');await screen.click('Bàn 1');
   assert.match(screen.text(),/Đang mở/,'precondition: OPEN order selected');
   assert.doesNotMatch(screen.text(),/Đã hủy đơn\./,'old cancel notice must not follow the opened table order');

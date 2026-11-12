@@ -51,6 +51,9 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
   const [recoveryBlocked, setRecoveryBlocked] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [cancelReason, setCancelReason] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState('');
+  const [transferTo, setTransferTo] = useState<string | null>(null);
   const canSell = session.permissions.includes('pos.sell');
   const canCancel = session.permissions.includes('invoice.cancel_open');
   const canManual = session.permissions.includes('transfer.confirm_manual');
@@ -182,10 +185,14 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
   };
   const cancel = async () => {
     if (!selected || !canCancel) return;
-    const reason = window.prompt('Lý do hủy đơn (bắt buộc):');
-    if (reason === null) return;
-    if (!reason.trim()) { setError('Cần nhập lý do hủy đơn.'); return; }
-    await perform(() => salesService.cancel(selected.id, reason.trim()));
+    setCancelError(''); setCancelReason('');
+  };
+  const confirmCancel = async () => {
+    if (!selected || !canCancel || cancelReason === null) return;
+    const reason = cancelReason.trim();
+    if (!reason) { setCancelError('Cần nhập lý do hủy đơn.'); return; }
+    setCancelReason(null); setCancelError('');
+    await perform(() => salesService.cancel(selected.id, reason));
   };
 
   if (shift === undefined) return <div role="status" className="pos-empty">Đang tải ca hiện tại...</div>;
@@ -311,7 +318,7 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
           {pendingState === 'pending' && <div role="status" className="notice notice-warning"><Clock size={18} /><span>Đơn đang chờ chuyển khoản. Hủy chờ trước khi sửa đơn.</span></div>}
           <h3 className="order-total">Tổng: <span className="money">{formatVND(selected.totalAmount)}</span></h3>
           {selected.status === 'OPEN' && canModify && selected.orderType === 'DINE_IN' && <label className="field">Chuyển bàn <select aria-label="Bàn đích" className="select" defaultValue=""
-            onChange={e => { if (e.target.value && selected && window.confirm('Chuyển đơn sang bàn đã chọn?')) void perform(() => salesService.transfer(selected.id, e.target.value)); e.target.value = ''; }}>
+            onChange={e => { if (e.target.value) setTransferTo(e.target.value); e.target.value = ''; }}>
             <option value="">Chọn bàn trống</option>{tables.filter(t => t.id !== selected.tableId && !orders.some(o => o.tableId === t.id)).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select></label>}
           {selected.status === 'OPEN' && (canWrite || canManual) && <button type="button" className="btn btn-primary btn-lg btn-block" disabled={busy || isOffline}
@@ -323,6 +330,21 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
       invoice={selected} permissions={session.permissions} canSell={canWrite} onClose={() => setPayment(null)}
       onChanged={() => { setPendingRevision(value => value + 1); void refreshOrders(selected.id).catch(e => setError(e instanceof Error ? e.message : 'Không tải lại được đơn.')); }}
       onPaid={() => { setPayment(null); setSelected(null); setNotice('Thanh toán thành công.'); void refreshOrders().catch(e => setError(e instanceof Error ? e.message : 'Không tải lại được đơn.')); }} />}
+    {cancelReason !== null && selected && <Dialog isOpen onClose={() => setCancelReason(null)} title={`Hủy đơn ${selected.invoiceCode}`} maxWidth={480}>
+      <p>Đơn đang mở sẽ bị hủy và không thể mở lại. Lý do được lưu cùng đơn.</p>
+      <label className="field">Lý do hủy đơn (bắt buộc)
+        <textarea aria-label="Lý do hủy đơn" className="input" aria-invalid={cancelError ? 'true' : undefined} value={cancelReason}
+          onChange={e => { setCancelReason(e.target.value); setCancelError(''); }} />
+      </label>
+      {cancelError && <div role="alert" className="notice notice-danger"><XCircle size={18} /><span>{cancelError}</span></div>}
+      <div className="sheet-actions"><button type="button" className="btn btn-secondary" onClick={() => setCancelReason(null)}>Quay lại</button>
+        <button type="button" className="btn btn-danger btn-lg" disabled={busy} onClick={() => void confirmCancel()}>Xác nhận hủy đơn</button></div>
+    </Dialog>}
+    {transferTo !== null && selected && <Dialog isOpen onClose={() => setTransferTo(null)} title="Chuyển bàn" maxWidth={440}>
+      <p>Chuyển đơn {selected.invoiceCode} sang {tables.find(t => t.id === transferTo)?.name || 'bàn đã chọn'}?</p>
+      <div className="sheet-actions"><button type="button" className="btn btn-secondary" onClick={() => setTransferTo(null)}>Quay lại</button>
+        <button type="button" className="btn btn-primary btn-lg" disabled={busy} onClick={() => { const target = transferTo; setTransferTo(null); void perform(() => salesService.transfer(selected.id, target)); }}>Xác nhận chuyển bàn</button></div>
+    </Dialog>}
     {choice && <Dialog isOpen onClose={() => setChoice(null)} title={choice.product.name} maxWidth={480}>
       <div className="sheet-section"><span className="sheet-label">Size</span>
         <div className="chips" role="group" aria-label="Size">{sizesOf(choice.product).map(size => <button key={size.id} type="button" className="chip"

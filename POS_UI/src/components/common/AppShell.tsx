@@ -118,7 +118,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
     { id: 'shifts', label: 'Ca làm', icon: <Clock size={24} />, visible: !isPlatformAdmin && (has('shift.read') || has('shift.open') || has('shift.close') || has('shift.force_close')) },
     { id: 'inventory', label: 'Kho hàng', icon: <Boxes size={24} />, visible: !isPlatformAdmin && has('inventory.view') },
     { id: 'reports', label: 'Báo cáo', icon: <BarChart3 size={24} />, visible: !isPlatformAdmin && (has('report.view_branch') || has('report.view_all')) },
-    { id: 'products', label: 'Thực đơn', icon: <UtensilsCrossed size={24} />, visible: !isPlatformAdmin && (has('menu.read') || has('menu.manage') || has('product.manage')) },
+    { id: 'products', label: 'Thực đơn', icon: <UtensilsCrossed size={24} />, visible: !isPlatformAdmin && (has('menu.manage') || has('product.manage')) },
     { id: 'settings', label: 'Cài đặt', icon: <Settings size={24} />, visible: !isPlatformAdmin && canOpenSettings(perms) },
   ];
 
