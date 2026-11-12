@@ -23,8 +23,10 @@ Ràng buộc đã chốt khi làm:
 ## Trạng thái
 - Bước hiện tại (số bước trong flow): Không chạy đủ flow devloopflow (việc giao diện, không có spec/plan); làm theo từng màn rồi kiểm trực quan, `npm run typecheck`, `npm test`.
 - Đã xong: Nền tảng lớp dùng chung (`POS_UI/src/styles/ui.css`, token `--color-on-brand`, `--color-overlay`, `::selection`, `caret-color`, `accent-color` trong `POS_UI/src/index.css`); màn Bán hàng thật (`LivePosScreen.tsx`) gồm thanh tab, tab danh mục gạch chân 3px, ô món, thẻ bàn, danh sách đơn, panel đơn 400px, hộp chọn size/topping dùng `Dialog`; hộp thoại thanh toán (`LivePaymentDialog.tsx`) hai cột, tiền thối `text-4xl`.
-- Đang làm: Rà các màn còn lại (Đăng nhập, Cài đặt, Quản trị nền tảng, Thực đơn, Kho, Báo cáo) bằng trình duyệt thật.
-- Sắp làm: Sửa các màn còn xấu; kiểm 1024px và 768px; ghi `.devloopflow/MEMORY.md` nếu có bài học.
+- Đã xong thêm: Kho (`InventoryScreen.tsx`: tab gạch chân, ô chọn chi nhánh, nhãn loại bút toán tiếng Việt, skeleton); Cài đặt (`SettingsScreen.tsx`: tab gạch chân, form tài khoản nhận chuyển khoản dạng lưới, thông báo lỗi có biểu tượng); Quản trị nền tảng (`PlatformAdminScreen.tsx`); bố cục máy tính bảng 1024px (nút tải lại chỉ biểu tượng) và 768px (panel đơn nằm dưới vùng món); sửa tên chi nhánh trên thanh trên (`AppShell.tsx`).
+- Đã rà bằng trình duyệt thật và thấy đã ổn, không sửa: Hóa đơn, Ca làm, Thực đơn (`ProductsScreen.tsx`), Đăng nhập.
+- Đang làm: Không có.
+- Sắp làm: Chờ user xem kết quả; chưa rà bằng trình duyệt: Báo cáo (dữ liệu mẫu), Khuyến mãi (`PromotionsPanel.tsx`), các hộp thoại mở/đóng ca, màn Ca làm của quản lý. Chưa push, chưa mở PR.
 
 ## File đã thay đổi
 | Path | Thay đổi gì | Sub-task |
@@ -34,6 +36,11 @@ Ràng buộc đã chốt khi làm:
 | POS_UI/src/styles/pos.css | Mới: bố cục màn Bán hàng, ô món, thẻ bàn, panel đơn, hộp chọn món, hộp thoại thanh toán | Màn Bán hàng |
 | POS_UI/src/features/pos/LivePosScreen.tsx | Viết lại phần hiển thị bằng class; trạng thái hóa đơn hiện nhãn `Đang mở`/`Đã thanh toán`/`Đã hủy` thay cho `OPEN`/`PAID`; hộp chọn món dùng `Dialog`; giữ nguyên toàn bộ logic | Màn Bán hàng |
 | POS_UI/src/features/pos/LivePaymentDialog.tsx | Viết lại phần hiển thị; thêm dòng `Còn thiếu ...` khi tiền khách đưa chưa đủ; giữ nguyên toàn bộ logic | Thanh toán |
+| POS_UI/src/features/inventory/InventoryScreen.tsx | Tab gạch chân, ô chọn chi nhánh có kiểu, nhãn loại bút toán (`Nhập kho`, `Xuất bán`, `Hoàn trả kho`, `Hao hụt`, `Kiểm kê`), skeleton, thông báo lỗi | Kho |
+| POS_UI/src/features/settings/SettingsScreen.tsx | Tab gạch chân bằng `Button` + `style`, form tài khoản nhận chuyển khoản dạng lưới, thông báo lỗi có biểu tượng | Cài đặt |
+| POS_UI/src/features/platform/PlatformAdminScreen.tsx | Tab gạch chân, nhóm nút thao tác của dòng cửa hàng bên phải, thông báo lỗi | Quản trị nền tảng |
+| POS_UI/src/components/common/AppShell.tsx | Tên chi nhánh trên thanh trên ưu tiên `currentShift.branchName` | Sửa nhãn |
+| POS_UI/test/organization-screen.test.mjs | Thêm mock `lucide-react` cho harness | Test |
 | POS_UI/test/live-payment.test.mjs | Thêm mock `lucide-react` và `Dialog` cho các harness; đổi các câu kiểm chữ `OPEN`/`PAID` thành nhãn tiếng Việt tương ứng | Test |
 
 ## Đã đọc errors
@@ -47,7 +54,7 @@ Ràng buộc đã chốt khi làm:
 
 ## Finding hoãn (Low, Very Low) — quyết ở bước 10 (chỉ thêm, không xoá)
 - Quan sát ngoài phạm vi giao diện, chưa sửa, cần user quyết:
-  - Thanh trên hiện "Chi nhánh Nam Lý" ở tab Bán hàng/Sơ đồ bàn/Hóa đơn dù chi nhánh thật là "Chi nhánh Quận 1": `AppShell.tsx` dùng `MockEngine.getAccessibleBranches()` cho các tab không thuộc danh sách `['settings','products','shifts','inventory']` (biến `isDemo`), trong khi màn Bán hàng đã dùng API thật.
+  - Thanh trên hiện "Chi nhánh Nam Lý" ở tab Bán hàng/Sơ đồ bàn/Hóa đơn dù chi nhánh thật là "Chi nhánh Quận 1": `AppShell.tsx` dùng `MockEngine.getAccessibleBranches()` cho các tab không thuộc danh sách `['settings','products','shifts','inventory']` (biến `isDemo`), trong khi màn Bán hàng đã dùng API thật. Đã sửa một phần ở commit `55b606c`: khi có ca mở thì dùng tên chi nhánh của ca. Còn lại: người dùng chưa có ca mở vẫn có thể thấy tên chi nhánh từ dữ liệu mẫu ở các tab đó.
   - Menu Thực đơn hiện với thu ngân (có `menu.read`) nhưng màn báo "Không có quyền truy cập ... menu.manage".
   - Hủy đơn dùng `window.prompt`, chuyển bàn dùng `window.confirm`; DESIGN.md §6.6 yêu cầu hộp thoại có lý do bắt buộc.
 
@@ -55,7 +62,7 @@ Ràng buộc đã chốt khi làm:
 - Chưa có.
 
 ## Kinh nghiệm đã ghi (reflect, bước 10c; chỉ thêm, không xoá)
-- Chưa có.
+- M-28 (thêm) [ui, tests, node-vm] Trước khi đổi cấu trúc hoặc thêm import cho màn có test nạp mã nguồn bằng `node:vm`, đọc harness: mock `require`, React giả không render component hàm, và so chuỗi chính xác nội dung nút — 2026-11-12
 
 ## Blocked
 - Lý do: Không có
