@@ -113,7 +113,6 @@ export const DemoSwitcher: React.FC = () => {
                         padding: '10px 16px',
                         cursor: 'pointer',
                         background: isSelected ? 'var(--color-brand-50)' : 'transparent',
-                        borderLeft: isSelected ? '3px solid var(--color-brand-600)' : '3px solid transparent',
                         transition: 'background-color 100ms ease',
                       }}
                       onMouseEnter={(e) => {

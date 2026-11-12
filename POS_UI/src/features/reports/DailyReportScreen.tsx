@@ -85,24 +85,22 @@ export const DailyReportScreen: React.FC = () => {
         </div>
       </div>
 
-      <div className="stat-grid">
-        <div className="stat">
-          <div className="stat-label">Tổng doanh thu</div>
-          <div className="stat-value stat-value-lg money">{formatVND(report.totalRevenue)}</div>
-          <div className="stat-note">{report.invoiceCount} hóa đơn hoàn tất</div>
-        </div>
-
-        <div className="stat">
-          <div className="stat-label"><Banknote size={16} aria-hidden="true" /><span>Tiền mặt</span></div>
-          <div className="stat-value money">{formatVND(report.cashRevenue)}</div>
-          <div className="stat-note">Chiếm {cashPercent}% tổng doanh thu</div>
-        </div>
-
-        <div className="stat">
-          <div className="stat-label"><QrCode size={16} aria-hidden="true" /><span>Chuyển khoản</span></div>
-          <div className="stat-value money">{formatVND(report.transferRevenue)}</div>
-          <div className="stat-note">Chiếm {transferPercent}% tổng doanh thu</div>
-        </div>
+      <div className="panel">
+        <h2 className="panel-title">Doanh thu trong ngày</h2>
+        <dl className="sum-list">
+          <div className="sum-row sum-total">
+            <dt>Tổng doanh thu <span className="stat-note">{report.invoiceCount} hóa đơn hoàn tất</span></dt>
+            <dd className="money">{formatVND(report.totalRevenue)}</dd>
+          </div>
+          <div className="sum-row">
+            <dt><Banknote size={16} aria-hidden="true" />Tiền mặt <span className="stat-note">{cashPercent}% tổng doanh thu</span></dt>
+            <dd className="money">{formatVND(report.cashRevenue)}</dd>
+          </div>
+          <div className="sum-row">
+            <dt><QrCode size={16} aria-hidden="true" />Chuyển khoản <span className="stat-note">{transferPercent}% tổng doanh thu</span></dt>
+            <dd className="money">{formatVND(report.transferRevenue)}</dd>
+          </div>
+        </dl>
       </div>
 
       <div className="panel">
