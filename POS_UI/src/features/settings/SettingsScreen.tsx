@@ -15,6 +15,7 @@ import { bankAccountService } from '../../services/bankAccountService';
 import type { OrganizationBranch, OrganizationTable, OrganizationStaff, StaffPassword } from '../../services/organizationService';
 import type { AuthSession } from '../../types/auth';
 import { formatVND } from '../../utils/formatters';
+import { AlertTriangle, XCircle } from 'lucide-react';
 import { OrganizationEditor } from './OrganizationEditor';
 import { PromotionsPanel } from './PromotionsPanel';
 import type { EditorKind, FormValues } from './organizationForm';
@@ -29,6 +30,8 @@ const permissions = { branches: 'branch.manage', tables: 'table.manage', staff: 
 const label = (row: Row) => 'fullName' in row ? row.fullName : row.name;
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Chưa thực hiện được. Vui lòng thử lại.';
 const nullable = (value: string) => value.trim() || null;
+const tabStyle = (active: boolean): React.CSSProperties => ({ height: 56, padding: '0 16px', borderRadius: 0, background: 'transparent', border: 'none',
+  borderBottom: `3px solid ${active ? 'var(--color-brand-600)' : 'transparent'}`, color: active ? 'var(--color-brand-600)' : 'var(--color-text-muted)' });
 
 export const SettingsScreen: React.FC = () => {
   const { session } = useAuth();
@@ -36,9 +39,9 @@ export const SettingsScreen: React.FC = () => {
   const identity = JSON.stringify([session.user.id, session.user.store_id, session.user.branch_id,
     session.user.role_code, session.user.must_change_password, [...session.permissions].sort()]);
   return <div key={identity} style={{ flex:1, display:'flex', flexDirection:'column', overflow:'auto' }}>
-    {session.permissions.includes('promotion.manage') && <nav aria-label="Mục cài đặt" style={{ display:'flex', gap:8, padding:'12px 24px' }}>
-      <Button variant={section === 'organization' ? 'primary' : 'secondary'} onClick={() => setSection('organization')}>Tổ chức</Button>
-      <Button variant={section === 'promotions' ? 'primary' : 'secondary'} onClick={() => setSection('promotions')}>Khuyến mãi</Button>
+    {session.permissions.includes('promotion.manage') && <nav aria-label="Mục cài đặt" className="settings-nav">
+      <Button variant="text" style={tabStyle(section === 'organization')} onClick={() => setSection('organization')}>Tổ chức</Button>
+      <Button variant="text" style={tabStyle(section === 'promotions')} onClick={() => setSection('promotions')}>Khuyến mãi</Button>
     </nav>}
     {section === 'promotions' && session.permissions.includes('promotion.manage')
       ? <PromotionsPanel key={identity} /> : <SettingsContent key={identity} session={session} />}
@@ -274,19 +277,21 @@ export function SettingsContent({ session }: { session: AuthSession }) {
 
   return <section className="organization-settings" aria-label="Cài đặt tổ chức">
     <div><h1>Cài đặt cửa hàng</h1><p>Quản lý chi nhánh, bàn và tài khoản nhân viên.</p></div>
-    {session.permissions.includes('store_bank_account.manage')&&<section aria-label="Tài khoản nhận chuyển khoản" style={{display:'grid',gap:8,margin:'16px 0'}}>
+    {session.permissions.includes('store_bank_account.manage')&&<section aria-label="Tài khoản nhận chuyển khoản" className="settings-bank">
       <h2>Tài khoản nhận chuyển khoản</h2>
-      <label>Mã BIN ngân hàng <input aria-label="Mã BIN ngân hàng" inputMode="numeric" value={bank.bankBin} disabled={bankBusy||offline} onChange={e=>setBank({...bank,bankBin:e.target.value})} style={{minHeight:44}} /></label>
-      <label>Số tài khoản <input aria-label="Số tài khoản" aria-invalid={bankAccountError?'true':undefined} aria-describedby={bankAccountError?'bank-account-error':undefined} inputMode="numeric" value={bank.accountNumber} disabled={bankBusy||offline} onChange={e=>setBank({...bank,accountNumber:e.target.value})} style={{minHeight:44}} /></label>
-      {bankAccountError&&<p id="bank-account-error" role="alert">{bankAccountError}</p>}
-      <label>Tên chủ tài khoản <input aria-label="Tên chủ tài khoản" value={bank.accountName} disabled={bankBusy||offline} onChange={e=>setBank({...bank,accountName:e.target.value})} style={{minHeight:44}} /></label>
-      {bankError&&<p role="alert">{bankError}</p>}
-      <Button disabled={bankBusy||offline} onClick={()=>void saveBank()}>Lưu tài khoản</Button>
+      <div className="settings-bank-grid">
+        <label className="field">Mã BIN ngân hàng <input aria-label="Mã BIN ngân hàng" className="input" inputMode="numeric" value={bank.bankBin} disabled={bankBusy||offline} onChange={e=>setBank({...bank,bankBin:e.target.value})} /></label>
+        <label className="field">Số tài khoản <input aria-label="Số tài khoản" className="input" aria-invalid={bankAccountError?'true':undefined} aria-describedby={bankAccountError?'bank-account-error':undefined} inputMode="numeric" value={bank.accountNumber} disabled={bankBusy||offline} onChange={e=>setBank({...bank,accountNumber:e.target.value})} /></label>
+        <label className="field">Tên chủ tài khoản <input aria-label="Tên chủ tài khoản" className="input" value={bank.accountName} disabled={bankBusy||offline} onChange={e=>setBank({...bank,accountName:e.target.value})} /></label>
+      </div>
+      {bankAccountError&&<div className="notice notice-danger"><XCircle size={18} /><p id="bank-account-error" role="alert">{bankAccountError}</p></div>}
+      {bankError&&<div className="notice notice-danger"><XCircle size={18} /><p role="alert">{bankError}</p></div>}
+      <div><Button disabled={bankBusy||offline} onClick={()=>void saveBank()}>Lưu tài khoản</Button></div>
     </section>}
-    {offline && <div role="alert">Mất kết nối. Thao tác mới sẽ không được lưu cho đến khi có mạng.</div>}
-    <div role="tablist" aria-label="Cài đặt" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+    {offline && <div role="alert" className="notice notice-warning"><AlertTriangle size={18} /><span>Mất kết nối. Thao tác mới sẽ không được lưu cho đến khi có mạng.</span></div>}
+    <div role="tablist" aria-label="Cài đặt" className="settings-tabs">
       {allowed.map(tab => <Button key={tab} role="tab" aria-selected={view.tab === tab} disabled={busy}
-        variant={view.tab === tab ? 'primary' : 'secondary'} onClick={() => navigate({ tab, status: '', role: '', branch: '', cursors: [undefined] })}>{titles[tab]}</Button>)}
+        variant="text" style={tabStyle(view.tab === tab)} onClick={() => navigate({ tab, status: '', role: '', branch: '', cursors: [undefined] })}>{titles[tab]}</Button>)}
     </div>
     <div className="organization-filters">
       {allBranches && view.tab !== 'branches' && <SelectField label="Chi nhánh" value={view.branch} disabled={busy || choicesLoading}
@@ -306,10 +311,10 @@ export function SettingsContent({ session }: { session: AuthSession }) {
       </Button>
     </div>
     {choicesLoading && <p role="status">Đang tải danh mục chi nhánh...</p>}
-    {choicesError && <div role="alert"><p>{choicesError}</p><Button variant="secondary" disabled={choicesLoading} onClick={() => setChoicesRevision(value => value + 1)}>Tải lại chi nhánh</Button></div>}
+    {choicesError && <div role="alert" className="notice notice-danger"><XCircle size={18} /><p>{choicesError}</p><Button variant="secondary" disabled={choicesLoading} onClick={() => setChoicesRevision(value => value + 1)}>Tải lại chi nhánh</Button></div>}
     {!choicesLoading && !choicesError && !branches.length && view.tab !== 'branches' && <p>Chưa có chi nhánh. Tạo chi nhánh trước khi thêm bàn hoặc cấp tài khoản.</p>}
     {listPending && <div role="status" aria-label="Đang tải danh sách" className="organization-skeleton"><span /><span /><span /></div>}
-    {rowsKey === viewKey && error && <div role="alert"><p>{error}</p><Button variant="secondary" onClick={refresh}>Thử lại</Button></div>}
+    {rowsKey === viewKey && error && <div role="alert" className="notice notice-danger"><XCircle size={18} /><p>{error}</p><Button variant="secondary" onClick={refresh}>Thử lại</Button></div>}
     {!listPending && !error && <>
       <DataTable columns={columns} data={rows} keyExtractor={row => row.id}
         emptyMessage={'Chưa có ' + (view.tab === 'branches' ? 'chi nhánh' : view.tab === 'tables' ? 'bàn' : 'tài khoản') + ' phù hợp.'} />

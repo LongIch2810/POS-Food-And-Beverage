@@ -62,6 +62,7 @@ function mount(overrides = {}, session = owner, shiftsTotal = 0, bankService = {
       if (path.endsWith('/formatters')) return { formatVND: String };
       if (path.endsWith('/Field')) return { SelectField: 'SelectField' };
       if (path === './PromotionsPanel') return { PromotionsPanel: 'PromotionsPanel' };
+      if (path === 'lucide-react') return new Proxy({}, { get: (_, key) => String(key) });
       const name = path.split('/').at(-1);
       if (['Button','Badge','DataTable','Dialog','OrganizationEditor'].includes(name)) return { [name]: name };
       throw new Error('Unexpected dependency: ' + path);

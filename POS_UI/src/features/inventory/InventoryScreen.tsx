@@ -9,8 +9,15 @@ import { Field } from '../../components/ui/Field';
 import { organizationService, OrganizationBranch } from '../../services/organizationService';
 import { inventoryService, Ingredient, Stock, Movement } from './inventoryService';
 import { formatDateTimeVN } from '../../utils/formatters';
+import { RefreshCw, XCircle } from 'lucide-react';
 
 type Tab = 'stocks' | 'movements' | 'catalog';
+// Nhãn loại bút toán kho theo từ vựng DESIGN.md §9.2
+const movementKinds: Record<string, { label: string; variant: 'success' | 'danger' | 'warning' | 'info' | 'neutral' }> = {
+  IMPORT: { label: 'Nhập kho', variant: 'success' }, SALE: { label: 'Xuất bán', variant: 'info' },
+  SALE_REVERSAL: { label: 'Hoàn trả kho', variant: 'neutral' }, WASTE: { label: 'Hao hụt', variant: 'danger' },
+  ADJUST: { label: 'Kiểm kê', variant: 'warning' },
+};
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'Không tải được dữ liệu kho. Vui lòng thử lại.';
 
 export const InventoryScreen: React.FC = () => {
@@ -110,7 +117,8 @@ const InventoryContent: React.FC = () => {
   const movementColumns: Column<Movement>[] = [
     { key: 'time', header: 'Thời gian', render: row => formatDateTimeVN(row.createdAt) },
     { key: 'ingredient', header: 'Nguyên liệu', render: row => row.ingredientName },
-    { key: 'type', header: 'Loại', render: row => row.type },
+    { key: 'type', header: 'Loại', render: row => { const kind = movementKinds[row.type];
+      return kind ? <Badge variant={kind.variant} size="sm">{kind.label}</Badge> : row.type; } },
     { key: 'quantity', header: 'Thay đổi', align: 'right', render: row => `${row.quantity} ${row.unit}` },
     { key: 'balance', header: 'Tồn sau', align: 'right', render: row => `${row.balanceAfter} ${row.unit}` },
     { key: 'note', header: 'Ghi chú', render: row => row.note || row.invoiceId || '—' },
@@ -118,28 +126,34 @@ const InventoryContent: React.FC = () => {
 
   return <div style={{ flex: 1, padding: 'clamp(14px, 2.5vw, 24px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
     <header style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-      <div><h1 style={{ fontSize: 24, fontWeight: 700 }}>Kho & nguyên liệu</h1>
+      <div><h1 style={{ fontSize: 22, lineHeight: '30px', fontWeight: 600 }}>Kho & nguyên liệu</h1>
         <p style={{ color: 'var(--color-text-muted)' }}>Tồn và sổ kho theo chi nhánh; các bút toán được ghi khi nghiệp vụ phát sinh.</p></div>
       {canManage && tab === 'catalog' && <Button variant="primary" onClick={() => { setEditing(null); setName(''); setUnit('g'); }}>Thêm nguyên liệu</Button>}
     </header>
-    {allBranches && <label>Chi nhánh{' '}
-      <select aria-label="Chi nhánh kho" value={branchId} onChange={event => setBranchId(event.target.value)}>
-        <option value="">Tất cả chi nhánh</option>{branches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
-      </select></label>}
-    <nav aria-label="Mục kho" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      {([['stocks','Tồn kho'],['movements','Sổ kho'],['catalog','Nguyên liệu']] as const).map(([key,title]) =>
-        <Button key={key} variant={tab === key ? 'primary' : 'secondary'} onClick={() => setTab(key)}>{title}</Button>)}
-      <Button variant="text" onClick={refresh}>Tải lại</Button>
-    </nav>
-    {error && <div role="alert" style={{ color: 'var(--color-danger)' }}>{error} <Button variant="text" onClick={refresh}>Thử lại</Button></div>}
-    {loading ? <p role="status">Đang tải dữ liệu kho…</p> : !error && (tab === 'stocks'
+    <div className="page-bar">
+      <nav aria-label="Mục kho" className="page-tabs">
+        {([['stocks','Tồn kho'],['movements','Sổ kho'],['catalog','Nguyên liệu']] as const).map(([key,title]) =>
+          <button key={key} type="button" className="tab" aria-current={tab === key ? 'true' : undefined} onClick={() => setTab(key)}>{title}</button>)}
+      </nav>
+      <div className="page-bar-end">
+        {allBranches && <label className="field page-inline-field">Chi nhánh
+          <select aria-label="Chi nhánh kho" className="select" value={branchId} onChange={event => setBranchId(event.target.value)}>
+            <option value="">Tất cả chi nhánh</option>{branches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+          </select></label>}
+        <button type="button" className="btn btn-secondary" onClick={refresh}><RefreshCw size={18} />Tải lại</button>
+      </div>
+    </div>
+    {error && <div role="alert" className="notice notice-danger"><XCircle size={18} /><span>{error}</span>
+      <button type="button" className="btn btn-text" style={{ marginLeft: 'auto', minHeight: 36 }} onClick={refresh}>Thử lại</button></div>}
+    {loading ? <div role="status"><span className="sr-only">Đang tải dữ liệu kho…</span>
+      <div className="page-skeleton" aria-hidden="true"><span className="skeleton" /><span className="skeleton" /><span className="skeleton" /></div></div> : !error && (tab === 'stocks'
       ? <DataTable columns={stockColumns} data={stocks} keyExtractor={row => `${row.branchId}:${row.ingredientId}`} emptyMessage="Chưa có nguyên liệu trong kho" />
       : tab === 'movements' ? <DataTable columns={movementColumns} data={movements} keyExtractor={row => row.id} emptyMessage="Chưa có bút toán kho" />
       : <DataTable columns={ingredientColumns} data={ingredients} keyExtractor={row => row.id} emptyMessage="Chưa có nguyên liệu" />)}
     <Dialog isOpen={editing !== undefined} onClose={() => setEditing(undefined)} title={editing ? 'Sửa nguyên liệu' : 'Thêm nguyên liệu'} maxWidth={420}>
       <form onSubmit={saveIngredient} style={{ display: 'grid', gap: 16 }}>
         <Field label="Tên nguyên liệu" value={name} onChange={event => setName(event.target.value)} required />
-        <label>Đơn vị gốc <select value={unit} onChange={event => setUnit(event.target.value as Ingredient['unit'])}>
+        <label className="field">Đơn vị gốc <select className="select" value={unit} onChange={event => setUnit(event.target.value as Ingredient['unit'])}>
           <option value="g">Gram (g)</option><option value="ml">Mililít (ml)</option><option value="piece">Cái (piece)</option>
         </select></label>
         <Button type="submit" variant="primary" disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu nguyên liệu'}</Button>
