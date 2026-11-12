@@ -68,3 +68,9 @@ Ràng buộc đã chốt khi làm:
 - Lý do: Không có
 - Lỗi còn lại: Không có
 - Đề xuất: Không có
+
+## Cập nhật tiến độ (2026-11-12, lượt cuối)
+- Hộp thoại hủy đơn (lý do) và chuyển bàn trong `LivePosScreen` dùng `Dialog`; alias token cũ trong `index.css`; bộ component dùng chung dựng lại bằng class.
+- Đã xem bằng trình duyệt: modal công thức (manager_dev), Cài đặt và màn mở ca (owner_dev), hộp thoại tạo cửa hàng (admin).
+- Chưa xem: mục Báo cáo (rail của manager_dev và owner_dev không có mục này), hộp thoại hủy hóa đơn mock, modal đổi mật khẩu bắt buộc, thêm chi phí, toast.
+- `npm run typecheck` sạch; `npm test` 85/85 pass.
