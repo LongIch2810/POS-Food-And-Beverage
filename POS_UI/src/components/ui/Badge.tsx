@@ -1,4 +1,4 @@
-// POS-F&B Badge Component per DESIGN.md §6.4
+// POS-F&B Badge Component per DESIGN.md §6.4: viên thuốc, nền nhạt, luôn có biểu tượng đi trước
 
 import React, { ReactNode } from 'react';
 import {
@@ -19,50 +19,16 @@ export interface BadgeProps {
 }
 
 export const Badge: React.FC<BadgeProps> = ({ variant = 'neutral', children, icon, size = 'md' }) => {
-  let bg = 'var(--color-surface-sunken)';
-  let color = 'var(--color-text-muted)';
-  let defaultIcon = <CircleDot size={size === 'sm' ? 12 : 14} />;
-
-  if (variant === 'success') {
-    bg = 'var(--color-success-bg)';
-    color = 'var(--color-success)';
-    defaultIcon = <CheckCircle2 size={size === 'sm' ? 12 : 14} />;
-  } else if (variant === 'danger') {
-    bg = 'var(--color-danger-bg)';
-    color = 'var(--color-danger)';
-    defaultIcon = <XCircle size={size === 'sm' ? 12 : 14} />;
-  } else if (variant === 'warning') {
-    bg = 'var(--color-warning-bg)';
-    color = 'var(--color-warning)';
-    defaultIcon = <AlertTriangle size={size === 'sm' ? 12 : 14} />;
-  } else if (variant === 'info') {
-    bg = 'var(--color-info-bg)';
-    color = 'var(--color-info)';
-    defaultIcon = <Info size={size === 'sm' ? 12 : 14} />;
-  }
-
-  const height = size === 'sm' ? 24 : 28;
-  const padding = size === 'sm' ? '0 8px' : '0 10px';
-  const fontSize = size === 'sm' ? 12 : 13;
+  const px = size === 'sm' ? 12 : 14;
+  const defaultIcon = variant === 'success' ? <CheckCircle2 size={px} />
+    : variant === 'danger' ? <XCircle size={px} />
+    : variant === 'warning' ? <AlertTriangle size={px} />
+    : variant === 'info' ? <Info size={px} />
+    : <CircleDot size={px} />;
 
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        height,
-        padding,
-        borderRadius: 'var(--radius-pill)',
-        background: bg,
-        color,
-        fontSize,
-        fontWeight: 600,
-        whiteSpace: 'nowrap',
-        userSelect: 'none',
-      }}
-    >
-      <span style={{ display: 'flex', alignItems: 'center' }}>{icon || defaultIcon}</span>
+    <span className={`badge badge-${variant}${size === 'sm' ? ' badge-sm' : ''}`}>
+      {icon || defaultIcon}
       <span>{children}</span>
     </span>
   );

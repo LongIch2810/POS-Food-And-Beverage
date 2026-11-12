@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { Inbox } from 'lucide-react';
 
 export interface Column<T> {
   key: string;
@@ -17,6 +18,9 @@ export interface DataTableProps<T> {
   emptyAction?: ReactNode;
 }
 
+// Hàng cao tối thiểu 48px, cột tiền canh phải và tabular, bảng rộng cuộn ngang trong khung riêng (DESIGN.md §6.7)
+const alignClass = (align?: 'left' | 'center' | 'right') => align === 'right' ? 'is-right' : align === 'center' ? 'is-center' : undefined;
+
 export function DataTable<T>({
   columns,
   data,
@@ -27,59 +31,21 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   if (data.length === 0) {
     return (
-      <div
-        style={{
-          padding: '48px 24px',
-          textAlign: 'center',
-          background: 'var(--color-surface)',
-          borderRadius: 'var(--radius-control)',
-          border: '1px solid var(--color-border)',
-        }}
-      >
-        <p style={{ color: 'var(--color-text-muted)', fontSize: 15, marginBottom: 16 }}>{emptyMessage}</p>
+      <div className="table-empty">
+        <Inbox size={32} aria-hidden="true" />
+        <p>{emptyMessage}</p>
         {emptyAction}
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        width: '100%',
-        overflowX: 'auto',
-        background: 'var(--color-surface)',
-        borderRadius: 'var(--radius-control)',
-        border: '1px solid var(--color-border)',
-      }}
-    >
-      <table
-        style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          fontSize: 14,
-          textAlign: 'left',
-        }}
-      >
+    <div className="table-wrap">
+      <table className="table">
         <thead>
-          <tr
-            style={{
-              height: 48,
-              borderBottom: '1px solid var(--color-border)',
-              background: 'var(--color-surface-sunken)',
-            }}
-          >
+          <tr>
             {columns.map((col) => (
-              <th
-                key={col.key}
-                style={{
-                  padding: '0 16px',
-                  fontWeight: 600,
-                  color: 'var(--color-text-muted)',
-                  textAlign: col.align || 'left',
-                  width: col.width,
-                  whiteSpace: 'nowrap',
-                }}
-              >
+              <th key={col.key} scope="col" className={alignClass(col.align)} style={{ width: col.width }}>
                 {col.header}
               </th>
             ))}
@@ -89,30 +55,11 @@ export function DataTable<T>({
           {data.map((row, idx) => (
             <tr
               key={keyExtractor(row)}
-              onClick={() => onRowClick?.(row)}
-              style={{
-                height: 48,
-                borderBottom: idx < data.length - 1 ? '1px solid var(--color-border)' : 'none',
-                cursor: onRowClick ? 'pointer' : 'default',
-                transition: 'background-color 100ms ease',
-              }}
-              onMouseEnter={(e) => {
-                if (onRowClick) (e.currentTarget as HTMLTableRowElement).style.backgroundColor = 'var(--color-brand-50)';
-              }}
-              onMouseLeave={(e) => {
-                if (onRowClick) (e.currentTarget as HTMLTableRowElement).style.backgroundColor = 'transparent';
-              }}
+              className={onRowClick ? 'is-clickable' : undefined}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
             >
               {columns.map((col) => (
-                <td
-                  key={col.key}
-                  style={{
-                    padding: '0 16px',
-                    color: 'var(--color-text)',
-                    textAlign: col.align || 'left',
-                    fontVariantNumeric: col.align === 'right' ? 'tabular-nums' : undefined,
-                  }}
-                >
+                <td key={col.key} className={alignClass(col.align)}>
                   {col.render(row, idx)}
                 </td>
               ))}

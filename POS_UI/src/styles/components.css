@@ -1,0 +1,435 @@
+/* Linh kiện dùng chung: nút biểu tượng, hộp thoại, ngăn kéo, bảng, thông báo nổi, bàn phím số, khung ứng dụng.
+   Chỉ dùng token (DESIGN.md §4, §6, §12). */
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.spin { animation: spin 0.9s linear infinite; }
+
+/* ---------- Nút biểu tượng (đóng hộp thoại, mở menu) ---------- */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease,
+    transform var(--duration-fast) var(--ease-out-expo);
+}
+.icon-btn:active:not(:disabled) { transform: scale(0.94); }
+.icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.icon-btn-outline {
+  border: 1px solid var(--color-border-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+@media (hover: hover) {
+  .icon-btn:hover:not(:disabled) { background: var(--color-surface-sunken); color: var(--color-text); }
+}
+
+/* ---------- Hộp thoại (§6.6) ---------- */
+.dialog-root {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--color-overlay);
+  animation: fadeIn 180ms ease-out;
+}
+.dialog-sheet {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: min(92vh, calc(100vh - 32px));
+  background: var(--color-surface);
+  border-radius: var(--radius-sheet);
+  box-shadow: var(--shadow-overlay);
+  overflow: hidden;
+  outline: none;
+}
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  min-height: 64px;
+  padding: 0 8px 0 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+.dialog-title { font-size: 20px; line-height: 28px; font-weight: 600; color: var(--color-text); }
+.dialog-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px;
+  -webkit-overflow-scrolling: touch;
+}
+.dialog-body > * + * { margin-top: 12px; }
+.dialog-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 14px 24px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+@media (max-width: 640px) {
+  .dialog-root { align-items: flex-end; padding: 0; }
+  .dialog-sheet { max-height: 92vh; border-radius: var(--radius-sheet) var(--radius-sheet) 0 0; }
+  .dialog-head { padding-left: 16px; }
+  .dialog-body { padding: 16px; }
+  .dialog-foot { padding: 12px 16px; }
+}
+
+/* ---------- Ngăn kéo bên phải ---------- */
+.drawer-root { position: fixed; inset: 0; z-index: 4000; display: flex; justify-content: flex-end; }
+.drawer-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  height: 100%;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-overlay);
+}
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  min-height: 64px;
+  padding: 0 8px 0 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+.drawer-title { font-size: 20px; line-height: 28px; font-weight: 600; }
+.drawer-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px; }
+
+/* ---------- Bảng dữ liệu (§6.7) ---------- */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-tile);
+}
+.table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; line-height: 20px; text-align: left; }
+.table th {
+  height: 48px;
+  padding: 0 16px;
+  background: var(--color-surface-sunken);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.table td {
+  height: 52px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+.table tbody tr:last-child td { border-bottom: 0; }
+.table tr.is-clickable { cursor: pointer; }
+.table .is-right { text-align: right; font-variant-numeric: tabular-nums; }
+.table .is-center { text-align: center; }
+.table tr.is-clickable:active td { background: var(--color-brand-100); }
+@media (hover: hover) {
+  .table tr.is-clickable:hover td { background: var(--color-brand-50); }
+}
+.table-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 24px;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-tile);
+  color: var(--color-text-muted);
+}
+.table-empty > svg { color: var(--color-border-control); }
+
+/* ---------- Ô nhập có nhãn (Field, SelectField) ---------- */
+.field-control { position: relative; display: flex; align-items: center; width: 100%; }
+.field-control .input { padding-right: 16px; }
+.field-control.has-suffix .input { padding-right: 40px; }
+.field-suffix { position: absolute; right: 14px; color: var(--color-text-muted); font-weight: 600; pointer-events: none; }
+.field-label { display: block; font-size: 14px; line-height: 20px; font-weight: 500; color: var(--color-text-muted); }
+.field-error { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--color-danger); }
+.field-error > svg { flex-shrink: 0; margin-top: 1px; }
+.field-hint { font-size: 13px; line-height: 18px; color: var(--color-text-muted); }
+
+/* ---------- Thông báo nổi (§6.6): góc dưới trái ---------- */
+.toast-stack {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(420px, calc(100vw - 32px));
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px 10px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-tile);
+  box-shadow: var(--shadow-overlay);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-text);
+  animation: toastIn 180ms var(--ease-out-expo);
+}
+.toast-icon { display: flex; flex-shrink: 0; color: var(--color-info); }
+.toast-message { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.toast-success { background: var(--color-success-bg); border-color: var(--color-success); }
+.toast-success .toast-icon { color: var(--color-success); }
+.toast-error { background: var(--color-danger-bg); border-color: var(--color-danger); }
+.toast-error .toast-icon { color: var(--color-danger); }
+.toast-warning { background: var(--color-warning-bg); border-color: var(--color-warning); }
+.toast-warning .toast-icon { color: var(--color-warning); }
+.toast .btn { min-height: 40px; padding: 0 12px; }
+.toast .icon-btn { width: 40px; height: 40px; }
+
+/* ---------- Dải mất kết nối (§7) ---------- */
+.offline-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-shrink: 0;
+  z-index: 9000;
+  padding: 10px 16px;
+  background: var(--color-danger);
+  color: var(--color-on-brand);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+/* ---------- Bàn phím số (§5.4): phím 64px ---------- */
+.numpad { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+.numpad-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  border: 1px solid var(--color-border-control);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--duration-fast) ease, transform var(--duration-fast) var(--ease-out-expo);
+}
+.numpad-key:active { background: var(--color-brand-100); transform: scale(0.96); }
+.numpad-key.is-muted { background: var(--color-surface-sunken); color: var(--color-text-muted); }
+@media (hover: hover) {
+  .numpad-key:hover { background: var(--color-brand-50); }
+}
+
+/* ---------- Khung ứng dụng: rail, thanh trên ---------- */
+.shell { flex: 1; display: flex; overflow: hidden; position: relative; }
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  width: 80px;
+  padding: 16px 0;
+  background: var(--color-brand-800);
+  overflow-y: auto;
+  user-select: none;
+}
+.rail-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 12px;
+  border: 1px solid var(--color-brand-500);
+  border-radius: var(--radius-tile);
+  background: var(--color-brand-700);
+  color: var(--color-on-brand);
+}
+.rail-btn,
+.nav-btn {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-brand-100);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease,
+    transform var(--duration-fast) var(--ease-out-expo);
+}
+.rail-btn {
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 68px;
+  min-height: 64px;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 500;
+}
+.nav-btn { width: 100%; min-height: 48px; gap: 14px; padding: 0 14px; font-size: 15px; font-weight: 500; text-align: left; }
+.rail-btn:active,
+.nav-btn:active { transform: scale(0.97); }
+.rail-btn[aria-current='page'],
+.nav-btn[aria-current='page'] {
+  background: var(--color-brand-600);
+  border-color: var(--color-brand-500);
+  color: var(--color-on-brand);
+  font-weight: 600;
+}
+.rail-btn:focus-visible,
+.nav-btn:focus-visible,
+.rail-link:focus-visible { outline-color: var(--color-on-brand); }
+@media (hover: hover) {
+  .rail-btn:not([aria-current='page']):hover,
+  .nav-btn:not([aria-current='page']):hover { background: var(--color-brand-700); color: var(--color-on-brand); }
+}
+
+.topbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-danger);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+.topbar-btn:active { transform: scale(0.98); }
+@media (hover: hover) {
+  .topbar-btn:hover { background: var(--color-danger-bg); border-color: var(--color-danger); }
+}
+.menu-item {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.menu-item[aria-current='true'] { background: var(--color-brand-50); color: var(--color-brand-600); font-weight: 600; }
+@media (hover: hover) {
+  .menu-item:hover { background: var(--color-brand-50); }
+}
+
+/* ---------- Màn đăng nhập: khung thương hiệu nâu, danh sách phẳng ---------- */
+.login-brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 32px;
+  border-radius: var(--radius-sheet);
+  background: var(--color-brand-800);
+  color: var(--color-on-brand);
+}
+.login-brand-top { display: grid; gap: 24px; align-content: start; }
+.login-brand-logo { display: flex; align-items: center; gap: 14px; }
+.login-brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--color-brand-500);
+  border-radius: var(--radius-tile);
+  background: var(--color-brand-700);
+}
+.login-brand h1 { font-size: 22px; line-height: 30px; font-weight: 600; }
+.login-brand-sub { margin-top: 2px; font-size: 14px; color: var(--color-brand-200); }
+.login-brand-lead { max-width: 38ch; font-size: 18px; line-height: 28px; color: var(--color-brand-100); }
+.login-points { display: grid; gap: 20px; list-style: none; }
+.login-points li { display: flex; align-items: flex-start; gap: 14px; }
+.login-points svg { flex-shrink: 0; margin-top: 2px; color: var(--color-brand-200); }
+.login-points strong { display: block; font-size: 16px; line-height: 24px; font-weight: 600; }
+.login-points span { display: block; font-size: 14px; line-height: 20px; color: var(--color-brand-200); }
+.login-brand-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-brand-700);
+  font-size: 13px;
+  color: var(--color-brand-200);
+}
+
+/* Nút của biểu mẫu trong hộp thoại luôn nằm ở đáy, không bị cuộn khuất */
+.form-actions {
+  position: sticky;
+  bottom: -20px;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 4px -24px -20px;
+  padding: 14px 24px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+}
+@media (max-width: 640px) { .form-actions { bottom: -16px; margin: 4px -16px -16px; padding: 12px 16px; } }
+
+/* ---------- Khung trang quản lý dùng chung ---------- */
+.page { display: flex; flex: 1; flex-direction: column; gap: 20px; min-width: 0; padding: 24px; overflow-y: auto; }
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px; }
+.page-title { font-size: 22px; line-height: 30px; font-weight: 600; }
+.page-sub { margin-top: 2px; color: var(--color-text-muted); }
+.page-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+@media (max-width: 1023px) { .page { padding: 16px; } }

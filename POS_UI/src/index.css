@@ -1,5 +1,6 @@
 @import './styles/ui.css';
 @import './styles/pos.css';
+@import './styles/components.css';
 
 /* POS-F&B Design Tokens per DESIGN.md §4 & §12.1 + ui-ux-pro-max + taste-skill */
 :root {
@@ -93,6 +94,22 @@ input, textarea, select {
   caret-color: var(--color-brand-600);
   accent-color: var(--color-brand-600);
 }
+
+/* Điều khiển gốc của trình duyệt: kế thừa chữ, viền và bo góc theo token để màn nào quên gắn class vẫn đúng (DESIGN.md §6.5) */
+button, input, select, textarea { font: inherit; color: inherit; }
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+select,
+textarea {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border-control);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+textarea { min-height: 88px; padding: 10px 12px; line-height: 22px; resize: vertical; }
+input:disabled, select:disabled, textarea:disabled { background: var(--color-surface-sunken); color: var(--color-text-disabled); cursor: not-allowed; }
+input::placeholder, textarea::placeholder { color: var(--color-text-muted); opacity: 0.8; }
+input[type='checkbox'], input[type='radio'] { width: 20px; height: 20px; }
 
 /* Số tiền & số liệu luôn tabular */
 .money,
