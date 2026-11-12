@@ -53,6 +53,19 @@
   --duration-fast: 120ms;
   --duration-normal: 200ms;
 
+  /* Tên token cũ còn dùng trong mã: trỏ về token chuẩn để không còn giá trị rỗng */
+  --shadow-card: none;
+  --radius-sm: 6px;
+  --color-warning-800: var(--color-warning);
+  --color-warning-100: var(--color-warning-bg);
+  --color-danger-subtle: var(--color-danger-bg);
+  --color-danger-700: var(--color-danger);
+  --color-danger-600: var(--color-danger);
+  --color-danger-100: var(--color-danger-bg);
+  --color-success-800: var(--color-success);
+  --color-success-100: var(--color-success-bg);
+  --color-neutral-100: var(--color-surface-sunken);
+
   /* Chữ */
   --font-sans: "Be Vietnam Pro", system-ui, "Segoe UI", Roboto, sans-serif;
   --font-numeric: var(--font-sans);
