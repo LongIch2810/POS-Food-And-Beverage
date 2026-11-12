@@ -64,29 +64,19 @@ export const CancelInvoiceModal: React.FC<CancelInvoiceModalProps> = ({
       maxWidth={480}
       disableClose={loading}
       footer={
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', width: '100%' }}>
+        <div className="form-actions" style={{ position: 'static', width: '100%', padding: 0, border: 0, background: 'transparent' }}>
           <Button variant="secondary" onClick={onClose} disabled={loading}>
             Không hủy
           </Button>
-          <Button variant="danger" onClick={handleCancel} isLoading={loading}>
+          <Button variant="danger" size="lg" onClick={handleCancel} isLoading={loading}>
             Xác nhận hủy đơn
           </Button>
         </div>
       }
     >
-      <form onSubmit={handleCancel} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div
-          style={{
-            padding: 14,
-            borderRadius: 'var(--radius-control)',
-            background: 'var(--color-danger-bg)',
-            color: 'var(--color-danger)',
-            fontSize: 14,
-            display: 'flex',
-            gap: 10,
-          }}
-        >
-          <AlertTriangle size={20} style={{ flexShrink: 0 }} />
+      <form onSubmit={handleCancel} className="stack">
+        <div className="notice notice-danger">
+          <AlertTriangle size={20} aria-hidden="true" />
           <div>
             {isPaid ? (
               <span>
@@ -94,44 +84,27 @@ export const CancelInvoiceModal: React.FC<CancelInvoiceModalProps> = ({
                 đã xuất theo công thức sẽ được tự động hoàn lại vào kho chi nhánh.
               </span>
             ) : (
-              <span>Đơn hàng đang mở sẽ được chuyển sang trạng thái ĐÃ HỦY.</span>
+              <span>Đơn hàng đang mở sẽ được chuyển sang trạng thái đã hủy.</span>
             )}
           </div>
         </div>
 
-        <div>
-          <label
-            htmlFor="cancel-invoice-reason"
-            style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', display: 'block', marginBottom: 6, cursor: 'pointer' }}
-          >
-            Lý do hủy đơn (bắt buộc)
-          </label>
+        <div className="field">
+          <label htmlFor="cancel-invoice-reason" className="field-label">Lý do hủy đơn (bắt buộc)</label>
           <textarea
             id="cancel-invoice-reason"
             rows={3}
+            className="input"
+            aria-invalid={error ? 'true' : undefined}
             placeholder="Khách đổi ý, pha nhầm món, sự cố thanh toán..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             autoFocus
-            style={{
-              width: '100%',
-              padding: 12,
-              borderRadius: 'var(--radius-control)',
-              border: `1px solid ${error ? 'var(--color-danger)' : 'var(--color-border-control)'}`,
-              fontSize: 14,
-              fontFamily: 'inherit',
-              background: 'var(--color-surface)',
-              color: 'var(--color-text)',
-            }}
             required
           />
         </div>
 
-        {error && (
-          <div role="alert" style={{ fontSize: 13, color: 'var(--color-danger)', fontWeight: 600, padding: '8px 12px', background: 'var(--color-danger-subtle)', borderRadius: 'var(--radius-sm)' }}>
-            {error}
-          </div>
-        )}
+        {error && <div role="alert" className="notice notice-danger">{error}</div>}
       </form>
     </Dialog>
   );

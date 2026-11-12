@@ -65,17 +65,17 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       maxWidth={460}
       disableClose={loading}
       footer={
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', width: '100%' }}>
+        <div className="form-actions" style={{ position: 'static', width: '100%', padding: 0, border: 0, background: 'transparent' }}>
           <Button variant="secondary" onClick={onClose} disabled={loading}>
             Hủy
           </Button>
-          <Button variant="primary" onClick={handleSubmit} isLoading={loading}>
+          <Button variant="primary" size="lg" onClick={handleSubmit} isLoading={loading}>
             Lưu khoản chi
           </Button>
         </div>
       }
     >
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <form onSubmit={handleSubmit} className="stack">
         <Field
           id="expense-amount"
           label="Số tiền chi"
@@ -89,65 +89,28 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           required
         />
 
-        <div>
-          <label
-            htmlFor="expense-reason"
-            style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-muted)', display: 'block', marginBottom: 6, cursor: 'pointer' }}
-          >
-            Lý do chi (bắt buộc)
-          </label>
+        <div className="field">
+          <label htmlFor="expense-reason" className="field-label">Lý do chi (bắt buộc)</label>
           <input
             id="expense-reason"
             type="text"
+            className="input"
             placeholder="VD: Mua thêm đá viên, mua giấy in bill..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            style={{
-              height: 48,
-              width: '100%',
-              padding: '0 16px',
-              borderRadius: 'var(--radius-control)',
-              border: '1px solid var(--color-border-control)',
-              fontSize: 15,
-              background: 'var(--color-surface)',
-              color: 'var(--color-text)',
-            }}
             required
           />
         </div>
 
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '12px 14px',
-            borderRadius: 'var(--radius-control)',
-            background: 'var(--color-surface-sunken)',
-            cursor: 'pointer',
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={paidFromDrawer}
-            onChange={(e) => setPaidFromDrawer(e.target.checked)}
-            style={{ width: 18, height: 18, accentColor: 'var(--color-brand-600)', cursor: 'pointer' }}
-          />
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
-              Lấy tiền trực tiếp từ két tiền mặt
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-              Khoản này sẽ được trừ vào số tiền kỳ vọng khi đối soát ca
-            </div>
-          </div>
+        <label className="check-row">
+          <input type="checkbox" checked={paidFromDrawer} onChange={(e) => setPaidFromDrawer(e.target.checked)} />
+          <span>
+            <strong style={{ display: 'block', fontSize: 14 }}>Lấy tiền trực tiếp từ két tiền mặt</strong>
+            <span className="stat-note">Khoản này sẽ được trừ vào số tiền kỳ vọng khi đối soát ca</span>
+          </span>
         </label>
 
-        {error && (
-          <div role="alert" style={{ fontSize: 13, color: 'var(--color-danger)', fontWeight: 500, padding: '8px 12px', background: 'var(--color-danger-subtle)', borderRadius: 'var(--radius-sm)' }}>
-            {error}
-          </div>
-        )}
+        {error && <div role="alert" className="notice notice-danger">{error}</div>}
       </form>
     </Dialog>
   );

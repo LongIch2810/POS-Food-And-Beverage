@@ -45,234 +45,84 @@ export const DailyReportScreen: React.FC = () => {
 
   if (!canViewBranch && !canViewAll) {
     return (
-      <div style={{ flex: 1, padding: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', maxWidth: 420 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-danger)', marginBottom: 8 }}>
-            Không có quyền truy cập
-          </div>
-          <p style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>
-            Bạn không có quyền xem báo cáo doanh thu ngày (cần quyền report.view_branch hoặc report.view_all).
-          </p>
+      <div className="center-note">
+        <div>
+          <h2>Không có quyền truy cập</h2>
+          <p>Bạn không có quyền xem báo cáo doanh thu ngày (cần được cấp quyền xem báo cáo).</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ flex: 1, padding: 'clamp(14px, 2.5vw, 24px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Header & Controls */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}
-      >
+    <div className="page">
+      <div className="page-head">
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text)' }}>
-            Báo cáo Doanh thu Ngày
-          </h1>
-          <p style={{ fontSize: 14, color: 'var(--color-text-muted)', marginTop: 4 }}>
-            Chỉ tính các đơn đã thanh toán, gom theo múi giờ Việt Nam (Asia/Ho_Chi_Minh)
-          </p>
+          <h1 className="page-title">Báo cáo doanh thu ngày</h1>
+          <p className="page-sub">Chỉ tính các đơn đã thanh toán, gom theo múi giờ Việt Nam (Asia/Ho_Chi_Minh)</p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="page-actions">
           {/* Lọc chi nhánh cho người có quyền report.view_all (BR-77) */}
           {canViewAll && (
             <select
+              className="select"
+              aria-label="Chi nhánh"
               value={selectedBranchId}
               onChange={(e) => setSelectedBranchId(e.target.value)}
-              style={{
-                height: 44,
-                padding: '0 12px',
-                borderRadius: 'var(--radius-control)',
-                border: '1px solid var(--color-border-control)',
-                background: 'var(--color-surface)',
-                fontSize: 14,
-                fontWeight: 600,
-              }}
             >
               <option value="">Tất cả chi nhánh (Tổng hợp)</option>
               {accessibleBranches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
+                <option key={b.id} value={b.id}>{b.name}</option>
               ))}
             </select>
           )}
 
-          {/* Ngày báo cáo */}
-          <div
-            style={{
-              height: 44,
-              padding: '0 12px',
-              borderRadius: 'var(--radius-control)',
-              border: '1px solid var(--color-border-control)',
-              background: 'var(--color-surface)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              fontSize: 14,
-            }}
-          >
-            <Calendar size={16} color="var(--color-text-muted)" />
-            <input
-              type="date"
-              value={reportDate}
-              onChange={(e) => setReportDate(e.target.value)}
-              style={{ border: 'none', background: 'transparent', fontSize: 14, outline: 'none' }}
-            />
-          </div>
+          <label className="filter-box">
+            <Calendar size={16} aria-hidden="true" />
+            <input type="date" aria-label="Ngày báo cáo" value={reportDate} onChange={(e) => setReportDate(e.target.value)} />
+          </label>
         </div>
       </div>
 
-      {/* Hàng chỉ số nhanh gọn per DESIGN.md §5.6 */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 16,
-        }}
-      >
-        {/* Tổng doanh thu */}
-        <div
-          style={{
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-tile)',
-            padding: 20,
-          }}
-        >
-          <div style={{ fontSize: 13, color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: 6 }}>
-            Tổng doanh thu
-          </div>
-          <div
-            className="money"
-            style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-brand-600)' }}
-          >
-            {formatVND(report.totalRevenue)}
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
-            {report.invoiceCount} hóa đơn hoàn tất
-          </div>
+      <div className="stat-grid">
+        <div className="stat">
+          <div className="stat-label">Tổng doanh thu</div>
+          <div className="stat-value stat-value-lg money">{formatVND(report.totalRevenue)}</div>
+          <div className="stat-note">{report.invoiceCount} hóa đơn hoàn tất</div>
         </div>
 
-        {/* Tiền mặt */}
-        <div
-          style={{
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-tile)',
-            padding: 20,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: 6 }}>
-            <Banknote size={16} />
-            <span>Tiền mặt</span>
-          </div>
-          <div
-            className="money"
-            style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text)' }}
-          >
-            {formatVND(report.cashRevenue)}
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
-            Chiếm {cashPercent}% tổng doanh thu
-          </div>
+        <div className="stat">
+          <div className="stat-label"><Banknote size={16} aria-hidden="true" /><span>Tiền mặt</span></div>
+          <div className="stat-value money">{formatVND(report.cashRevenue)}</div>
+          <div className="stat-note">Chiếm {cashPercent}% tổng doanh thu</div>
         </div>
 
-        {/* Chuyển khoản */}
-        <div
-          style={{
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-tile)',
-            padding: 20,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: 6 }}>
-            <QrCode size={16} />
-            <span>Chuyển khoản</span>
-          </div>
-          <div
-            className="money"
-            style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text)' }}
-          >
-            {formatVND(report.transferRevenue)}
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
-            Chiếm {transferPercent}% tổng doanh thu
-          </div>
+        <div className="stat">
+          <div className="stat-label"><QrCode size={16} aria-hidden="true" /><span>Chuyển khoản</span></div>
+          <div className="stat-value money">{formatVND(report.transferRevenue)}</div>
+          <div className="stat-note">Chiếm {transferPercent}% tổng doanh thu</div>
         </div>
       </div>
 
-      {/* Thanh phân bổ Doanh thu Tiền mặt & Chuyển khoản */}
-      <div
-        style={{
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-tile)',
-          padding: 20,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-        }}
-      >
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)' }}>
-          Cơ cấu hình thức thanh toán
-        </h3>
+      <div className="panel">
+        <h2 className="panel-title">Cơ cấu hình thức thanh toán</h2>
 
         {report.totalRevenue === 0n ? (
-          <div style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>
-            Chưa có doanh thu trong ngày {reportDate}.
-          </div>
+          <p className="stat-note" style={{ fontSize: 14 }}>Chưa có doanh thu trong ngày {reportDate}.</p>
         ) : (
           <div>
-            <div
-              style={{
-                height: 24,
-                width: '100%',
-                borderRadius: 'var(--radius-control)',
-                overflow: 'hidden',
-                display: 'flex',
-                background: 'var(--color-surface-sunken)',
-              }}
-            >
-              <div
-                style={{
-                  width: `${cashPercent}%`,
-                  background: 'var(--color-brand-600)',
-                  transition: 'width 200ms ease',
-                }}
-                title={`Tiền mặt: ${cashPercent}%`}
-              />
-              <div
-                style={{
-                  width: `${transferPercent}%`,
-                  background: 'var(--color-info)',
-                  transition: 'width 200ms ease',
-                }}
-                title={`Chuyển khoản: ${transferPercent}%`}
-              />
+            <div className="split-bar">
+              <span className="split-cash" style={{ width: `${cashPercent}%` }} title={`Tiền mặt: ${cashPercent}%`} />
+              <span className="split-transfer" style={{ width: `${transferPercent}%` }} title={`Chuyển khoản: ${transferPercent}%`} />
             </div>
-
-            <div style={{ display: 'flex', gap: 24, marginTop: 12, fontSize: 13 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 12, height: 12, background: 'var(--color-brand-600)', borderRadius: 2 }} />
-                <span>Tiền mặt: <strong>{cashPercent}%</strong> ({formatVND(report.cashRevenue)})</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 12, height: 12, background: 'var(--color-info)', borderRadius: 2 }} />
-                <span>Chuyển khoản: <strong>{transferPercent}%</strong> ({formatVND(report.transferRevenue)})</span>
-              </div>
+            <div className="legend">
+              <div><i className="split-cash" /><span>Tiền mặt: <strong>{cashPercent}%</strong> ({formatVND(report.cashRevenue)})</span></div>
+              <div><i className="split-transfer" /><span>Chuyển khoản: <strong>{transferPercent}%</strong> ({formatVND(report.transferRevenue)})</span></div>
             </div>
           </div>
         )}
       </div>
-
     </div>
   );
 };

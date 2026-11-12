@@ -83,65 +83,24 @@ export const ForcePasswordModal: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        background: 'rgba(26, 34, 38, 0.75)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-      }}
-    >
+    <div className="force-overlay">
       <div
         ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="force-password-title"
         tabIndex={-1}
-        className="animate-modal-pop"
-        style={{
-          background: 'var(--color-surface)',
-          borderRadius: 'var(--radius-sheet)',
-          boxShadow: 'var(--shadow-overlay)',
-          maxWidth: 460,
-          width: '100%',
-          padding: 32,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 20,
-          outline: 'none',
-        }}
+        className="force-card animate-modal-pop"
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 'var(--radius-control)',
-              background: 'var(--color-warning-bg)',
-              color: 'var(--color-warning)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <Lock size={26} />
-          </div>
+        <div className="force-head">
+          <div className="icon-badge"><Lock size={26} aria-hidden="true" /></div>
           <div>
-            <h2 id="force-password-title" style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-              Đổi mật khẩu lần đầu
-            </h2>
-            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4, margin: 0 }}>
-              Vì lý do an toàn bảo mật, tài khoản mới khởi tạo cần thiết lập mật khẩu cá nhân trước khi bắt đầu làm việc.
-            </p>
+            <h2 id="force-password-title">Đổi mật khẩu lần đầu</h2>
+            <p>Vì lý do an toàn bảo mật, tài khoản mới khởi tạo cần thiết lập mật khẩu cá nhân trước khi bắt đầu làm việc.</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <form onSubmit={handleSubmit} className="stack">
           <Field
             label="Mật khẩu mới (tối thiểu 12 ký tự)"
             type="password"
@@ -163,42 +122,13 @@ export const ForcePasswordModal: React.FC = () => {
             required
           />
 
-          {(error || authError) && (
-            <div
-              role="alert"
-              style={{
-                padding: '10px 12px',
-                background: 'var(--color-danger-bg)',
-                color: 'var(--color-danger)',
-                borderRadius: 'var(--radius-control)',
-                fontSize: 13,
-                fontWeight: 500,
-              }}
-            >
-              {error || authError}
-            </div>
-          )}
+          {(error || authError) && <div role="alert" className="notice notice-danger">{error || authError}</div>}
 
-          <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-            <Button
-              type="button"
-              variant="secondary"
-              size="lg"
-              onClick={logout}
-              disabled={loading}
-              icon={<LogOut size={16} />}
-              style={{ minWidth: 120 }}
-            >
+          <div className="stack-actions">
+            <Button type="button" variant="secondary" size="lg" onClick={logout} disabled={loading} icon={<LogOut size={16} />}>
               Đăng xuất
             </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              fullWidth
-              isLoading={loading}
-              disabled={loading}
-            >
+            <Button type="submit" variant="primary" size="lg" fullWidth isLoading={loading} disabled={loading}>
               Xác nhận đổi mật khẩu
             </Button>
           </div>
