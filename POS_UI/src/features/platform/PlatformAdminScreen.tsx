@@ -147,7 +147,7 @@ export const PlatformAdminScreen: React.FC<Props> = ({ activeTab = 'stores', onT
       {loading && <p role="status">Đang tải dữ liệu...</p>}
       {error && <div role="alert" className="notice notice-danger"><XCircle size={18} /><p style={{ flex: 1, margin: 0 }}>{error}</p><Button variant="secondary" onClick={reload}>Thử lại</Button></div>}
       {!loading && !error && activeTab === 'stores' && <>
-        <div><Button onClick={() => setCreateStoreOpen(true)}>Tạo cửa hàng và OWNER</Button></div>
+        <div><Button onClick={() => setCreateStoreOpen(true)}>Tạo cửa hàng và chủ cửa hàng</Button></div>
         {stores.length === 0 ? <p>Chưa có cửa hàng.</p> : stores.map(store => (
           <div key={store.id} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', padding: 16,
             background: 'var(--color-surface)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
@@ -169,13 +169,13 @@ export const PlatformAdminScreen: React.FC<Props> = ({ activeTab = 'stores', onT
               })}>Mở lại</Button>}
             <Button variant="secondary" disabled={busy} onClick={() => {
               setStoreId(store.id); setCreateOwnerOpen(true);
-            }}>Cấp OWNER</Button>
+            }}>Cấp chủ cửa hàng</Button>
             </div>
           </div>
         ))}
       </>}
       {!loading && !error && activeTab === 'owners' && <>
-        <div><Button onClick={() => { setStoreId(''); setCreateOwnerOpen(true); }}>Cấp thêm OWNER</Button></div>
+        <div><Button onClick={() => { setStoreId(''); setCreateOwnerOpen(true); }}>Cấp thêm chủ cửa hàng</Button></div>
         {owners.length === 0 ? <p>Chưa có tài khoản chủ.</p> : owners.map(owner => (
           <div key={owner.id} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-control)', padding: 16,
             background: 'var(--color-surface)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
@@ -193,19 +193,19 @@ export const PlatformAdminScreen: React.FC<Props> = ({ activeTab = 'stores', onT
           onClick={() => { if (nextCursor) setHistories(current => ({ ...current, [activeTab]: [...history, nextCursor] })); }}>Trang sau</Button>
       </div>}
 
-      <Dialog isOpen={createStoreOpen} onClose={() => setCreateStoreOpen(false)} title="Tạo cửa hàng và OWNER đầu tiên">
+      <Dialog isOpen={createStoreOpen} onClose={() => setCreateStoreOpen(false)} title="Tạo cửa hàng và chủ cửa hàng đầu tiên">
         <form onSubmit={handleCreateStore} style={{ display: 'grid', gap: 12 }}>
           <Field label="Tên cửa hàng" value={name} onChange={e => setName(e.target.value)} required maxLength={150} />
           <Field label="Số điện thoại" value={phone} onChange={e => setPhone(e.target.value)} maxLength={20} />
           <Field label="Email" value={email} onChange={e => setEmail(e.target.value)} maxLength={150} />
           <Field label="Địa chỉ" value={address} onChange={e => setAddress(e.target.value)} maxLength={255} />
-          <Field label="Tên đăng nhập OWNER" value={username} onChange={e => setUsername(e.target.value)} required maxLength={50} />
-          <Field label="Họ tên OWNER" value={fullName} onChange={e => setFullName(e.target.value)} required maxLength={150} />
+          <Field label="Tên đăng nhập của chủ cửa hàng" value={username} onChange={e => setUsername(e.target.value)} required maxLength={50} />
+          <Field label="Họ tên chủ cửa hàng" value={fullName} onChange={e => setFullName(e.target.value)} required maxLength={150} />
           <Button type="submit" isLoading={busy}>Tạo cửa hàng</Button>
         </form>
       </Dialog>
 
-      <Dialog isOpen={createOwnerOpen} onClose={() => setCreateOwnerOpen(false)} title="Cấp thêm OWNER">
+      <Dialog isOpen={createOwnerOpen} onClose={() => setCreateOwnerOpen(false)} title="Cấp thêm chủ cửa hàng">
         <form onSubmit={handleCreateOwner} style={{ display: 'grid', gap: 12 }}>
           <label className="field">Cửa hàng
             <select className="select" value={storeId} onChange={e => setStoreId(e.target.value)} required>
@@ -233,7 +233,7 @@ export const PlatformAdminScreen: React.FC<Props> = ({ activeTab = 'stores', onT
         </form>
       </Dialog>
 
-      <Dialog isOpen={!!resetOwner} onClose={() => setResetOwner(null)} title="Đặt lại mật khẩu OWNER">
+      <Dialog isOpen={!!resetOwner} onClose={() => setResetOwner(null)} title="Đặt lại mật khẩu chủ cửa hàng">
         <p>Mọi phiên của {resetOwner?.username} sẽ bị thu hồi. Mật khẩu mới chỉ hiển thị một lần.</p>
         <Button variant="danger" isLoading={busy} onClick={() => { if (!resetOwner) return; void run(async () => {
           const result = await platformService.resetOwnerPassword(resetOwner.id);

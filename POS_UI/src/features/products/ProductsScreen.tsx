@@ -575,7 +575,7 @@ export const ProductsScreen: React.FC = () => {
   ];
 
   const toppingColumns: Column<MenuTopping>[] = [
-    { key: 'name', header: 'Tên Topping', render: (t) => <strong>{t.name}</strong> },
+    { key: 'name', header: 'Tên món thêm', render: (t) => <strong>{t.name}</strong> },
     { key: 'price', header: 'Giá bán', align: 'right', render: (t) => <span className="money">{formatVND(BigInt(t.price))}</span> },
     {
       key: 'categories',
@@ -766,7 +766,7 @@ export const ProductsScreen: React.FC = () => {
           }}
         >
           <Sparkles size={16} />
-          <span>Topping & Áp dụng ({toppings.length})</span>
+          <span>Món thêm và áp dụng ({toppings.length})</span>
         </button>
 
         <button
@@ -1014,7 +1014,7 @@ export const ProductsScreen: React.FC = () => {
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontWeight: 600 }}>Size {s.sizeName}:</span>
+                            <span style={{ fontWeight: 600 }}>Kích cỡ {s.sizeName}:</span>
                             <span className="money" style={{ color: 'var(--color-brand-600)', fontWeight: 700 }}>
                               {formatVND(BigInt(s.price))}
                             </span>
@@ -1171,7 +1171,7 @@ export const ProductsScreen: React.FC = () => {
                 .filter((s) => !targetProductForSize?.sizes.some((ps) => ps.sizeId === s.id))
                 .map((s) => (
                   <option key={s.id} value={s.id}>
-                    Size {s.name}
+                    Kích cỡ {s.name}
                   </option>
                 ))}
             </select>
@@ -1297,7 +1297,7 @@ export const ProductsScreen: React.FC = () => {
       <Dialog
         isOpen={!!mappingTopping}
         onClose={() => setMappingTopping(null)}
-        title={`Áp dụng Topping "${mappingTopping?.name}" cho Danh mục`}
+        title={`Áp dụng món thêm "${mappingTopping?.name}" cho Danh mục`}
         maxWidth={460}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

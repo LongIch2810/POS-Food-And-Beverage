@@ -106,7 +106,7 @@ export function SettingsContent({ session }: { session: AuthSession }) {
     if(bankBusy||offline)return;
     setBankError('');setBankAccountError('');
     if(!/^\d{6,19}$/.test(bank.accountNumber)){setBankAccountError('Số tài khoản phải có từ 6 đến 19 chữ số.');return;}
-    if(!/^\d{6}$/.test(bank.bankBin)||!bank.accountName.trim()){setBankError('Nhập mã BIN 6 chữ số và tên chủ tài khoản.');return;}
+    if(!/^\d{6}$/.test(bank.bankBin)||!bank.accountName.trim()){setBankError('Nhập mã ngân hàng gồm 6 chữ số và tên chủ tài khoản.');return;}
     setBankBusy(true);
     try{const value=await bankAccountService.update({...bank,accountName:bank.accountName.trim()});if(live.current){setBank(value);showToast({type:'success',message:'Đã lưu tài khoản nhận tiền.'});}}
     catch(err){
@@ -280,7 +280,7 @@ export function SettingsContent({ session }: { session: AuthSession }) {
     {session.permissions.includes('store_bank_account.manage')&&<section aria-label="Tài khoản nhận chuyển khoản" className="settings-bank">
       <h2>Tài khoản nhận chuyển khoản</h2>
       <div className="settings-bank-grid">
-        <label className="field">Mã BIN ngân hàng <input aria-label="Mã BIN ngân hàng" className="input" inputMode="numeric" value={bank.bankBin} disabled={bankBusy||offline} onChange={e=>setBank({...bank,bankBin:e.target.value})} /></label>
+        <label className="field">Mã ngân hàng <input aria-label="Mã ngân hàng" className="input" inputMode="numeric" value={bank.bankBin} disabled={bankBusy||offline} onChange={e=>setBank({...bank,bankBin:e.target.value})} /></label>
         <label className="field">Số tài khoản <input aria-label="Số tài khoản" className="input" aria-invalid={bankAccountError?'true':undefined} aria-describedby={bankAccountError?'bank-account-error':undefined} inputMode="numeric" value={bank.accountNumber} disabled={bankBusy||offline} onChange={e=>setBank({...bank,accountNumber:e.target.value})} /></label>
         <label className="field">Tên chủ tài khoản <input aria-label="Tên chủ tài khoản" className="input" value={bank.accountName} disabled={bankBusy||offline} onChange={e=>setBank({...bank,accountName:e.target.value})} /></label>
       </div>

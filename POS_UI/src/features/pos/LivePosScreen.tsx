@@ -346,8 +346,8 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
         <button type="button" className="btn btn-primary btn-lg" disabled={busy} onClick={() => { const target = transferTo; setTransferTo(null); void perform(() => salesService.transfer(selected.id, target)); }}>Xác nhận chuyển bàn</button></div>
     </Dialog>}
     {choice && <Dialog isOpen onClose={() => setChoice(null)} title={choice.product.name} maxWidth={480}>
-      <div className="sheet-section"><span className="sheet-label">Size</span>
-        <div className="chips" role="group" aria-label="Size">{sizesOf(choice.product).map(size => <button key={size.id} type="button" className="chip"
+      <div className="sheet-section"><span className="sheet-label">Kích cỡ</span>
+        <div className="chips" role="group" aria-label="Kích cỡ">{sizesOf(choice.product).map(size => <button key={size.id} type="button" className="chip"
           aria-pressed={choice.sizeId === size.id} onClick={() => setChoice({ ...choice, sizeId: size.id })}>{size.sizeName} · {formatVND(size.price)}</button>)}</div></div>
       <div className="sheet-section"><span className="sheet-label">Số lượng</span>
         <div className="stepper">
@@ -356,7 +356,7 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
             onChange={e => setChoice({ ...choice, quantity: Number(e.target.value) })} />
           <button type="button" className="btn btn-secondary btn-step" aria-label="Tăng số lượng" disabled={choice.quantity >= 1000} onClick={() => bumpQty(1)}><Plus size={20} /></button>
         </div></div>
-      {choice.allowedToppings.length > 0 && <div className="sheet-section"><span className="sheet-label">Topping</span>
+      {choice.allowedToppings.length > 0 && <div className="sheet-section"><span className="sheet-label">Món thêm</span>
         {choice.allowedToppings.map(topping => <label key={topping.id} className="check-row"><input type="checkbox"
           checked={choice.toppingIds.includes(topping.id)} onChange={e => setChoice({ ...choice,
             toppingIds: e.target.checked ? [...choice.toppingIds, topping.id] : choice.toppingIds.filter(id => id !== topping.id) })} />

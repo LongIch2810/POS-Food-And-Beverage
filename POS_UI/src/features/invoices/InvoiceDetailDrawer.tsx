@@ -136,7 +136,7 @@ export const InvoiceDetailDrawer: React.FC<InvoiceDetailDrawerProps> = ({
                   </div>
                   {item.toppings.length > 0 && (
                     <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
-                      Topping: {item.toppings.map((t) => t.topping_name_snapshot).join(', ')}
+                      Món thêm: {item.toppings.map((t) => t.topping_name_snapshot).join(', ')}
                     </div>
                   )}
                   <div className="money" style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
