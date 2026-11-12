@@ -3,13 +3,13 @@ import {AuthError} from '../../auth/client';
 import {salesService, type InvoiceDetail, type ManualInput, type PaymentPreview, type TransferAttempt, type BankTransferException} from '../../services/salesService';
 import {formatVND} from '../../utils/formatters';
 import {Dialog} from '../../components/ui/Dialog';
+import {AlertTriangle,CircleCheck,XCircle} from 'lucide-react';
 
-const control:React.CSSProperties={minHeight:44,padding:'9px 12px',border:'1px solid var(--color-border-control)',borderRadius:8,background:'var(--color-surface)',color:'var(--color-text)'};
 type Props={invoice:InvoiceDetail;permissions:string[];canSell:boolean;onClose:()=>void;onPaid:()=>void;onChanged:()=>void};
 type PendingRequest={kind:'cash'|'zero'|'qr'|'manual';key:string;body?:unknown};
 const message=(error:unknown)=>error instanceof Error?error.message:'Không thể thực hiện. Vui lòng thử lại.';
 
-export function LivePaymentDialog({invoice,permissions,canSell,onClose,onPaid,onChanged}:Props) {
+export function LivePaymentDialog({invoice,permissions,canSell,onClose,onPaid,onChanged}:Props):React.ReactElement {
   const [preview,setPreview]=useState<PaymentPreview|null>(null),[attempt,setAttempt]=useState<TransferAttempt|null>(null);
   const [mode,setMode]=useState<'cash'|'qr'>('cash'),[tendered,setTendered]=useState(''),[code,setCode]=useState('');
   const [ref,setRef]=useState(''),[received,setReceived]=useState(''),[reason,setReason]=useState(''),[manual,setManual]=useState(false);
@@ -72,53 +72,72 @@ export function LivePaymentDialog({invoice,permissions,canSell,onClose,onPaid,on
   };
   const integer=(value:string)=>/^\d+$/.test(value)&&Number.isSafeInteger(Number(value))&&Number(value)<=1_000_000_000_000;
   const locked=busy||uncertain;
-  return <Dialog isOpen onClose={onClose} disableClose={locked} title={`Thanh toán · ${invoice.invoiceCode}`} maxWidth={560}>
-      {loading&&<p role="status">Đang tải thông tin thanh toán...</p>}
-      {error&&<p role="alert">{error}</p>}
-      {uncertain&&<p role="status">Kết quả chưa rõ. Hãy thử lại cùng yêu cầu để đối chiếu.</p>}
-      {preview&&<>
-        <p>Tạm tính: {formatVND(preview.subtotal)} · Giảm giá: {formatVND(preview.discountAmount)}</p>
-        <h3>Cần thanh toán: {formatVND(preview.totalAmount)}</h3>
-        {preview.promotion&&<p>Mã {preview.promotion.code}: {preview.promotion.applicable?'Đủ điều kiện':'Không còn đủ điều kiện'} {preview.promotion.reason??''}</p>}
-        {preview.warnings.map((warning,index)=><p role="alert" key={index}>{warning.type==='MISSING_RECIPE'?'Món chưa có công thức; vẫn có thể bán.':'Tồn kho sẽ âm; vẫn có thể bán.'}</p>)}
-        {!attempt&&canSell&&<div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-          <label>Mã giảm giá <input aria-label="Mã giảm giá" style={control} value={code} disabled={locked} onChange={e=>setCode(e.target.value)} /></label>
-          <button type="button" style={control} disabled={locked||!code.trim()} onClick={()=>void mutate(()=>salesService.applyPromotion(invoice.id,code.trim()))}>Áp dụng mã</button>
-          {preview.promotion&&<button type="button" style={control} disabled={locked} onClick={()=>void mutate(()=>salesService.removePromotion(invoice.id))}>Bỏ mã</button>}
+  const shortfall = preview && integer(tendered) ? preview.totalAmount - Number(tendered) : 0;
+  return <Dialog isOpen onClose={onClose} disableClose={locked} title={`Thanh toán · ${invoice.invoiceCode}`} maxWidth={760}>
+    <div className="pay">
+      {loading && <p role="status" className="pay-line">Đang tải thông tin thanh toán...</p>}
+      {error && <p role="alert" className="notice notice-danger"><XCircle size={18} />{error}</p>}
+      {uncertain && <p role="status" className="notice notice-warning"><AlertTriangle size={18} />Kết quả chưa rõ. Hãy thử lại cùng yêu cầu để đối chiếu.</p>}
+      {preview && <div className="pay-cols"><div className="pay-left">
+        <div className="pay-sum">
+          <h3 className="pay-due">Cần thanh toán: <span className="money">{formatVND(preview.totalAmount)}</span></h3>
+          <p className="pay-line">Tạm tính: {formatVND(preview.subtotal)} · Giảm giá: {formatVND(preview.discountAmount)}</p>
+        </div>
+        {preview.promotion && <p className={`notice ${preview.promotion.applicable ? 'notice-success' : 'notice-warning'}`}>{preview.promotion.applicable ? <CircleCheck size={18} /> : <AlertTriangle size={18} />}
+          Mã {preview.promotion.code}: {preview.promotion.applicable ? 'Đủ điều kiện' : 'Không còn đủ điều kiện'} {preview.promotion.reason ?? ''}</p>}
+        {preview.warnings.map((warning, index) => <p role="alert" className="notice notice-warning" key={index}><AlertTriangle size={18} />{warning.type === 'MISSING_RECIPE' ? 'Món chưa có công thức; vẫn có thể bán.' : 'Tồn kho sẽ âm; vẫn có thể bán.'}</p>)}
+        {!attempt && canSell && <div className="pay-row">
+          <label className="field">Mã giảm giá <input aria-label="Mã giảm giá" className="input" value={code} disabled={locked} onChange={e => setCode(e.target.value)} /></label>
+          <button type="button" className="btn btn-secondary" disabled={locked || !code.trim()} onClick={() => void mutate(() => salesService.applyPromotion(invoice.id, code.trim()))}>Áp dụng mã</button>
+          {preview.promotion && <button type="button" className="btn btn-text" disabled={locked} onClick={() => void mutate(() => salesService.removePromotion(invoice.id))}>Bỏ mã</button>}
         </div>}
-        {attempt?<>
-          <h3>Đang chờ chuyển khoản</h3>
-          {attempt.qrImageUrl&&!imageError&&<img src={attempt.qrImageUrl} onError={()=>setImageError(true)} alt="Mã QR chuyển khoản" style={{width:'min(260px,100%)'}} />}
-          {imageError&&<p>Không tải được QR. Khách có thể tự nhập thông tin sau.</p>}
-          <p>Ngân hàng: {attempt.bankBin} · Người nhận: {attempt.accountName}</p><p>Số tài khoản: {attempt.accountNumber}</p>
-          <p>Số tiền: {formatVND(attempt.amount)} · Nội dung: {attempt.transferReference}</p>
-          {canSell&&<button type="button" style={control} disabled={locked} onClick={()=>void mutate(()=>salesService.cancelTransferAttempt(attempt.id))}>Hủy chờ</button>}
-          {canManual&&<button type="button" style={control} disabled={locked} onClick={()=>setManual(!manual)}>Xác nhận thủ công</button>}
-          {manual&&canManual&&<div style={{display:'grid',gap:8,marginTop:12}}>
-            <label>Mã giao dịch <input aria-label="Mã giao dịch" style={control} value={ref} disabled={locked} onChange={e=>setRef(e.target.value)} /></label>
-            <label>Số tiền thực nhận <input aria-label="Số tiền thực nhận" inputMode="numeric" style={control} value={received} disabled={locked} onChange={e=>setReceived(e.target.value)} /></label>
-            <label>Lý do <input aria-label="Lý do xác nhận" style={control} value={reason} disabled={locked} onChange={e=>setReason(e.target.value)} /></label>
-            <button type="button" style={control} disabled={busy||(!uncertain&&(!ref.trim()||!reason.trim()||!integer(received)||Number(received)<preview.totalAmount))}
-              onClick={()=>void action('manual',{transactionRef:ref.trim(),actualReceivedAmount:Number(received),reason:reason.trim()})}>Xác nhận đã nhận tiền</button>
-          </div>}
-        </>:canSell&&<>
-          {preview.totalAmount===0?<button type="button" style={control} disabled={busy||!preview.promotion?.applicable&&Boolean(preview.promotion)} onClick={()=>void action('zero')}>Hoàn tất đơn 0đ</button>:<>
-            <div style={{display:'flex',gap:8,marginTop:16}}>
-              <button type="button" style={control} disabled={locked} onClick={()=>setMode('cash')}>Tiền mặt</button>
-              <button type="button" style={control} disabled={locked} onClick={()=>setMode('qr')}>Chuyển khoản</button>
+        </div><div className="pay-right">
+        {attempt ? <>
+          <div className="pay-section">
+            <h3>Đang chờ chuyển khoản</h3>
+            <div className="pay-qr">
+              {attempt.qrImageUrl && !imageError && <img src={attempt.qrImageUrl} onError={() => setImageError(true)} alt="Mã QR chuyển khoản" />}
+              {imageError && <p className="notice notice-warning"><AlertTriangle size={18} />Không tải được QR. Khách có thể tự nhập thông tin sau.</p>}
             </div>
-            {mode==='cash'?<div style={{display:'grid',gap:8,marginTop:12}}>
-              <label>Tiền khách đưa <input aria-label="Tiền khách đưa" inputMode="numeric" style={control} value={tendered} disabled={locked} onChange={e=>setTendered(e.target.value)} /></label>
-              {integer(tendered)&&Number(tendered)>=preview.totalAmount&&<p>Tiền thối: {formatVND(Number(tendered)-preview.totalAmount)}</p>}
-              <button type="button" style={control} disabled={busy||(!uncertain&&(!integer(tendered)||Number(tendered)<preview.totalAmount||Boolean(preview.promotion&&!preview.promotion.applicable)))}
-                onClick={()=>void action('cash',{method:'CASH',amount:preview.totalAmount,tenderedAmount:Number(tendered)})}>Xác nhận thanh toán</button>
-            </div>:<button type="button" style={{...control,marginTop:12}} disabled={busy||Boolean(preview.promotion&&!preview.promotion.applicable)}
-              onClick={()=>void action('qr',preview.totalAmount)}>Tạo mã QR</button>}
+            <dl className="pay-facts">
+              <dt>Ngân hàng</dt><dd>{attempt.bankBin}</dd>
+              <dt>Người nhận</dt><dd>{attempt.accountName}</dd>
+              <dt>Số tài khoản</dt><dd>{attempt.accountNumber}</dd>
+              <dt>Số tiền</dt><dd>{formatVND(attempt.amount)}</dd>
+              <dt>Nội dung</dt><dd>{attempt.transferReference}</dd>
+            </dl>
+            <div className="pay-actions">
+              {canSell && <button type="button" className="btn btn-secondary" disabled={locked} onClick={() => void mutate(() => salesService.cancelTransferAttempt(attempt.id))}>Hủy chờ</button>}
+              {canManual && <button type="button" className="btn btn-secondary" disabled={locked} aria-expanded={manual} onClick={() => setManual(!manual)}>Xác nhận thủ công</button>}
+            </div>
+          </div>
+          {manual && canManual && <div className="pay-panel">
+            <label className="field">Mã giao dịch <input aria-label="Mã giao dịch" className="input" value={ref} disabled={locked} onChange={e => setRef(e.target.value)} /></label>
+            <label className="field">Số tiền thực nhận <input aria-label="Số tiền thực nhận" inputMode="numeric" className="input input-money" value={received} disabled={locked} onChange={e => setReceived(e.target.value)} /></label>
+            <label className="field">Lý do <input aria-label="Lý do xác nhận" className="input" value={reason} disabled={locked} onChange={e => setReason(e.target.value)} /></label>
+            <button type="button" className="btn btn-primary btn-lg btn-block" disabled={busy || (!uncertain && (!ref.trim() || !reason.trim() || !integer(received) || Number(received) < preview.totalAmount))}
+              onClick={() => void action('manual', { transactionRef: ref.trim(), actualReceivedAmount: Number(received), reason: reason.trim() })}>Xác nhận đã nhận tiền</button>
+          </div>}
+        </> : canSell && <>
+          {preview.totalAmount === 0 ? <button type="button" className="btn btn-primary btn-lg btn-block" disabled={busy || !preview.promotion?.applicable && Boolean(preview.promotion)} onClick={() => void action('zero')}>Hoàn tất đơn 0đ</button> : <>
+            <div className="segmented" role="group" aria-label="Phương thức thanh toán">
+              <button type="button" aria-pressed={mode === 'cash'} disabled={locked} onClick={() => setMode('cash')}>Tiền mặt</button>
+              <button type="button" aria-pressed={mode === 'qr'} disabled={locked} onClick={() => setMode('qr')}>Chuyển khoản</button>
+            </div>
+            {mode === 'cash' ? <div className="pay-panel">
+              <label className="field">Tiền khách đưa <input aria-label="Tiền khách đưa" inputMode="numeric" className="input input-money" value={tendered} disabled={locked} onChange={e => setTendered(e.target.value)} /></label>
+              {integer(tendered) && Number(tendered) >= preview.totalAmount && <p className="pay-change">Tiền thối: <span className="money">{formatVND(Number(tendered) - preview.totalAmount)}</span></p>}
+              {shortfall > 0 && <p className="pay-short" role="status">Còn thiếu {formatVND(shortfall)}</p>}
+              <button type="button" className="btn btn-primary btn-lg btn-block" disabled={busy || (!uncertain && (!integer(tendered) || Number(tendered) < preview.totalAmount || Boolean(preview.promotion && !preview.promotion.applicable)))}
+                onClick={() => void action('cash', { method: 'CASH', amount: preview.totalAmount, tenderedAmount: Number(tendered) })}>Xác nhận thanh toán</button>
+            </div> : <div className="pay-panel"><button type="button" className="btn btn-primary btn-lg btn-block" disabled={busy || Boolean(preview.promotion && !preview.promotion.applicable)}
+              onClick={() => void action('qr', preview.totalAmount)}>Tạo mã QR</button></div>}
           </>}
         </>}
-      </>}
-      {canExceptions&&<div><h3>Giao dịch cần đối soát</h3>{exceptions.length===0?<p>Chưa có giao dịch cần xử lý.</p>:exceptions.map(item=><p key={item.id}>{({UNDERPAID:'Chuyển thiếu tiền',ATTEMPT_CANCELLED:'Chuyển sau khi hủy chờ',INVOICE_NOT_OPEN:'Đơn không còn mở',PROMOTION_INVALID:'Mã giảm giá không còn hiệu lực',DUPLICATE:'Mã giao dịch đã dùng',WRONG_ACCOUNT:'Sai tài khoản nhận'} as Record<string,string>)[item.reason] ?? 'Giao dịch cần kiểm tra'} · {formatVND(item.amount)} · Đơn {item.invoiceId}</p>)}
-        {nextCursor&&<button type="button" style={control} disabled={busy} onClick={()=>void loadExceptions(nextCursor).catch(e=>setError(message(e)))}>Xem thêm</button>}</div>}
-      <button type="button" style={{...control,marginTop:16}} disabled={busy||uncertain} onClick={onClose}>Đóng</button>
+      </div></div>}
+      {canExceptions && <div className="pay-section"><h3>Giao dịch cần đối soát</h3>{exceptions.length === 0 ? <p className="pay-line">Chưa có giao dịch cần xử lý.</p> : exceptions.map(item => <p className="pay-line" key={item.id}>{({ UNDERPAID: 'Chuyển thiếu tiền', ATTEMPT_CANCELLED: 'Chuyển sau khi hủy chờ', INVOICE_NOT_OPEN: 'Đơn không còn mở', PROMOTION_INVALID: 'Mã giảm giá không còn hiệu lực', DUPLICATE: 'Mã giao dịch đã dùng', WRONG_ACCOUNT: 'Sai tài khoản nhận' } as Record<string, string>)[item.reason] ?? 'Giao dịch cần kiểm tra'} · {formatVND(item.amount)} · Đơn {item.invoiceId}</p>)}
+        {nextCursor && <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void loadExceptions(nextCursor).catch(e => setError(message(e)))}>Xem thêm</button>}</div>}
+      <div className="pay-footer"><button type="button" className="btn btn-secondary" disabled={busy || uncertain} onClick={onClose}>Đóng</button></div>
+    </div>
   </Dialog>;
 }
