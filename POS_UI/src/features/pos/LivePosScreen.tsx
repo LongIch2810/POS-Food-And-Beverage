@@ -216,8 +216,8 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
         <div className="pos-bar-end">
           {canChooseBranch && <label className="field pos-branch">Chi nhánh <select aria-label="Chi nhánh bán hàng" className="select" value={branchId} disabled={busy || loading}
             onChange={e => setBranchId(e.target.value)}>{branches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}{branch.isActive ? '' : ' (ngưng hoạt động)'}</option>)}</select></label>}
-          <button type="button" className="btn btn-secondary" disabled={busy || loading} onClick={() => { setBusy(true);
-            void refreshOrders(selected?.id).catch(e => { setRecoveryBlocked(true); setError(e instanceof Error ? e.message : 'Không tải lại được đơn.'); }).finally(() => setBusy(false)); }}><RefreshCw size={18} />Tải lại đơn</button>
+          <button type="button" className="btn btn-secondary" title="Tải lại đơn" disabled={busy || loading} onClick={() => { setBusy(true);
+            void refreshOrders(selected?.id).catch(e => { setRecoveryBlocked(true); setError(e instanceof Error ? e.message : 'Không tải lại được đơn.'); }).finally(() => setBusy(false)); }}><RefreshCw size={18} /><span className="btn-label">Tải lại đơn</span></button>
         </div>
       </div>
       {!loading && tab === 'menu' && categories.length > 0 && <div className="pos-cats">{categories.map(category => <button key={category.id} type="button" className="tab"
