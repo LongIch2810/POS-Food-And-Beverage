@@ -2,6 +2,8 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from '@n
 import { randomUUID } from 'node:crypto';
 import { Request, Response } from 'express';
 import { errorResponse } from './api-response';
+import { httpError } from './http-error';
+import { verifySePayWebhookRequest } from '../sales/sepay-webhook.service';
 
 const errors: Record<number, { code: string; message: string }> = {
   400: { code: 'BAD_REQUEST', message: 'Yêu cầu không đọc được.' },
@@ -20,6 +22,7 @@ export class ApiErrorFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const request = host.switchToHttp().getRequest<Request>();
     const response = host.switchToHttp().getResponse<Response>();
+    exception = sePayParseFailure(exception, request);
     const status = exception instanceof HttpException ? exception.getStatus() : 500;
     const custom = exception instanceof HttpException ? exception.getResponse() : null;
     const error = typeof custom === 'object' && custom !== null && 'code' in custom && 'message' in custom
@@ -39,4 +42,21 @@ export class ApiErrorFilter implements ExceptionFilter {
     }
     response.status(status).json(errorResponse(error, details, String(requestId)));
   }
+}
+
+// The framework JSON parser rejects malformed bodies before the webhook handler runs.
+// Authenticate the raw body first, then report the SePay-specific payload error.
+function sePayParseFailure(exception: unknown, request: Request): unknown {
+  if (!(exception instanceof HttpException) || exception.getStatus() !== 400 || request.method !== 'POST'
+    || request.path.replace(/\/$/, '').toLowerCase() !== '/api/v1/payments/sepay/webhook') return exception;
+  const custom = exception.getResponse();
+  if (typeof custom === 'object' && custom !== null && 'code' in custom) return exception;
+  const rawBody = (request as Request & { rawBody?: Buffer }).rawBody;
+  if (!rawBody) return exception;
+  try {
+    verifySePayWebhookRequest(rawBody, request.header('X-SePay-Signature') ?? '', request.header('X-SePay-Timestamp') ?? '');
+  } catch (error) {
+    return error;
+  }
+  return httpError(400, 'INVALID_WEBHOOK_PAYLOAD', 'Nội dung webhook không hợp lệ.');
 }

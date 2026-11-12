@@ -182,12 +182,18 @@ test('PB-02 login creates a hashed refresh session and cookie-only tokens', { ti
         body: 'unexpected',
       });
       assert.equal(plainRefreshBody.status, 422);
+      // [B-10] decoy: an older, untouched token of another session must not be mistaken for the rotated row.
+      await db.query(`INSERT INTO refresh_tokens (id, user_id, session_id, token_hash, expires_at, created_at)
+        VALUES (gen_random_uuid(), $1, gen_random_uuid(), $2, now() + interval '1 day', '2000-01-01T00:00:00Z')`,
+      [body.data.user.id, randomBytes(32).toString('hex')]);
       const refreshed = await fetch(`http://127.0.0.1:${port}/api/v1/auth/refresh`, {
         method: 'POST', headers: { Cookie: cookieHeader, Origin: process.env.PUBLIC_ORIGIN!, 'X-CSRF-Token': csrf },
       });
       assert.equal(refreshed.status, 200);
       assert.equal(refreshed.headers.getSetCookie().length, 2);
-      const oldRows = await db.query('SELECT revoked_at, replaced_at FROM refresh_tokens ORDER BY created_at LIMIT 1');
+      const oldHash = createHash('sha256').update(cookies.find((cookie) => cookie.startsWith('__Host-pos_refresh='))!.split(';')[0].split('=')[1]).digest('hex');
+      const oldRows = await db.query('SELECT revoked_at, replaced_at FROM refresh_tokens WHERE token_hash = $1', [oldHash]);
+      assert.equal(oldRows.length, 1);
       assert.ok(oldRows[0].revoked_at && oldRows[0].replaced_at);
       const liveSessionLogout = await fetch(`http://127.0.0.1:${port}/api/v1/auth/logout`, {
         method: 'POST', headers: { Cookie: cookieHeader, Origin: process.env.PUBLIC_ORIGIN! },

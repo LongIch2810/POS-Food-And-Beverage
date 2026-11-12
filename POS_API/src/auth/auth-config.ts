@@ -13,6 +13,12 @@ export function validateAuthConfig(): void {
   }
 }
 
+export function sePayWebhookSecret():string|null {
+  const secret=process.env.SEPAY_WEBHOOK_SECRET;
+  const isPlaceholder=/^<.*>$/s.test(secret?.trim()??'');
+  return process.env.SEPAY_ENV==='test'&&secret&&!isPlaceholder&&Buffer.byteLength(secret)>=32?secret:null;
+}
+
 export async function assertSchemaCurrent(db: DataSource): Promise<void> {
   if (await db.showMigrations()) throw new Error('Database has pending migrations');
 }

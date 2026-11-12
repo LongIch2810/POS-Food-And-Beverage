@@ -23,6 +23,9 @@ test('PB-07 BR-16/22/24/26/74/75/90/92 invoices on PostgreSQL', { timeout: 120_0
     const permissions = await db.query("SELECT code FROM permissions WHERE code IN ('pos.sell','invoice.read','invoice.cancel_open','table.read')");
     assert.equal(permissions.length, 4);
 
+    const managerCancel = await db.query("SELECT r.name FROM role_permissions rp JOIN roles r ON r.id=rp.role_id JOIN permissions p ON p.id=rp.permission_id WHERE p.code='invoice.cancel_open' ORDER BY r.name");
+    assert.deepEqual(managerCancel.map((row: { name: string }) => row.name), ['CASHIER', 'MANAGER', 'OWNER'], 'invoice.cancel_open granted to OWNER/MANAGER/CASHIER');
+
     const store = randomUUID(), branch = randomUUID(), cashier = randomUUID(), shift = randomUUID();
     const tableA = randomUUID(), tableB = randomUUID(), category = randomUUID(), size = randomUUID();
     const product = randomUUID(), productSize = randomUUID(), topping = randomUUID();
