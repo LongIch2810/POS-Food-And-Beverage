@@ -466,3 +466,11 @@
 .stack-actions { display: flex; gap: 12px; margin-top: 4px; }
 .stack-actions .btn-block { flex: 1; width: auto; min-width: 0; }
 @media (max-width: 640px) { .force-card { padding: 24px 20px; } .stack-actions { flex-direction: column-reverse; } }
+
+.sum-list { display: flex; flex-direction: column; }
+.sum-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 56px; padding: 8px 0; border-top: 1px solid var(--color-border); }
+.sum-row:first-child { border-top: 0; }
+.sum-row dt { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-weight: 500; }
+.sum-row dd { font-size: 18px; font-weight: 600; }
+.sum-total dt, .sum-total dd { font-size: 20px; font-weight: 700; }
+.sum-total dd { color: var(--color-brand-600); }
