@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import { Test } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
@@ -46,13 +46,14 @@ test('PB-06 shifts and cash reconciliation HTTP with PostgreSQL', { timeout: 180
       const base = `http://127.0.0.1:${app.getHttpServer().address().port}/api/v1`;
       type Session = { cookie: string; csrf: string };
 
-      const request = async (session: Session, path: string, method = 'GET', body?: unknown) => {
+      const request = async (session: Session, path: string, method = 'GET', body?: unknown, key?: string) => {
         const response = await fetch(`${base}${path}`, {
           method,
           headers: {
             Cookie: session.cookie,
             Origin: process.env.PUBLIC_ORIGIN!,
             'X-CSRF-Token': session.csrf,
+            ...(key ? {'Idempotency-Key': key} : {}),
             ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
           },
           ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -149,6 +150,112 @@ test('PB-06 shifts and cash reconciliation HTTP with PostgreSQL', { timeout: 180
         cashier2Res.json.data.user.id,
         managerRes.json.data.user.id,
       ]);
+
+      await t.test('R2-1 BR-56 CASH PAID is included in normal and forced reconciliation', async () => {
+        const branch = await request(ownerB, '/branches', 'POST', {code:'R21',name:'R2-1',initialCash:100000});
+        assert.equal(branch.status,201);
+        const branchId=branch.json.data.id, ownerId=storeResB.json.data.owner.id;
+        for (const force of [true,false]) {
+          const opened=await request(ownerB,'/work-shifts','POST',{shiftType:'CASHIER',branchId});
+          assert.equal(opened.status,201);
+          const shiftId=opened.json.data.id, opening=opened.json.data.reconciliation.openingCash;
+          const openInvoice=randomUUID();
+          await db.query(`INSERT INTO invoices(id,branch_id,work_shift_id,invoice_code,created_by,order_type,status)
+            VALUES($1,$2,$3,$4,$5,'TAKEAWAY','OPEN')`,[openInvoice,branchId,shiftId,force?'HDFOPEN001':'HDNOPEN001',ownerId]);
+          const blockedClose=await request(ownerB,`/work-shifts/${shiftId}/${force?'force-close':'close'}`,'POST',
+            force?{countedCash:opening,reason:'Kiểm tra'}:{countedCash:opening});
+          assert.equal(blockedClose.status,409);assert.equal(blockedClose.json.error.code,'SHIFT_HAS_OPEN_INVOICES');
+          assert.equal((await db.query('SELECT status FROM work_shifts WHERE id=$1',[shiftId]))[0].status,'OPEN');
+          await db.query("UPDATE invoices SET status='CANCELLED' WHERE id=$1",[openInvoice]);
+          const invoice=randomUUID();
+          await db.query(`INSERT INTO invoices(id,branch_id,work_shift_id,invoice_code,created_by,order_type,status,subtotal,total_amount,paid_at)
+            VALUES($1,$2,$3,$4,$5,'TAKEAWAY','PAID',50000,50000,now())`,[invoice,branchId,shiftId,force?'HDR2FORCED':'HDR2NORMAL',ownerId]);
+          await db.query(`INSERT INTO payments(id,invoice_id,method,amount,idempotency_key,idempotency_request_hash,tendered_amount,change_amount,created_by)
+            VALUES($1,$2,'CASH',50000,$3,$4,100000,50000,$5)`,[randomUUID(),invoice,randomUUID(),'a'.repeat(64),ownerId]);
+          const cancelled=randomUUID(), zero=randomUUID(), transfer=randomUUID(), attempt=randomUUID();
+          for(const [id,code,status,amount] of [[cancelled,force?'HDFCANCEL1':'HDNCANCEL1','CANCELLED',9000],[zero,force?'HDFZERO001':'HDNZERO001','PAID',0],[transfer,force?'HDFTRANS01':'HDNTRANS01','PAID',10000]] as const) {
+            await db.query(`INSERT INTO invoices(id,branch_id,work_shift_id,invoice_code,created_by,order_type,status,subtotal,total_amount)
+              VALUES($1,$2,$3,$4,$5,'TAKEAWAY',$6,$7,$7)`,[id,branchId,shiftId,code,ownerId,status,amount]);
+          }
+          await db.query(`INSERT INTO payments(id,invoice_id,method,amount,idempotency_key,idempotency_request_hash,tendered_amount,change_amount,created_by)
+            VALUES($1,$2,'CASH',9000,$3,$4,9000,0,$5)`,[randomUUID(),cancelled,randomUUID(),'b'.repeat(64),ownerId]);
+          await db.query(`INSERT INTO transfer_attempts(id,invoice_id,store_id,bank_bin,account_number,account_name,amount,transfer_reference,idempotency_key,idempotency_request_hash,status)
+            VALUES($1,$2,$3,'970422','123456789','STORE',10000,$4,$5,$6,'PAID')`,[attempt,transfer,storeResB.json.data.store.id,force?'HDR2FORCETRANSFER1':'HDR2NORMALTRANSFER',randomUUID(),'c'.repeat(64)]);
+          await db.query(`INSERT INTO payments(id,invoice_id,method,amount,idempotency_key,idempotency_request_hash,actual_received_amount,excess_amount,transfer_attempt_id,receiving_account_number,transaction_ref,transaction_ref_kind,confirmation_source)
+            VALUES($1,$2,'TRANSFER',10000,$3,$4,10000,0,$5,'123456789',$6,'BANK','WEBHOOK')`,[randomUUID(),transfer,randomUUID(),'d'.repeat(64),attempt,randomUUID()]);
+          const before=await request(ownerB,`/work-shifts/${shiftId}`);
+          assert.equal(before.json.data.reconciliation.expectedCash,null,'blind count must hide expected amount');
+          await db.query(`CREATE OR REPLACE FUNCTION r21_fail_close() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN IF NEW.status='CLOSED' THEN RAISE EXCEPTION 'R2-1 rollback'; END IF; RETURN NEW; END $$`);
+          await db.query('CREATE TRIGGER r21_fail_close BEFORE UPDATE ON work_shifts FOR EACH ROW EXECUTE FUNCTION r21_fail_close()');
+          try {
+            const failed=await request(ownerB,`/work-shifts/${shiftId}/${force?'force-close':'close'}`,'POST',
+              force?{countedCash:opening+50000,reason:'Kiểm tra'}:{countedCash:opening+50000});
+            assert.equal(failed.status,500,'failure must rollback reconciliation and shift');
+            const [snapshot]=await db.query(`SELECT s.status,r.status AS reconciliation_status,r.expected_cash
+              FROM work_shifts s JOIN cash_reconciliations r ON r.work_shift_id=s.id WHERE s.id=$1`,[shiftId]);
+            assert.equal(snapshot.status,'OPEN');assert.equal(snapshot.reconciliation_status,'PENDING');assert.equal(snapshot.expected_cash,null);
+          } finally {
+            await db.query('DROP TRIGGER r21_fail_close ON work_shifts');await db.query('DROP FUNCTION r21_fail_close()');
+          }
+          const gate=db.createQueryRunner();await gate.connect();await gate.startTransaction();
+          await gate.query('SELECT id FROM work_shifts WHERE id=$1 FOR UPDATE',[shiftId]);
+          const pending=request(ownerB,`/work-shifts/${shiftId}/${force?'force-close':'close'}`,'POST',
+            force?{countedCash:opening+52000,reason:'Kiểm tra'}:{countedCash:opening+52000});
+          try {
+            const deadline=Date.now()+10000;let blocked=false;
+            while(Date.now()<deadline) {
+              const [row]=await db.query(`SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname=current_database()
+                AND pid<>pg_backend_pid() AND wait_event_type='Lock' AND query LIKE '%FOR UPDATE%'`);
+              if(row.n>0){blocked=true;break;}
+              await new Promise(resolve=>setTimeout(resolve,20));
+            }
+            assert.equal(blocked,true,'close must wait for the shift lock held by a payment');
+            const concurrentInvoice=randomUUID();
+            await gate.query(`INSERT INTO invoices(id,branch_id,work_shift_id,invoice_code,created_by,order_type,status,subtotal,total_amount,paid_at)
+              VALUES($1,$2,$3,$4,$5,'TAKEAWAY','PAID',2000,2000,now())`,[concurrentInvoice,branchId,shiftId,force?'HDFRACE001':'HDNRACE001',ownerId]);
+            await gate.query(`INSERT INTO payments(id,invoice_id,method,amount,idempotency_key,idempotency_request_hash,tendered_amount,change_amount,created_by)
+              VALUES($1,$2,'CASH',2000,$3,$4,2000,0,$5)`,[randomUUID(),concurrentInvoice,randomUUID(),'e'.repeat(64),ownerId]);
+          } finally {await gate.commitTransaction();await gate.release();}
+          const response=await pending;
+          assert.equal(response.status,200,`R2-1 ${force?'force':'normal'} close must count CASH sales`);
+          assert.equal(response.json.data.reconciliation.cashSalesAmount,52000);
+          assert.equal(response.json.data.reconciliation.expectedCash,opening+52000);
+          assert.equal(response.json.data.reconciliation.status,'MATCHED');
+        }
+      });
+
+      await t.test('R2-1 payment and close serialize in both orders',async()=>{
+        const branch=await request(ownerB,'/branches','POST',{code:'RACE',name:'Race',initialCash:100000});
+        assert.equal(branch.status,201);const branchId=branch.json.data.id, storeId=storeResB.json.data.store.id, ownerId=storeResB.json.data.owner.id;
+        const category=randomUUID(),size=randomUUID(),product=randomUUID(),productSize=randomUUID();
+        await db.query('INSERT INTO categories(id,store_id,name) VALUES($1,$2,$3)',[category,storeId,'Race']);
+        await db.query('INSERT INTO sizes(id,store_id,name) VALUES($1,$2,$3)',[size,storeId,'Race']);
+        await db.query('INSERT INTO products(id,category_id,name) VALUES($1,$2,$3)',[product,category,'Race']);
+        await db.query('INSERT INTO product_sizes(id,product_id,size_id,price) VALUES($1,$2,$3,50000)',[productSize,product,size]);
+        for(const payFirst of [true,false]) {
+          const opened=await request(ownerB,'/work-shifts','POST',{shiftType:'CASHIER',branchId});assert.equal(opened.status,201);
+          const shiftId=opened.json.data.id, opening=opened.json.data.reconciliation.openingCash, invoice=randomUUID();
+          await db.query(`INSERT INTO invoices(id,branch_id,work_shift_id,invoice_code,created_by,order_type,status,subtotal,total_amount)
+            VALUES($1,$2,$3,$4,$5,'TAKEAWAY','OPEN',50000,50000)`,[invoice,branchId,shiftId,payFirst?'HDPRACE001':'HDCRACE001',ownerId]);
+          await db.query(`INSERT INTO invoice_items(id,invoice_id,product_size_id,product_name,size_name,unit_price,quantity,line_total)
+            VALUES($1,$2,$3,'Race','Race',50000,1,50000)`,[randomUUID(),invoice,productSize]);
+          const gate=db.createQueryRunner();await gate.connect();await gate.startTransaction();
+          await gate.query('SELECT id FROM work_shifts WHERE id=$1 FOR UPDATE',[shiftId]);
+          const pay=()=>request(ownerB,`/invoices/${invoice}/payments`,'POST',{method:'CASH',amount:50000,tenderedAmount:50000},randomUUID());
+          const close=()=>request(ownerB,`/work-shifts/${shiftId}/close`,'POST',{countedCash:opening+50000});
+          const first=payFirst?pay():close();
+          const waitLock=async(expected:number)=>{const until=Date.now()+10000;while(Date.now()<until){const [row]=await db.query(`SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND wait_event_type='Lock' AND query LIKE '%FOR UPDATE%'`);if(row.n>=expected)return;await new Promise(resolve=>setTimeout(resolve,20));}throw new Error('shift lock wait not observed');};
+          let second:Promise<any>;
+          try {await waitLock(1);second=payFirst?close():pay();await waitLock(2);}
+          finally {await gate.commitTransaction();await gate.release();}
+          const firstResult=await first, secondResult=await second!;
+          if(payFirst){assert.equal(firstResult.status,201);assert.equal(secondResult.status,200);assert.equal(secondResult.json.data.reconciliation.cashSalesAmount,50000);}
+          else {assert.equal(firstResult.status,409);assert.equal(firstResult.json.error.code,'SHIFT_HAS_OPEN_INVOICES');assert.equal(secondResult.status,201);assert.equal((await close()).status,200);}
+          const [state]=await db.query(`SELECT s.status,r.cash_sales_amount,(SELECT count(*)::int FROM payments p JOIN invoices i ON i.id=p.invoice_id WHERE i.work_shift_id=s.id AND p.method='CASH') AS payments FROM work_shifts s JOIN cash_reconciliations r ON r.work_shift_id=s.id WHERE s.id=$1`,[shiftId]);
+          assert.deepEqual(state,{status:'CLOSED',cash_sales_amount:'50000',payments:1});
+        }
+      });
 
       // --- SHIFT-01: Ca nhân viên STAFF vào ca và tan ca ---
       await t.test('SHIFT-01: Ca nhân viên STAFF vào ca, tan ca, chặn 2 ca mở cùng lúc', async () => {

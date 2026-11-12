@@ -32,6 +32,8 @@ services:
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:5173}
       JWT_SECRET: ${JWT_SECRET:-pos_local_dev_jwt_secret_32_bytes_long_key!}
       CSRF_SECRET: ${CSRF_SECRET:-pos_local_dev_csrf_secret_32_bytes_long_key!}
+      SEPAY_ENV: ${SEPAY_ENV:-test}
+      SEPAY_WEBHOOK_SECRET: ${SEPAY_WEBHOOK_SECRET:-}
       PORT: 3000
     ports:
       - "127.0.0.1:3000:3000"

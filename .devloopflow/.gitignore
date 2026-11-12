@@ -1,0 +1,3 @@
+# Bằng chứng thô của verify-ac (log, screenshot, script) có thể nặng hoặc lộ dữ liệu nhạy cảm, không đưa lên git.
+# report-<n>.md và fails.md (tóm tắt, không nhạy cảm) vẫn được commit.
+verify/*/evidence/

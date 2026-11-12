@@ -68,7 +68,7 @@ Các vị trí chi tiết trong cây là đề xuất của agent dựa trên ph
 
 ## File và nơi phải cập nhật
 
-Auth/platform, import entity trong relation/đăng ký DataSource/bootstrap/test, AppModule và import filter/health, các caller của helper lỗi. Cập nhật ARCHITECTURE.md mục hiện trạng và 5.1, POS_API/README.md để mô tả quy ước và trạng thái thực tế. Không đổi hợp đồng endpoint trong specs/ hoặc thêm công nghệ vào TECH_STACK.md.
+Auth/platform, import entity trong relation/đăng ký DataSource/bootstrap/test, AppModule và import filter/health, các caller của helper lỗi. Cập nhật ARCHITECTURE.md mục hiện trạng và 5.1, POS_API/README.md để mô tả quy ước và trạng thái thực tế. Không đổi hợp đồng endpoint trong .devloopflow/specs/ hoặc thêm công nghệ vào TECH_STACK.md.
 
 ## Kiểm chứng và rủi ro
 

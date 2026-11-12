@@ -6,7 +6,7 @@
 
 Đọc [PRODUCT_OVERVIEW.md](../PRODUCT_OVERVIEW.md) trước để nắm phạm vi, vai trò và bất biến. Quy tắc theo mã BR ở [BUSINESS_RULES.md](../BUSINESS_RULES.md); hợp đồng HTTP chung ở [api-spec.md](../api-spec.md); bảng, công thức và ràng buộc ở [DESIGN_DB_POS_SYSTEM.md](../DESIGN_DB_POS_SYSTEM.md); phiên và mật khẩu ở [auth.md](auth.md); giao diện ở [DESIGN.md](../../DESIGN.md). File này giải thích **ranh giới và luồng giữa các thành phần**, không sao chép đặc tả endpoint hay từng cột DB.
 
-Nếu các nguồn mâu thuẫn về kết quả nghiệp vụ hoặc bảo mật, hỏi người dùng và sửa đồng bộ những tài liệu bị ảnh hưởng. `specs/` ở gốc repository dành cho các đặc tả đã chốt. Công nghệ đã dùng xem [TECH_STACK.md](TECH_STACK.md).
+Nếu các nguồn mâu thuẫn về kết quả nghiệp vụ hoặc bảo mật, hỏi người dùng và sửa đồng bộ những tài liệu bị ảnh hưởng. `.devloopflow/specs/` ở gốc repository dành cho các đặc tả đã chốt. Công nghệ đã dùng xem [TECH_STACK.md](TECH_STACK.md).
 
 ## 2. Hiện trạng repository và phạm vi MVP
 
@@ -175,7 +175,7 @@ Công thức món theo size và topping dùng chung trong store; tồn theo bran
 
 ## 9. API và xử lý lỗi
 
-API theo [api-spec.md](../api-spec.md): JSON response bọc `data` trừ `204`, mã lỗi có cấu trúc, validation ở ranh giới, phân trang theo con trỏ và giới hạn số tiền. Upload ảnh là `multipart/form-data`; endpoint đọc ảnh trả bytes/MIME, không theo JSON envelope. Các thao tác thanh toán và hoàn tất đơn 0đ bắt buộc `Idempotency-Key`; client chỉ retry theo đúng quy tắc key và nội dung. Spec từng endpoint sẽ nằm trong `specs/` khi được viết.
+API theo [api-spec.md](../api-spec.md): JSON response bọc `data` trừ `204`, mã lỗi có cấu trúc, validation ở ranh giới, phân trang theo con trỏ và giới hạn số tiền. Upload ảnh là `multipart/form-data`; endpoint đọc ảnh trả bytes/MIME, không theo JSON envelope. Các thao tác thanh toán và hoàn tất đơn 0đ bắt buộc `Idempotency-Key`; client chỉ retry theo đúng quy tắc key và nội dung. Spec từng endpoint sẽ nằm trong `.devloopflow/specs/` khi được viết.
 
 ## 10. Đồng thời, nhất quán và hiệu năng
 

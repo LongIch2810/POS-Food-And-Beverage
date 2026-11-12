@@ -7,8 +7,3 @@ dist-ssr/
 .playwright-mcp/
 .DS_Store
 /graphify-out/
-# QA: version Markdown summaries/reports; keep raw logs, scripts, images and data local.
-/qa-evidence/**
-!/qa-evidence/**/
-!/qa-evidence/*.md
-!/qa-evidence/**/*.md

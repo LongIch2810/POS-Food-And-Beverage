@@ -6,6 +6,7 @@ import { shiftService, WorkShiftDto } from '../../services/shiftService';
 import { InvoiceDetail, OpenInvoice, salesService } from '../../services/salesService';
 import { OpenShiftGate } from '../shifts/OpenShiftGate';
 import { formatVND } from '../../utils/formatters';
+import { LivePaymentDialog } from './LivePaymentDialog';
 
 type Tab = 'menu' | 'tables' | 'orders';
 type Choice = { product: MenuProduct; sizeId: string; quantity: number; toppingIds: string[]; allowedToppings: MenuTopping[] };
@@ -25,27 +26,45 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
   const [tables, setTables] = useState<OrganizationTable[]>([]);
   const [orders, setOrders] = useState<OpenInvoice[]>([]);
   const [selected, setSelected] = useState<InvoiceDetail | null>(null);
+  const [payment, setPayment] = useState<{invoiceId:string;identity:string}|null>(null);
+  const [pendingStatus, setPendingStatus] = useState<{invoiceId:string;identity:string;status:'loading'|'pending'|'none'}|null>(null);
+  const [pendingRevision, setPendingRevision] = useState(0);
   const [choice, setChoice] = useState<Choice | null>(null);
   const [categoryId, setCategoryId] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [recoveryBlocked, setRecoveryBlocked] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const canSell = session.permissions.includes('pos.sell');
   const canCancel = session.permissions.includes('invoice.cancel_open');
+  const canManual = session.permissions.includes('transfer.confirm_manual');
+  const canChooseBranch = session.permissions.includes('branch.access_all');
+  const paymentIdentity=JSON.stringify([session.user.id,session.user.store_id,session.user.branch_id,branchId,[...session.permissions].sort()]);
   const ownShift = shift?.status === 'OPEN' && shift.shiftType === 'CASHIER';
   const canWrite = canSell && ownShift && shift.branchId === branchId && !isOffline && !recoveryBlocked;
+  const pendingState=selected&&pendingStatus?.invoiceId===selected.id&&pendingStatus.identity===paymentIdentity?pendingStatus.status:'loading';
+  const canModify=canWrite&&(!selected||(selected.status==='OPEN'&&pendingState==='none'));
+
+  useEffect(()=>{
+    let live=true;
+    if(!selected||selected.status!=='OPEN')return;
+    const target={invoiceId:selected.id,identity:paymentIdentity};setPendingStatus({...target,status:'loading'});
+    void salesService.getPendingTransferAttempt(selected.id).then(value=>{if(live)setPendingStatus({...target,status:value?.status==='PENDING'?'pending':'none'});})
+      .catch(e=>{if(live)setError(e instanceof Error?e.message:'Không xác minh được trạng thái chuyển khoản.');});
+    return ()=>{live=false;};
+  },[selected?.id,selected?.status,paymentIdentity,pendingRevision]);
 
   useEffect(() => { setTab(activeMode === 'tables' ? 'tables' : 'menu'); }, [activeMode]);
-  useEffect(() => { setBranchId(session.user.branch_id ?? ''); setSelected(null); }, [session.user.id, session.user.branch_id]);
+  useEffect(() => { setBranchId(session.user.branch_id ?? ''); setSelected(null); setNotice(''); }, [session.user.id, session.user.branch_id, session.user.store_id]);
   useEffect(() => {
     let live = true;
-    if (session.user.branch_id) return;
+    if (!canChooseBranch) return;
     void organizationService.getBranchChoices().then(rows => {
       if (live) { setBranches(rows); setBranchId(current => current || rows.find(row => row.isActive)?.id || rows[0]?.id || ''); }
     }).catch(e => { if (live) setError(e instanceof Error ? e.message : 'Không tải được chi nhánh.'); });
     return () => { live = false; };
-  }, [session.user.id, session.user.branch_id]);
+  }, [session.user.id, session.user.branch_id, canChooseBranch]);
   useEffect(() => {
     let live = true;
     setShift(undefined);
@@ -64,7 +83,7 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
     setOrders(rows);
     if (wantedId) {
       const detail = await salesService.get(wantedId);
-      setSelected(detail.branchId === branchId || !branchId ? detail : null);
+      setSelected((detail.branchId === branchId || !branchId) && detail.status === 'OPEN' ? detail : null);
     } else if (selected && !rows.some(order => order.id === selected.id)) setSelected(null);
     setRecoveryBlocked(false);
   };
@@ -98,7 +117,10 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
     if (busy || !canWrite) return;
     setBusy(true); setError('');
     try {
-      const detail = await action(); setSelected(detail); await refreshOrders();
+      const detail = await action();
+      if (detail.status === 'OPEN') { setSelected(detail); setNotice(''); }
+      else { setSelected(null); setNotice(detail.status === 'CANCELLED' ? 'Đã hủy đơn.' : 'Đơn đã đóng.'); }
+      await refreshOrders();
       if (success) setError(success);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Chưa xác nhận được kết quả. Tải lại danh sách trước khi thử lại.');
@@ -110,13 +132,17 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
     const current = orders.find(order => order.tableId === table.id);
     if (current) {
       setLoading(true);
-      try { setSelected(await salesService.get(current.id)); setTab('menu'); onSwitchToPos?.(); }
-      catch (e) { setError(e instanceof Error ? e.message : 'Không tải được đơn.'); }
+      try {
+        const detail = await salesService.get(current.id);
+        if (detail.status === 'OPEN') { setSelected(detail); setNotice(''); setTab('menu'); onSwitchToPos?.(); return; }
+        await refreshOrders();
+      } catch (e) { setError(e instanceof Error ? e.message : 'Không tải được đơn.'); return; }
       finally { setLoading(false); }
-    } else await perform(() => salesService.create({ orderType: 'DINE_IN', tableId: table.id }));
+    }
+    await perform(() => salesService.create({ orderType: 'DINE_IN', tableId: table.id }));
   };
   const addChoice = async () => {
-    if (!choice || !selected || !canWrite) return;
+    if (!choice || !selected || !canModify) return;
     const picked = choice;
     setChoice(null);
     await perform(() => salesService.addItem(selected.id, { productSizeId: picked.sizeId, quantity: picked.quantity,
@@ -132,7 +158,7 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
     } catch (e) { setError(e instanceof Error ? e.message : 'Không tải được topping của món.'); }
   };
   const remove = async (itemId: string) => {
-    if (!selected || busy || !canWrite) return;
+    if (!selected || busy || !canModify) return;
     setBusy(true); setError('');
     try { await salesService.removeItem(itemId); setSelected(await salesService.get(selected.id)); await refreshOrders(); }
     catch (e) { setError(e instanceof Error ? e.message : 'Không xóa được món.');
@@ -148,12 +174,13 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
   };
 
   if (shift === undefined) return <div role="status" style={{ padding: 24 }}>Đang tải ca hiện tại...</div>;
-  if (canSell && !ownShift) return <OpenShiftGate branchId={branchId} branchName={branches.find(b => b.id === branchId)?.name || session.branch_name || 'Chi nhánh'}
+  if (canSell && !ownShift && !canManual) return <OpenShiftGate branchId={branchId} branchName={branches.find(b => b.id === branchId)?.name || session.branch_name || 'Chi nhánh'}
     onShiftOpened={() => setShiftRevision(value => value + 1)} />;
 
   return <div style={{ display: 'flex', flex: 1, minWidth: 0, overflow: 'hidden' }}>
     <main style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: 16 }}>
-      {session.user.branch_id === null && <label>Chi nhánh <select aria-label="Chi nhánh bán hàng" style={control} value={branchId} disabled={busy || loading}
+      {canSell&&!ownShift&&canManual&&<OpenShiftGate branchId={branchId} branchName={branches.find(b=>b.id===branchId)?.name||session.branch_name||'Chi nhánh'} onShiftOpened={()=>setShiftRevision(value=>value+1)} />}
+      {canChooseBranch && <label>Chi nhánh <select aria-label="Chi nhánh bán hàng" style={control} value={branchId} disabled={busy || loading}
         onChange={e => setBranchId(e.target.value)}>{branches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}{branch.isActive ? '' : ' (ngưng hoạt động)'}</option>)}</select></label>}
       <div style={{ display: 'flex', gap: 8, margin: '12px 0', flexWrap: 'wrap' }}>
         {(['menu', 'tables', 'orders'] as const).map(value => <button key={value} type="button" style={{ ...control, fontWeight: tab === value ? 700 : 400 }}
@@ -162,6 +189,7 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
           void refreshOrders(selected?.id).catch(e => { setRecoveryBlocked(true); setError(e instanceof Error ? e.message : 'Không tải lại được đơn.'); }).finally(() => setBusy(false)); }}>Tải lại đơn</button>
       </div>
       {error && <p role="alert" style={{ color: 'var(--color-danger)' }}>{error}</p>}
+      {notice && <p role="status">{notice}</p>}
       {recoveryBlocked && <p role="alert">Chưa đối chiếu được kết quả trên server. Hãy tải lại đơn trước khi thao tác tiếp.</p>}
       {loading && <p role="status">Đang tải dữ liệu...</p>}
       {isOffline && <p role="status">Mất kết nối. Không thể sửa đơn lúc này.</p>}
@@ -175,7 +203,11 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
         {canWrite && <button type="button" style={control} disabled={busy} onClick={() => void perform(() => salesService.create({ orderType: 'TAKEAWAY' }))}>+ Đơn mang đi</button>}
         {orders.length === 0 && <p>Chưa có đơn đang mở.</p>}
         {orders.map(order => <button type="button" key={order.id} style={{ ...control, textAlign: 'left' }} onClick={() => {
-          setLoading(true); void salesService.get(order.id).then(setSelected).catch(e => setError(e.message)).finally(() => setLoading(false));
+          setLoading(true);
+          void salesService.get(order.id).then(async detail => {
+            if (detail.status === 'OPEN') { setSelected(detail); setNotice(''); return; }
+            setNotice('Đơn đã thanh toán hoặc đã đóng. Danh sách đã được làm mới.'); await refreshOrders();
+          }).catch(e => setError(e instanceof Error ? e.message : 'Không tải được đơn.')).finally(() => setLoading(false));
         }}>{order.invoiceCode} · {order.orderType === 'TAKEAWAY' ? 'Mang đi' : tables.find(t => t.id === order.tableId)?.name || 'Tại bàn'} · {formatVND(order.totalAmount)}</button>)}
       </div>}
       {!loading && tab === 'menu' && <>
@@ -185,7 +217,7 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
           onClick={() => void perform(() => salesService.create({ orderType: 'TAKEAWAY' }))}>Tạo đơn mang đi</button></p>}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 10 }}>
           {products.filter(product => product.categoryId === categoryId).map(product => <button key={product.id} type="button" style={{ ...control, textAlign: 'left' }}
-            disabled={!selected || !canWrite || busy || !product.sizes.some(size => size.isActive)}
+            disabled={!selected || !canModify || busy || !product.sizes.some(size => size.isActive)}
             onClick={() => void openProduct(product)}>
             <strong>{product.name}</strong><br />{product.sizes.filter(size => size.isActive).map(size => formatVND(size.price)).join(' · ')}
           </button>)}
@@ -199,7 +231,7 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
         {selected.items.map(item => <div key={item.id} style={{ borderTop: '1px solid var(--color-border)', padding: '12px 0' }}>
           <strong>{item.productName} · {item.sizeName}</strong><div>{item.toppings.map(t => `${t.toppingName} × ${t.quantity}`).join(', ')}</div>
           <div>{formatVND(item.lineTotal)}</div>
-          {selected.status === 'OPEN' && canWrite && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {selected.status === 'OPEN' && canModify && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button type="button" style={control} disabled={busy || item.quantity <= 1} onClick={() => void perform(() => salesService.updateItem(item.id, { quantity: item.quantity - 1 }))}>−</button>
             <span>{item.quantity}</span>
             <button type="button" style={control} disabled={busy} onClick={() => void perform(() => salesService.updateItem(item.id, { quantity: item.quantity + 1 }))}>+</button>
@@ -207,14 +239,20 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
           </div>}
         </div>)}
         <h3>Tổng: {formatVND(selected.totalAmount)}</h3>
-        {selected.status === 'OPEN' && canWrite && selected.orderType === 'DINE_IN' && <label>Chuyển bàn <select aria-label="Bàn đích" style={control} defaultValue=""
+        {selected.status === 'OPEN' && canModify && selected.orderType === 'DINE_IN' && <label>Chuyển bàn <select aria-label="Bàn đích" style={control} defaultValue=""
           onChange={e => { if (e.target.value && selected && window.confirm('Chuyển đơn sang bàn đã chọn?')) void perform(() => salesService.transfer(selected.id, e.target.value)); e.target.value = ''; }}>
           <option value="">Chọn bàn trống</option>{tables.filter(t => t.id !== selected.tableId && !orders.some(o => o.tableId === t.id)).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select></label>}
-        {selected.status === 'OPEN' && canWrite && canCancel && <button type="button" style={{ ...control, marginTop: 12 }} disabled={busy} onClick={() => void cancel()}>Hủy đơn</button>}
-        <p>Thanh toán và khuyến mãi sẽ được triển khai ở sprint sau.</p>
+        {selected.status === 'OPEN' && canModify && canCancel && <button type="button" style={{ ...control, marginTop: 12 }} disabled={busy} onClick={() => void cancel()}>Hủy đơn</button>}
+        {pendingState==='pending'&&<p role="status">Đơn đang chờ chuyển khoản. Hủy chờ trước khi sửa đơn.</p>}
+        {selected.status==='OPEN'&&(canWrite||canManual)&&<button type="button" style={{...control,marginTop:12}} disabled={busy||isOffline}
+          onClick={()=>{setNotice('');setPayment({invoiceId:selected.id,identity:paymentIdentity});}}>Thanh toán</button>}
       </> : <p>Chưa chọn đơn. Mở sơ đồ bàn hoặc danh sách đơn đang mở.</p>}
     </aside>
+    {payment&&selected&&payment.invoiceId===selected.id&&payment.identity===paymentIdentity&&<LivePaymentDialog key={`${payment.identity}:${payment.invoiceId}`}
+      invoice={selected} permissions={session.permissions} canSell={canWrite} onClose={()=>setPayment(null)}
+      onChanged={()=>{setPendingRevision(value=>value+1);void refreshOrders(selected.id).catch(e=>setError(e instanceof Error?e.message:'Không tải lại được đơn.'));}}
+      onPaid={()=>{setPayment(null);setSelected(null);setNotice('Thanh toán thành công.');void refreshOrders().catch(e=>setError(e instanceof Error?e.message:'Không tải lại được đơn.'));}} />}
     {choice && <div role="dialog" aria-modal="true" aria-label="Chọn món" style={{ position: 'fixed', inset: 0, background: '#0008', display: 'grid', placeItems: 'center', zIndex: 100 }}>
       <div style={{ background: 'var(--color-surface)', color: 'var(--color-text)', padding: 24, borderRadius: 12, width: 'min(400px,90vw)', maxHeight: '85vh', overflowY: 'auto' }}>
         <h2>{choice.product.name}</h2>

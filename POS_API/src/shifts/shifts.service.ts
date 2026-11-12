@@ -57,6 +57,13 @@ function shiftView(shift: WorkShift, reconciliation?: CashReconciliation | null)
 export class ShiftsService {
   constructor(private readonly db: DataSource) {}
 
+  private async cashSales(manager: EntityManager, shiftId: string): Promise<bigint> {
+    const [row] = await manager.query(`SELECT COALESCE(SUM(p.amount), 0)::text AS total
+      FROM payments p JOIN invoices i ON i.id=p.invoice_id
+      WHERE i.work_shift_id=$1 AND i.status='PAID' AND p.method='CASH'`, [shiftId]);
+    return BigInt(row.total);
+  }
+
   private async assertNoOpenInvoices(manager: EntityManager, shiftId: string): Promise<void> {
     const rows: { invoice_code: string }[] = await manager.query(
       "SELECT invoice_code FROM invoices WHERE work_shift_id=$1 AND status='OPEN' ORDER BY created_at,id",
@@ -287,8 +294,7 @@ export class ShiftsService {
         }
 
         const openingCash = BigInt(reconciliation.opening_cash);
-        // Trong Sprint 5 chưa có hóa đơn bán hàng và chi phí két
-        const cashSalesAmount = 0n;
+        const cashSalesAmount = await this.cashSales(manager, shift.id);
         const expenseAmount = 0n;
         const expectedCash = openingCash + cashSalesAmount - expenseAmount;
         const countedCash = BigInt(input.countedCash);
@@ -298,7 +304,7 @@ export class ShiftsService {
           throw httpError(422, 'RECONCILIATION_NOTE_REQUIRED', 'Bắt buộc nhập ghi chú khi có chênh lệch tiền mặt lúc đóng ca');
         }
 
-        reconciliation.cash_sales_amount = '0';
+        reconciliation.cash_sales_amount = String(cashSalesAmount);
         reconciliation.expense_amount = '0';
         reconciliation.expected_cash = String(expectedCash);
         reconciliation.counted_cash = String(countedCash);
@@ -377,13 +383,13 @@ export class ShiftsService {
         }
 
         const openingCash = BigInt(reconciliation.opening_cash);
-        const cashSalesAmount = 0n;
+        const cashSalesAmount = await this.cashSales(manager, shift.id);
         const expenseAmount = 0n;
         const expectedCash = openingCash + cashSalesAmount - expenseAmount;
         const countedCash = BigInt(input.countedCash);
         const difference = countedCash - expectedCash;
 
-        reconciliation.cash_sales_amount = '0';
+        reconciliation.cash_sales_amount = String(cashSalesAmount);
         reconciliation.expense_amount = '0';
         reconciliation.expected_cash = String(expectedCash);
         reconciliation.counted_cash = String(countedCash);

@@ -11,7 +11,7 @@ async function main(): Promise<void> {
     await dataSource.initialize();
     await assertSchemaCurrent(dataSource);
     await bootstrapAdmin(dataSource);
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, { rawBody: true });
     setupDevelopmentDocs(app);
     await app.listen(Number(process.env.PORT || 3000), '0.0.0.0');
   } catch {

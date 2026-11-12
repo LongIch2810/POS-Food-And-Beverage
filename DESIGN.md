@@ -1,5 +1,8 @@
 # DESIGN.md: Giao diện hệ thống POS và kho cho quán cà phê
 
+> Sprint 08 thay mô tả chuyển khoản cũ: hiện QR và thông tin chuyển khoản, khóa đơn khi chờ, chỉ báo thành công sau xác nhận của server. Chi tiết tại [spec thanh toán](.devloopflow/specs/invoices.md).
+
+
 Tài liệu này là nguồn sự thật về giao diện của hệ thống POS (bán hàng, ca làm, đối soát tiền mặt, kho, báo cáo). Mọi màn hình, component, màu sắc và nội dung chữ phải theo tài liệu này. Khi cần quyết định mà tài liệu chưa nói, chọn phương án nhanh hơn và ít sai hơn cho thu ngân.
 
 Tài liệu đi kèm: `docs/PRODUCT_OVERVIEW.md` (tổng quan sản phẩm), `docs/DESIGN_DB_POS_SYSTEM.md` (28 bảng và field), `docs/BUSINESS_RULES.md` (business rule theo mã BR-xx). Các rule giao diện bên dưới có ghi mã BR tương ứng.
@@ -222,6 +225,7 @@ Mục trên thanh điều hướng theo vai trò:
 - **Gọi thêm món vào đơn đang mở:** mỗi lần thêm là **một dòng món mới**, không gộp với dòng giống nhau (BR-90). Giao diện có thể nhóm hiển thị cho dễ đọc, nhưng sửa và xóa vẫn theo từng dòng. Sau mỗi thay đổi, tổng tiền lấy lại từ máy chủ, giao diện không tự cộng.
 - Đơn của bàn đang phục vụ: đầu panel có thêm giờ mở đơn ("Mở lúc 19:00, 25 phút") và nút "Chuyển bàn" (BR-92).
 - Đơn mang đi không có bàn, đầu panel ghi "Mang đi". Đơn tại chỗ phải chọn bàn trước khi thanh toán (BR-69).
+- **Đơn đã thanh toán hoặc đã hủy là đơn xong:** sau khi thanh toán/hủy thành công panel đơn bỏ chọn đơn đó (kèm thông báo kết quả); không thêm, sửa, xóa món hay chuyển bàn trên đơn không còn `OPEN`. Khách mới thì tạo đơn mới (đơn mang đi hoặc chạm bàn trống). Nếu danh sách hoặc sơ đồ bàn còn lưu một đơn cũ mà máy chủ báo đã đóng, giao diện không mở đơn đó, tải lại danh sách và coi bàn là trống.
 - Đổi giá món giữa chừng không làm đổi giá các dòng đã thêm vào đơn (BR-12).
 
 ### 5.3 Sơ đồ bàn

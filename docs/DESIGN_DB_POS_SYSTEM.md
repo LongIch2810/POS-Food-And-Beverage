@@ -1,5 +1,8 @@
 # Thiết kế cơ sở dữ liệu: POS và kho cho quán cà phê
 
+> Sprint 08 đã duyệt bổ sung bảng và ràng buộc cho tài khoản nhận, lượt QR, giao dịch ngân hàng và payment theo [spec thanh toán](../.devloopflow/specs/invoices.md). Thiết kế bên dưới là baseline trước migration Sprint 08.
+
+
 Hệ thống nhiều cửa hàng (`stores`), mỗi cửa hàng có nhiều chi nhánh (`branches`). Tổng cộng **28 bảng**, chia **6 nhóm**. Dữ liệu của mỗi cửa hàng được cô lập bằng `store_id`.
 
 ---
@@ -55,7 +58,7 @@ Bốn cấp vai trò:
 | `MANAGER`        | Một chi nhánh         | Quản lý vận hành chi nhánh: kho, báo cáo, duyệt hủy đơn, đóng cưỡng chế ca                                             |
 | `CASHIER`        | Một chi nhánh         | Bán hàng, thanh toán, mở và đóng ca của mình                                                                           |
 
-### 4. Bán hàng (6 bảng)
+### 4. Bán hàng (9 bảng)
 
 | Bảng                      | Mô tả                                                                                                                                                                                                                                                       | Quan hệ chính                                                                                                                       |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -65,6 +68,9 @@ Bốn cấp vai trò:
 | `payments`                | Thanh toán của hóa đơn: tiền mặt hoặc chuyển khoản. Lưu số tiền tính cho hóa đơn (con số dùng để đối soát), tiền khách đưa, tiền thối, mã giao dịch ngân hàng, khóa chống thanh toán trùng.                                                                 | Thuộc một `invoice` và người thu                                                                                                    |
 | `promotion_codes`         | Mã giảm giá dùng chung toàn cửa hàng: loại giảm (phần trăm hoặc số tiền cố định), mức giảm, trần giảm, đơn tối thiểu, thời hạn, giới hạn lượt dùng, số lượt đã dùng.                                                                                        | Thuộc một `store`. Được dùng qua `invoice_promotion_codes`                                                                          |
 | `invoice_promotion_codes` | Hóa đơn đã áp mã nào, kèm số tiền thực giảm và snapshot mã.                                                                                                                                                                                                 | Nối `invoices` và `promotion_codes`                                                                                                 |
+| `store_bank_accounts` | Tài khoản nhận chuyển khoản chung của cửa hàng (ngân hàng, số tài khoản 6–19 chữ số, tên chủ tài khoản); mỗi cửa hàng tối đa một dòng. | Thuộc một `store` |
+| `transfer_attempts` | Mỗi lượt QR chuyển khoản: snapshot tài khoản nhận và số tiền, mã lượt 18 ký tự, trạng thái `PENDING`/`CANCELLED`/`PAID`; tối đa một lượt `PENDING` mỗi hóa đơn. | Thuộc một `invoice` và một `store` |
+| `bank_transfer_events` | Nhật ký giao dịch ngân hàng từ SePay và kết quả xử lý (`PAID`, `UNDERPAID`, `ATTEMPT_CANCELLED`, `INVOICE_NOT_OPEN`, `PROMOTION_INVALID`, `QUARANTINED`, `DUPLICATE`) để quản lý đối soát. | Tham chiếu `store`, `branch`, `invoice`, `transfer_attempt` (có thể rỗng) |
 
 ### 5. Ca làm và đối soát (3 bảng)
 
@@ -351,16 +357,75 @@ Token hợp lệ khi `revoked_at IS NULL AND expires_at > now()`. Mỗi `session
 | ------------------------ | ------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | id                       | uuid         | PK                             |                                                                                                                                                                                 |
 | invoice_id               | uuid         | FK → invoices, NOT NULL, UNIQUE | Mỗi hóa đơn tối đa một khoản thanh toán (BR-31)                                                                                                                             |
-| method                   | varchar(20)  | NOT NULL                       | `CASH`, `TRANSFER`                                                                                                                                                              |
-| amount                   | bigint       | NOT NULL, CHECK > 0            | Số tiền tính cho hóa đơn. Con số dùng để đối soát                                                                                                                               |
+| method | varchar(10) | NOT NULL, CHECK `CASH`/`TRANSFER` | `CASH`, `TRANSFER` |
+| amount | bigint | NOT NULL, CHECK 1..1000000000000 | Số tiền tính cho hóa đơn. Con số dùng để đối soát |
 | tendered_amount          | bigint       | NULL                           | Khách đưa, chỉ có khi `CASH`                                                                                                                                                    |
 | change_amount            | bigint       | NULL                           | Tiền thối, chỉ có khi `CASH`                                                                                                                                                    |
 | transaction_ref          | varchar(100) | NULL                           | Mã giao dịch ngân hàng khi `TRANSFER`                                                                                                                                           |
-| idempotency_key          | varchar(100) | NOT NULL, UNIQUE               | Chống bấm thanh toán 2 lần. Client dùng lại đúng key khi gửi lại vì lỗi mạng                                                                                                    |
-| idempotency_request_hash | varchar(64)  | NOT NULL                       | Hash SHA-256 của dạng chuẩn hóa nội dung yêu cầu (`invoiceId`, `method`, `amount`, `tendered_amount`, `transaction_ref`). Phân biệt gửi lại hợp lệ với dùng lại key sai (BR-34) |
-| created_by               | uuid         | FK → users, NOT NULL           |                                                                                                                                                                                 |
+| transaction_ref_kind | varchar(12) | NULL, CHECK `BANK`/`SEPAY_EVENT` | `BANK` = mã giao dịch ngân hàng hoặc mã nhập khi xác nhận tay; `SEPAY_EVENT` = `SEPAY:<id>` khi ngân hàng không gửi mã |
+| actual_received_amount | bigint | NULL, CHECK 0..1000000000000 | Số tiền thực nhận khi `TRANSFER` (≥ amount) |
+| excess_amount | bigint | NULL, CHECK 0..1000000000000 | = actual_received_amount − amount; ghi riêng, không vào doanh thu hóa đơn |
+| transfer_attempt_id | uuid | FK → transfer_attempts, NULL, UNIQUE | Lượt QR đã thanh toán (khi `TRANSFER`) |
+| receiving_account_number | varchar(34) | NULL | Tài khoản nhận lúc thanh toán (khi `TRANSFER`) |
+| confirmation_source | varchar(10) | NULL, CHECK `WEBHOOK`/`MANUAL` | Nguồn xác nhận khi `TRANSFER` |
+| confirmed_by | uuid | FK → users, NULL | Người xác nhận tay (= created_by khi `MANUAL`) |
+| confirmation_reason | varchar(255) | NULL | Lý do xác nhận tay (bắt buộc khi `MANUAL`) |
+| idempotency_key | uuid | NOT NULL, UNIQUE | Chống bấm thanh toán 2 lần. Client dùng lại đúng key khi gửi lại vì lỗi mạng |
+| idempotency_request_hash | char(64) | NOT NULL | Hash SHA-256 của dạng chuẩn hóa nội dung yêu cầu (`invoiceId`, `method`, `amount`, `tendered_amount`, `transaction_ref`). Phân biệt gửi lại hợp lệ với dùng lại key sai (BR-34) |
+| created_by | uuid | FK → users, NULL | Người thu/xác nhận; NULL khi xác nhận bằng webhook, bắt buộc khi `CASH` hoặc `MANUAL` |
 | paid_at                  | timestamptz  | NOT NULL                       |                                                                                                                                                                                 |
-| created_at               | timestamptz  | NOT NULL                       |                                                                                                                                                                                 |
+
+CHECK theo phương thức: `CASH` có `tendered_amount`/`change_amount` (tendered ≥ amount) và `created_by`, không có trường `TRANSFER`; `TRANSFER` có `transfer_attempt_id`, `receiving_account_number`, `transaction_ref` (đã trim, không rỗng), `transaction_ref_kind`, `confirmation_source`, `actual_received_amount` ≥ amount và `excess_amount` = actual − amount; `WEBHOOK` không có người xác nhận; `MANUAL` bắt buộc `confirmed_by` = `created_by`, `confirmation_reason` và loại `BANK`. Partial unique `(receiving_account_number, transaction_ref_kind, transaction_ref)` khi `TRANSFER`.
+
+**`store_bank_accounts`** [MỚI] (tài khoản nhận chuyển khoản chung của cửa hàng)
+
+| Field | Kiểu | Ràng buộc | Ghi chú |
+| ----- | ---- | --------- | ------- |
+| store_id | uuid | PK, FK → stores | Mỗi cửa hàng tối đa một tài khoản nhận; chỉ người có quyền `store_bank_account.manage` (OWNER) cài, không đổi khi còn lượt QR chờ |
+| bank_bin | char(6) | NOT NULL, CHECK `^[0-9]{6}$` | Mã BIN ngân hàng |
+| account_number | varchar(34) | NOT NULL, CHECK `^[0-9]{6,19}$` | Số tài khoản 6–19 chữ số (giới hạn VietQR Quick Link) |
+| account_name | varchar(150) | NOT NULL, CHECK đã trim và không rỗng | Tên chủ tài khoản |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |  |
+
+**`transfer_attempts`** [MỚI] (mỗi lượt QR chuyển khoản)
+
+| Field | Kiểu | Ràng buộc | Ghi chú |
+| ----- | ---- | --------- | ------- |
+| id | uuid | PK |  |
+| invoice_id | uuid | FK → invoices, NOT NULL | Tối đa một lượt `PENDING` mỗi hóa đơn |
+| store_id | uuid | FK → stores, NOT NULL |  |
+| bank_bin | char(6) | NOT NULL, CHECK `^[0-9]{6}$` | Snapshot tài khoản nhận lúc tạo QR |
+| account_number | varchar(34) | NOT NULL, CHECK `^[0-9]{6,19}$` | Snapshot |
+| account_name | varchar(150) | NOT NULL, CHECK đã trim và không rỗng | Snapshot |
+| amount | bigint | NOT NULL, CHECK 1..1000000000000 | Tổng đơn do server tính lúc tạo QR |
+| transfer_reference | char(18) | NOT NULL, UNIQUE, CHECK `^HD[A-Z0-9]{16}$` | `invoice_code` + 8 ký tự ngẫu nhiên; mỗi lượt một mã |
+| idempotency_key | uuid | NOT NULL, UNIQUE | Chống tạo lượt QR lặp |
+| idempotency_request_hash | char(64) | NOT NULL | Hash SHA-256 nội dung yêu cầu |
+| status | varchar(10) | NOT NULL, CHECK `PENDING`/`CANCELLED`/`PAID` |  |
+| created_at | timestamptz | NOT NULL, DEFAULT now() |  |
+| updated_at | timestamptz | NOT NULL, DEFAULT now() |  |
+
+Index: `uq_transfer_attempts_pending_invoice` UNIQUE (invoice_id) WHERE status = 'PENDING'; `idx_transfer_attempts_store_status` (store_id, status).
+
+**`bank_transfer_events`** [MỚI] (nhật ký giao dịch ngân hàng từ SePay, không lưu payload gốc)
+
+| Field | Kiểu | Ràng buộc | Ghi chú |
+| ----- | ---- | --------- | ------- |
+| id | uuid | PK |  |
+| provider_event_id | varchar(100) | NOT NULL, UNIQUE | Id sự kiện của SePay; chống xử lý lặp |
+| provider_reference | varchar(100) | NULL | Mã tham chiếu ngân hàng (`referenceCode`) |
+| account_number | varchar(34) | NOT NULL | Tài khoản nhận trong sự kiện |
+| transfer_reference | char(18) | NULL | Mã lượt QR bóc từ nội dung (nếu có) |
+| transfer_amount | bigint | NOT NULL, CHECK 0..1000000000000 |  |
+| content | varchar(500) | NULL |  |
+| received_at | timestamptz | NOT NULL, DEFAULT now() |  |
+| disposition | varchar(30) | NOT NULL, CHECK | `PAID`, `UNDERPAID`, `ATTEMPT_CANCELLED`, `INVOICE_NOT_OPEN`, `PROMOTION_INVALID`, `QUARANTINED`, `DUPLICATE` |
+| store_id | uuid | FK → stores, NULL | Gán theo lượt khi mã lượt duy nhất và tài khoản khớp snapshot; tiền vào sai tài khoản với mã lượt duy nhất cũng gắn theo lượt để báo `WRONG_ACCOUNT`; tiền ra hoặc mã không xác định/đa nghĩa không gắn |
+| branch_id | uuid | FK → branches, NULL | Chi nhánh của đơn, để lọc ngoại lệ theo phạm vi |
+| invoice_id | uuid | FK → invoices, NULL |  |
+| attempt_id | uuid | FK → transfer_attempts, NULL |  |
+
+Index: `idx_bank_transfer_events_scope` (store_id, branch_id, received_at DESC, id DESC).
 
 **`promotion_codes`** [SỬA] (dùng chung toàn cửa hàng)
 
@@ -385,12 +450,10 @@ Token hợp lệ khi `revoked_at IS NULL AND expires_at > now()`. Mỗi `session
 
 | Field             | Kiểu        | Ràng buộc                      | Ghi chú                                    |
 | ----------------- | ----------- | ------------------------------ | ------------------------------------------ |
-| id                | uuid        | PK                             |                                            |
-| invoice_id        | uuid        | FK → invoices, NOT NULL, UNIQUE | Mỗi hóa đơn tối đa một mã (BR-40) |
+| invoice_id | uuid | PK, FK → invoices | Mỗi hóa đơn tối đa một mã (BR-40) |
 | promotion_code_id | uuid        | FK → promotion_codes, NOT NULL |                                            |
 | code              | varchar(50) | NOT NULL                       | Snapshot mã                                |
 | discount_amount   | bigint      | NOT NULL, ≥ 0                  | Số tiền thực giảm                          |
-| created_at        | timestamptz | NOT NULL                       |                                            |
 
 ---
 
@@ -495,7 +558,8 @@ Token hợp lệ khi `revoked_at IS NULL AND expires_at > now()`. Mỗi `session
 | balance_after | numeric(14,3) | NOT NULL                   | Tồn sau giao dịch                                    |
 | invoice_id    | uuid          | FK → invoices, NULL        | Có khi `SALE`, `SALE_REVERSAL`                       |
 | note          | varchar(255)  | NULL                       |                                                      |
-| created_by    | uuid          | FK → users, NOT NULL       |                                                      |
+| created_by | uuid | FK → users, NULL | NULL khi `source = 'SYSTEM'` (trừ kho tự động do SePay xác nhận) |
+| source | varchar(10) | NOT NULL, DEFAULT 'USER', CHECK `USER`/`SYSTEM` | CHECK `ck_stock_movements_actor`: `SYSTEM` thì `created_by` NULL, `USER` thì `created_by` NOT NULL |
 | created_at    | timestamptz   | NOT NULL                   |                                                      |
 
 Chỉ thêm dòng mới, không sửa, không xóa. Dấu theo loại: `IMPORT` và `SALE_REVERSAL` dương, `SALE` và `WASTE` âm, `ADJUST` dương hoặc âm.
@@ -597,6 +661,10 @@ Ghi `payments` (nếu có), đổi `invoices.status`, trừ kho nằm trong **m�
 | `invoices`                | UNIQUE (invoice_code), CHECK (`invoice_code ~ '^HD[A-Z0-9]{8}$'`)        | Mã hóa đơn đúng định dạng và không trùng toàn hệ thống        |
 | `invoices`                | UNIQUE (zero_completion_key)                                           | Chống hoàn tất đơn 0đ lặp bằng cùng key (BR-104)              |
 | `payments`                | UNIQUE (invoice_id)                                                    | Mỗi hóa đơn tối đa một khoản thanh toán (BR-31)              |
+| `payments` | UNIQUE (receiving_account_number, transaction_ref_kind, transaction_ref) **WHERE method = 'TRANSFER' AND transaction_ref IS NOT NULL** | Một giao dịch ngân hàng không xác nhận hai đơn khác nhau |
+| `transfer_attempts` | UNIQUE (transfer_reference) | Mã lượt QR duy nhất toàn hệ thống |
+| `transfer_attempts` | UNIQUE (invoice_id) **WHERE status = 'PENDING'** | Mỗi hóa đơn tối đa một lượt QR đang chờ |
+| `bank_transfer_events` | UNIQUE (provider_event_id) | Chống xử lý lặp cùng một sự kiện SePay |
 | `invoice_item_toppings`   | UNIQUE (invoice_item_id, topping_id)                                    | Mỗi dòng món một dòng cho mỗi topping                         |
 | `invoice_promotion_codes` | UNIQUE (invoice_id)                                                     | Mỗi hóa đơn tối đa một mã giảm giá (BR-40)                   |
 | `cash_reconciliations`    | UNIQUE (work_shift_id)                                                  | Quan hệ 1-1                                                   |

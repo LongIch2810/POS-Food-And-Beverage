@@ -11,6 +11,7 @@ import { Dialog } from '../../components/ui/Dialog';
 import { SelectField } from '../../components/ui/Field';
 import { organizationService as service } from '../../services/organizationService';
 import { shiftService } from '../../services/shiftService';
+import { bankAccountService } from '../../services/bankAccountService';
 import type { OrganizationBranch, OrganizationTable, OrganizationStaff, StaffPassword } from '../../services/organizationService';
 import type { AuthSession } from '../../types/auth';
 import { formatVND } from '../../utils/formatters';
@@ -69,6 +70,10 @@ export function SettingsContent({ session }: { session: AuthSession }) {
   const [formError, setFormError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [bank, setBank] = useState({bankBin:'',accountNumber:'',accountName:''});
+  const [bankError, setBankError] = useState('');
+  const [bankAccountError, setBankAccountError] = useState('');
+  const [bankBusy, setBankBusy] = useState(false);
   const [offline, setOffline] = useState(() => navigator.onLine === false);
   const live = useRef(true);
   const pending = useRef(false);
@@ -85,6 +90,30 @@ export function SettingsContent({ session }: { session: AuthSession }) {
     window.addEventListener('online', update); window.addEventListener('offline', update);
     return () => { live.current = false; window.removeEventListener('online', update); window.removeEventListener('offline', update); };
   }, []);
+
+  useEffect(() => {
+    let active=true;
+    if(session.permissions.includes('store_bank_account.manage'))void bankAccountService.get().then(value=>{
+      if(active&&value)setBank(value);
+    }).catch(err=>{if(active)setBankError(errorMessage(err));});
+    return ()=>{active=false;};
+  }, [session.user.id,session.user.store_id]);
+
+  const saveBank=async()=>{
+    if(bankBusy||offline)return;
+    setBankError('');setBankAccountError('');
+    if(!/^\d{6,19}$/.test(bank.accountNumber)){setBankAccountError('Số tài khoản phải có từ 6 đến 19 chữ số.');return;}
+    if(!/^\d{6}$/.test(bank.bankBin)||!bank.accountName.trim()){setBankError('Nhập mã BIN 6 chữ số và tên chủ tài khoản.');return;}
+    setBankBusy(true);
+    try{const value=await bankAccountService.update({...bank,accountName:bank.accountName.trim()});if(live.current){setBank(value);showToast({type:'success',message:'Đã lưu tài khoản nhận tiền.'});}}
+    catch(err){
+      if(!live.current)return;
+      const accountDetail=err instanceof AuthError&&err.status===422?err.details.find(d=>d.location==='body'&&d.field==='accountNumber'):undefined;
+      if(accountDetail)setBankAccountError(accountDetail.message||'Số tài khoản không hợp lệ.');
+      else setBankError(errorMessage(err));
+    }
+    finally{if(live.current)setBankBusy(false);}
+  };
 
   useEffect(() => {
     let active = true;
@@ -245,6 +274,15 @@ export function SettingsContent({ session }: { session: AuthSession }) {
 
   return <section className="organization-settings" aria-label="Cài đặt tổ chức">
     <div><h1>Cài đặt cửa hàng</h1><p>Quản lý chi nhánh, bàn và tài khoản nhân viên.</p></div>
+    {session.permissions.includes('store_bank_account.manage')&&<section aria-label="Tài khoản nhận chuyển khoản" style={{display:'grid',gap:8,margin:'16px 0'}}>
+      <h2>Tài khoản nhận chuyển khoản</h2>
+      <label>Mã BIN ngân hàng <input aria-label="Mã BIN ngân hàng" inputMode="numeric" value={bank.bankBin} disabled={bankBusy||offline} onChange={e=>setBank({...bank,bankBin:e.target.value})} style={{minHeight:44}} /></label>
+      <label>Số tài khoản <input aria-label="Số tài khoản" aria-invalid={bankAccountError?'true':undefined} aria-describedby={bankAccountError?'bank-account-error':undefined} inputMode="numeric" value={bank.accountNumber} disabled={bankBusy||offline} onChange={e=>setBank({...bank,accountNumber:e.target.value})} style={{minHeight:44}} /></label>
+      {bankAccountError&&<p id="bank-account-error" role="alert">{bankAccountError}</p>}
+      <label>Tên chủ tài khoản <input aria-label="Tên chủ tài khoản" value={bank.accountName} disabled={bankBusy||offline} onChange={e=>setBank({...bank,accountName:e.target.value})} style={{minHeight:44}} /></label>
+      {bankError&&<p role="alert">{bankError}</p>}
+      <Button disabled={bankBusy||offline} onClick={()=>void saveBank()}>Lưu tài khoản</Button>
+    </section>}
     {offline && <div role="alert">Mất kết nối. Thao tác mới sẽ không được lưu cho đến khi có mạng.</div>}
     <div role="tablist" aria-label="Cài đặt" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       {allowed.map(tab => <Button key={tab} role="tab" aria-selected={view.tab === tab} disabled={busy}

@@ -31,8 +31,8 @@ PB-06 (ca), PB-07 (đơn), PB-08 (kho), thanh toán và production tiếp tục 
 
 ## Kiểm tra và bằng chứng thực thi
 
-- Bằng chứng QA Docker mới nhất: [qa-evidence/20261102-190753-31f4799-docker-qa/run.md](../../qa-evidence/20261102-190753-31f4799-docker-qa/run.md)
-- Bằng chứng QA trước đó: [qa-evidence/20261102-114500-31f4799-qa-audit/run.md](../../qa-evidence/20261102-114500-31f4799-qa-audit/run.md)
+- Bằng chứng QA Docker mới nhất: [qa-evidence/20261102-190753-31f4799-docker-qa/run.md](../../.devloopflow/verify/20261102-190753-31f4799-docker-qa/run.md)
+- Bằng chứng QA trước đó: [qa-evidence/20261102-114500-31f4799-qa-audit/run.md](../../.devloopflow/verify/20261102-114500-31f4799-qa-audit/run.md)
 - Backend Menu Integration Tests: 8/8 subtests PASS trên PostgreSQL 17 (Docker container `pos_infra-postgres-1`).
 - Backend Regression: Foundation (1 pass), Auth (1 pass), Organization (11 pass), Platform (1 pass) đều 100% PASS.
 - Frontend POS_UI Tests: 31/31 tests PASS (0 fail).
