@@ -9,7 +9,7 @@ import { CreateStaffDto, PatchStaffDto } from '../../users/http/users.dto';
 test('DOC-02 AUD-05 per-endpoint errors and executable DTO examples match approved contract', async t => {
   let endpoints = 0;
   for (const file of ['organization.md', 'users.md']) {
-    const text = readFileSync(resolve(__dirname, '../../../../specs', file), 'utf8');
+    const text = readFileSync(resolve(__dirname, '../../../../.devloopflow/specs', file), 'utf8');
     for (const section of text.split(/(?=^### (?:GET|POST|PATCH) \/api\/v1\/)/m).slice(1)) {
       const title = section.split('\n')[0];
       const [, method, path] = /^### (GET|POST|PATCH) (\S+)/.exec(title)!;
