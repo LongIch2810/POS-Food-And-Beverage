@@ -3,7 +3,22 @@
 ## Trạng thái dự án
 
 - Đây là dự án POS và quản lý kho SaaS cho quán cà phê, trà sữa và quán ăn nhỏ: một `store` có nhiều `branch`, mỗi chi nhánh có bàn, ca thu ngân và tồn kho riêng.
-- `POS_API/` đã triển khai nền tảng, xác thực, quản trị, tổ chức, thực đơn, ca, kho, khuyến mãi, bán hàng và thanh toán; Sprint 08 mới kiểm trên local. `POS_UI/` có các màn đã nối API và các phần còn mô phỏng; `POS_INFRA/` có Docker Compose local. Xem `README.md` để phân biệt phạm vi đã triển khai và UI demo.
+- `POS_API/` đã triển khai nền tảng, xác thực, quản trị, tổ chức, thực đơn, ca, kho, khuyến mãi, bán hàng và thanh toán (chuyển khoản QR/SePay, xác nhận thủ công); Sprint 08 đã merge vào `master` (PR #18), đã kiểm trên local và SePay Test mode, **chưa kiểm Live**. `POS_UI/` có các màn đã nối API và các phần còn mô phỏng; `POS_INFRA/` có Docker Compose local. Xem `README.md` để phân biệt phạm vi đã triển khai và UI demo.
+
+## Tổng quan kỹ thuật
+
+| Phần | Công nghệ đang dùng | Lệnh chính (chạy trong thư mục của phần đó) |
+| --- | --- | --- |
+| Backend `POS_API/` | Node.js 22, TypeScript 5, NestJS 11 (Express), PostgreSQL 17, TypeORM 0.3 + `pg`, JWT + cookie (Passport local), `bcryptjs`, `class-validator`, Swagger chỉ ở development | `npm run build`; `npm test` (tự build, `node:test`, **cần PostgreSQL** qua `DATABASE_URL`; test tự tạo và xóa DB thử riêng); `npm run migration:run` |
+| Frontend `POS_UI/` | React 18, TypeScript 5, Vite 6, `lucide-react` | `npm run dev`; `npm run build` (typecheck rồi build); `npm run typecheck`; `npm test` (`node:test`) |
+| Hạ tầng `POS_INFRA/` | Docker Compose local: PostgreSQL 17, API, UI | Từ gốc repo: `docker compose --env-file POS_INFRA/.env.local -f POS_INFRA/compose.local.yml up -d --build --wait`; dừng bằng `down`, **không** thêm `-v` |
+| CI | GitHub Actions `.github/workflows/ci.yml`: build, migration, test API trên PostgreSQL 17, build + test UI, `npm audit` | Xem kết quả CI sau mỗi lần push; không coi test chưa chạy là đã đạt |
+
+- Tích hợp ngoài: SePay (webhook chuyển khoản) và VietQR (mã QR), xem `THIRD_PARTY_INTEGRATIONS.md`. Redis/BullMQ, reverse proxy, TLS và backup chưa có trong repository.
+- Không có script lint, format hay coverage. Muốn chạy một file hoặc một case test thì dùng `node --test` với file hoặc `--test-name-pattern` (API phải build trước, đường dẫn là `dist/...`).
+- Test API cần PostgreSQL; nếu máy không có DB thì không chạy được, ghi rõ "chưa chạy" thay vì suy ra kết quả. Trước khi push nhớ rằng CI chạy toàn bộ test API.
+- Đường dẫn dự án có ký tự `&` (`POS-F&B`) từng làm hỏng script cài đặt native (xem `.devloopflow/errors/2026-10-28-argon2-install-path.md`); dùng dấu nháy cho đường dẫn và tránh phụ thuộc cần biên dịch native.
+- Nguồn chi tiết: `docs/architecture/TECH_STACK.md` (phiên bản, vai trò từng thư viện) và `.devloopflow/devloopflow.md` mục 2 (lệnh đầy đủ). Đổi công nghệ hoặc lệnh thì cập nhật bảng này cùng các file đó.
 
 ## Conversation Onboarding
 

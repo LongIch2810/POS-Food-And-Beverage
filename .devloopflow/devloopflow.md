@@ -32,7 +32,7 @@
 
 ## 3. Cách kiểm AC thật (cho `ac-verifier`)
 - Chạy app local bằng Docker Compose theo lệnh ở mục 2; kiểm tra health tại `http://localhost:3000/api/v1/health`; mở UI tại `http://localhost:5173`. Chỉ dùng sandbox/local.
-- Kiểm API: dùng endpoint trong `docs/api-spec.md`, spec thiết kế đã duyệt ở `.devloopflow/specs/` và hợp đồng lịch sử `legacy-*` cùng nhóm khi liên quan; ghi method/path/status, request/response đã che dữ liệu nhạy cảm hoặc request ID.
+- Kiểm API: dùng endpoint trong `docs/api-spec.md`, spec thiết kế đã duyệt ở `.devloopflow/specs/` và hợp đồng lịch sử cùng nhóm khi liên quan (cũng nằm trong `.devloopflow/specs/`); ghi method/path/status, request/response đã che dữ liệu nhạy cảm hoặc request ID.
 - Kiểm UI: browser trên phiên bản UI cuối; lưu trạng thái trước/sau mỗi chuyển trạng thái cần chứng minh cùng URL, viewport và dấu vết request/network theo `AGENTS.md`.
 - Dữ liệu/tài khoản test: API integration test tạo dữ liệu trong database thử riêng ngẫu nhiên; local bootstrap dùng tên biến `BOOTSTRAP_ADMIN_USERNAME` và `BOOTSTRAP_ADMIN_PASSWORD` trong `POS_INFRA/.env.local` hoặc `POS_API/.env`. Không ghi giá trị, password, token hoặc cookie vào file/bằng chứng. Nguồn: `POS_API/README.md`, `POS_INFRA/.env.example`, `POS_API/.env.example`.
 - Dọn dữ liệu test: suite API tự tạo và xóa database thử có tên ngẫu nhiên; không tự xóa database/volume thủ công. Khi dừng Compose dùng `down` không có `-v` để giữ volume local. Nguồn: `POS_API/README.md`, `README.md`.
@@ -50,7 +50,7 @@
 ## 5. Chỗ rủi ro và quy tắc review riêng (cho `code-reviewer`)
 - Auth/session/permission/tenant: `POS_API/src/auth/`, `POS_API/src/platform/`, `POS_API/src/organization/`, `POS_UI/src/auth/`; dữ liệu tenant/branch và session phải lấy từ identity đã xác minh. Kiểm tra bất kỳ ID tham chiếu nào cùng store và quyền branch. Nguồn: `docs/PRODUCT_OVERVIEW.md`, `docs/architecture/auth.md`, `docs/api-spec.md`.
 - Tiền, hóa đơn, ca, tồn kho: `POS_API/src/sales/`, `POS_API/src/shifts/`, `POS_API/src/inventory/`; thay đổi thanh toán/trạng thái/trừ kho phải cùng transaction, idempotent và giữ sổ kho append-only. Giá/tổng do server tính; tiền nguyên `bigint`. Nguồn: `docs/PRODUCT_OVERVIEW.md`, `docs/BUSINESS_RULES.md`, `docs/DESIGN_DB_POS_SYSTEM.md`.
-- Hợp đồng API: controller/DTO theo module dưới `POS_API/src/`; envelope/lỗi/health ở `POS_API/src/http/`; quy ước chung tại `docs/api-spec.md`; spec mới ở `.devloopflow/specs/` và hợp đồng endpoint lịch sử ở bản `legacy-*` cùng thư mục. Bản lịch sử không thay thế phê duyệt hiện hành.
+- Hợp đồng API: controller/DTO theo module dưới `POS_API/src/`; envelope/lỗi/health ở `POS_API/src/http/`; quy ước chung tại `docs/api-spec.md`; spec mới ở `.devloopflow/specs/` và hợp đồng endpoint lịch sử cũng ở đó (ví dụ `invoices.md`, `organization.md`). Bản lịch sử không thay thế phê duyệt hiện hành.
 - Migration/dữ liệu: chỉ thay schema qua TypeORM migration; không dùng `schema:sync`, không sửa migration lịch sử; local test cần DB riêng. Deploy mục tiêu phải chạy migration riêng trước khi đưa API mới phục vụ. Nguồn: `POS_API/README.md`, `rules/database.md`, `docs/architecture/ARCHITECTURE.md`.
 - Mặc định Medium trở lên: rò dữ liệu cross-store/branch, bypass permission/auth/CSRF, sai tiền hoặc trạng thái thanh toán, mất/sai stock movement, mất dữ liệu migration, lộ secret/token/PII, hoặc hồi quy giao dịch đồng thời. Nguồn: `AGENTS.md`, `docs/PRODUCT_OVERVIEW.md`, `rules/security.md`.
 - Known gaps: trạng thái UI/API phải kiểm tra theo code và Product Backlog trước mỗi task; `README.md` phân biệt phần đã nối API với màn còn mô phỏng. `docs/architecture/ARCHITECTURE.md` là kiến trúc mục tiêu, không phải bằng chứng chức năng đã triển khai. Không báo tính năng ngoài MVP như đã có.
@@ -62,7 +62,7 @@
 | Mã nguồn và test hiện tại | Hành vi đã triển khai; đối chiếu thay đổi và test | 1 (thực tế triển khai) |
 | `docs/PRODUCT_OVERVIEW.md` | Phạm vi sản phẩm, vai trò, bất biến và luồng nghiệp vụ | 1 (sản phẩm) |
 | `.devloopflow/specs/` | Spec thiết kế mới theo plugin; phải kiểm tra trạng thái và bản plan đã duyệt | 1 (chi tiết tính năng mới) |
-| `.devloopflow/specs/legacy-*.md` | Hợp đồng chức năng/endpoint đã chốt trước khi chuyển đổi; tra khi sửa chức năng cũ | 1 (chi tiết tính năng cũ) |
+| `.devloopflow/specs/` (tên module: `auth.md`, `sales.md`, `invoices.md`...) | Hợp đồng chức năng/endpoint đã chốt trước khi chuyển đổi; tra khi sửa chức năng cũ | 1 (chi tiết tính năng cũ) |
 | `docs/BUSINESS_RULES.md` | Quy tắc nghiệp vụ mã BR | 2 |
 | `docs/DESIGN_DB_POS_SYSTEM.md`, `rules/database.md` | Schema, constraint, index, transaction và migration | 2 |
 | `docs/api-spec.md` | Quy ước HTTP, auth, lỗi, phân quyền, idempotency và pagination | 2 |
