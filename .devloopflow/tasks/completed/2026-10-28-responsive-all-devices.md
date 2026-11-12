@@ -1,0 +1,39 @@
+# Task: Tối ưu Responsive tương thích toàn diện các thiết bị cho POS_UI
+
+- **Trạng thái:** COMPLETED
+- **Nhánh:** feat/sprint-1-auth
+- **Mục tiêu:** Áp dụng các nguyên tắc từ `ui-ux-pro-max`, `frontend-design`, `taste-skill` kết hợp `DESIGN.md` để tối ưu toàn diện tính thích ứng (responsive) trên mọi dải màn hình cho `POS_UI` (Desktop lớn $\ge 1280$px, Tablet ngang 1024–1279px, Tablet dọc 768–1023px, và Điện thoại di động $< 768$px).
+- **Việc đã hoàn tất kèm bằng chứng:**
+  - `POS_UI/index.html`: Thay viewport chống zoom sang chuẩn WCAG 1.4.4 (`viewport-fit=cover`).
+  - `POS_UI/src/index.css`: Bổ sung responsive utilities, media queries và animation slide-in cho mobile nav drawer.
+  - `POS_UI/src/components/common/AppShell.tsx`: Hỗ trợ 2 chế độ điều hướng (Rail 80px trên desktop/tablet $\ge 768$px, Hamburger Menu + Slide-in Drawer 280px trên mobile $< 768$px), topbar tự động co giãn không tràn.
+  - `POS_UI/src/components/common/DemoSwitcher.tsx`: Thu gọn trên mobile $< 640$px.
+  - `POS_UI/src/components/ui/Dialog.tsx`: Padding và chiều cao thích ứng, chống tràn viền.
+  - `POS_UI/src/features/pos/PaymentDialog.tsx`: Grid thích ứng tự động chuyển 2 cột $\leftrightarrow$ 1 cột trên mobile, footer buttons co giãn an toàn.
+  - `POS_UI/src/features/pos/ProductGrid.tsx` & `TableMap.tsx`: Thanh tab danh mục / khu vực cuộn cảm ứng quán tính `WebkitOverflowScrolling: 'touch'`, `flexShrink: 0`.
+  - Các màn hình Quản trị (`DailyReportScreen`, `InventoryScreen`, `InvoicesScreen`, `SettingsScreen`, `ProductsScreen`): Padding responsive `clamp(14px, 2.5vw, 24px)`.
+  - Build `npm --prefix POS_UI run build`: Thành công 100% trong 1.90s, 0 lỗi, 0 cảnh báo.
+  - Quét Impeccable detector: 0 anti-patterns, 0 advisory.
+  - Evidence log tại `qa-evidence/20261028-172500-cdcc096/run.md`.
+- **Trạng thái hiện tại:** Hoàn tất toàn bộ yêu cầu.
+- **Bước tiếp theo cụ thể:** Chờ phản hồi hoặc yêu cầu tiếp theo từ người dùng.
+- **File đã đổi:**
+  - `POS_UI/index.html`
+  - `POS_UI/src/index.css`
+  - `POS_UI/src/components/common/AppShell.tsx`
+  - `POS_UI/src/components/common/DemoSwitcher.tsx`
+  - `POS_UI/src/components/ui/Dialog.tsx`
+  - `POS_UI/src/features/pos/PaymentDialog.tsx`
+  - `POS_UI/src/features/pos/ProductGrid.tsx`
+  - `POS_UI/src/features/pos/TableMap.tsx`
+  - `POS_UI/src/features/reports/DailyReportScreen.tsx`
+  - `POS_UI/src/features/inventory/InventoryScreen.tsx`
+  - `POS_UI/src/features/invoices/InvoicesScreen.tsx`
+  - `POS_UI/src/features/settings/SettingsScreen.tsx`
+  - `POS_UI/src/features/products/ProductsScreen.tsx`
+- **Lệnh kiểm tra:**
+  - `npm --prefix POS_UI run build`
+  - `& ".agent/skills/impeccable/scripts/impeccable.cmd" detect POS_UI`
+- **Blocker / Câu hỏi:**
+  - Không có.
+

@@ -1,0 +1,23 @@
+# Trạng thái: Hoàn tất
+
+- Mục tiêu: Tổ chức lại platform và thống nhất cấu trúc REST API để auth, platform và module mới theo cùng quy ước.
+- Plan liên quan: plans/completed/2026-10-30-backend-module-structure.md.
+- Nhánh hiện tại: refactor/backend-module-structure; fetch origin/pull --ff-only thành công, base 4db3149.
+- Đã kiểm tra: ARCHITECTURE.md mục 5.1; TECH_STACK.md; rules/git.md; MEMORY.md; cấu trúc auth/platform; controller, DTO, pagination, service và module của platform; đăng ký entity và quan hệ Store/User/Branch.
+- Hiện trạng: auth có http/security/tests; platform để các file ngang hàng; entity tập trung tại database/entities. Working tree sạch trước khi tạo task này.
+- Phương án đề xuất: Module nghiệp vụ ở src/<module>, module/service tại gốc module, http/ chứa controller và DTO, entities/ chứa entity sở hữu, tests/ chứa test; security/ chỉ khi có nhu cầu. Database giữ kết nối, đăng ký entity và migration; HTTP dùng chung ở src/http.
+- Phương án thay thế: Tách thêm application/domain/infrastructure trong mỗi module; nhiều lớp và thay đổi rộng hơn.
+- Quyết định: Người dùng đã chọn phương án 1, module nghiệp vụ gọn, trong hội thoại ngày 2026-10-30.
+- Thiết kế: docs/architecture/2026-10-30-backend-module-structure-design.md; người dùng cho triển khai và yêu cầu cập nhật bằng chứng/test lại.
+- Đã hoàn tất baseline: npm test exit 0, 7 pass/0 fail/0 skipped; metadata 8 entity và hash migration đã lưu tại qa-evidence/2026-10-30-103643-4db3149-module-structure/baseline-*.
+- Đã di chuyển 13 file theo thiết kế, cập nhật import bằng TypeScript AST, trích httpError dùng chung và cập nhật toàn bộ caller. ARCHITECTURE.md là hướng dẫn cấu trúc chính theo nhắc thêm của người dùng; README trỏ về đó.
+- Đã kiểm chứng source cuối: npm test (bao gồm build) exit 0, 7 pass/0 fail/0 skipped; metadata 8 entity và SHA256 migration giống baseline, DB thử trước/sau rỗng. Manifest 42 file source khớp sau test.
+- Review agent khác: không tìm thấy regression, import thiếu hoặc sai kiến trúc; đã tự đối chiếu metadata/manifest và xác nhận bảng MOD-01…07 đầy đủ artifact, không có claim sai.
+- Bước tiếp theo: Người dùng xem diff trên nhánh refactor/backend-module-structure; chưa commit/push/merge. Không còn việc triển khai trong phạm vi đã duyệt.
+- Phạm vi dự kiến: auth, platform, import/caller/entity registration/test bị ảnh hưởng, ARCHITECTURE.md và hướng dẫn backend. Không đổi endpoint, schema, business rule hoặc dependency.
+- Kiểm tra: qa-evidence/2026-10-30-103643-4db3149-module-structure/run.md; baseline-result.json/final-result.json; final-test.log; final-comparison.json; final-artifact-check.json. Bằng chứng local, chưa CI cho diff này.
+- Lỗi đã xử lý: errors/2026-10-30-module-refactor-evidence-runner.md — script nạp dist trước build và so sánh chuỗi metadata khác encoding/newline; đã tái hiện và đối chiếu lại exit 0, giữ log gốc.
+- File thay đổi: 13 source file di chuyển theo thiết kế, http/http-error.ts mới, caller/import/đăng ký entity liên quan; ARCHITECTURE.md, POS_API/README.md, thiết kế/plan/task/run và error ghi nhận.
+- MEMORY: Đã cân nhắc; không bổ sung bài học, quy tắc hiện có đã yêu cầu bằng chứng gốc và tài liệu kiến trúc là nguồn hướng dẫn. Ghi lỗi cụ thể tại errors/ thay vì lặp quy tắc.
+- Blocker: Không còn; Docker Desktop và container PostgreSQL local đã chạy. Không khởi động API/UI container cũ.
+- Yêu cầu tích hợp tiếp theo: Người dùng cho commit và push thẳng master. Đã fetch origin; origin/master 64c7783 là merge của PB-03, có tree giống commit nền 4db3149. Đã fast-forward nhánh refactor lên 64c7783 trước commit; không đổi source đã test. Kết quả phát hành đối chiếu qua commit refactor trên master và remote, không chỉnh lại snapshot QA lịch sử.

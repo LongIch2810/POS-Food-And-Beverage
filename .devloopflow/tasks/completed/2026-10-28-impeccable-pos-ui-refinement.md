@@ -1,0 +1,34 @@
+# Task: Rà soát và sửa giao diện AI làm ra trong POS_UI bằng Impeccable
+
+- **Trạng thái:** COMPLETED
+- **Nhánh:** feat/sprint-1-auth
+- **Mục tiêu:** Sử dụng bộ quy tắc và công cụ Impeccable (detector, craft-floor, anti-slop) kết hợp DESIGN.md để rà soát toàn bộ giao diện `POS_UI`, sửa các lỗi giao diện AI điển hình (bounce animation, font/shadow/gradient sai chuẩn, kicker text, cards lồng cards, touch target không đủ chuẩn tablet quầy bar), đảm bảo tính thẩm mỹ, nhất quán và hiệu năng cho màn hình cảm ứng tablet F&B.
+- **Việc đã hoàn tất kèm bằng chứng:**
+  - Cài đặt và tích hợp Impeccable v4.8.0.
+  - Sửa `POS_UI/src/index.css`: thay đổi `--ease-out-spring` thành `--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1)` cho toàn bộ animations, xoá bỏ hoàn toàn cảnh báo advisory `[bounce-easing]`.
+  - Refactor toàn diện `POS_UI/src/features/auth/LoginScreen.tsx`: xóa bỏ dark gaming radial-gradient, steam ring giả lập, glassmorphism blur, mã màu cam lạ `#C76B22`; chuyển về nền đá xám lạnh phẳng `--color-bg`, thẻ trắng `--color-surface`, logo Phin cà phê chuẩn nhận diện `--color-brand-800` và `--color-brand-600`, nút đăng nhập 56px.
+  - Xóa bỏ các kicker text / uppercase labels không đúng chuẩn sentence case ở `AppShell.tsx`, `DemoSwitcher.tsx`, `DailyReportScreen.tsx`.
+  - Chuẩn hoá kích thước touch targets cho tablet cảm ứng ($\ge 44-48$px, nút chính $\ge 56$px) tại `OrderPanel.tsx`, `PaymentDialog.tsx`, `TableMap.tsx`, `InvoicesScreen.tsx`, `InventoryScreen.tsx`, `ProductsScreen.tsx`, `AppShell.tsx`.
+  - Quét lại bằng Impeccable detector: **53 files scanned, 0 anti-patterns found, 0 advisory notes**.
+  - Kiểm tra build `npm --prefix POS_UI run build`: Thành công 100%, 0 lỗi.
+  - Ghi nhận evidence tại `qa-evidence/20261028-171100-cdcc096/run.md`.
+- **Trạng thái hiện tại:** Hoàn tất toàn bộ yêu cầu.
+- **Bước tiếp theo cụ thể:** Chờ phản hồi hoặc yêu cầu tiếp theo từ người dùng.
+- **File đã đổi:**
+  - `POS_UI/src/index.css`
+  - `POS_UI/src/features/auth/LoginScreen.tsx`
+  - `POS_UI/src/components/common/AppShell.tsx`
+  - `POS_UI/src/components/common/DemoSwitcher.tsx`
+  - `POS_UI/src/features/reports/DailyReportScreen.tsx`
+  - `POS_UI/src/features/pos/OrderPanel.tsx`
+  - `POS_UI/src/features/pos/PaymentDialog.tsx`
+  - `POS_UI/src/features/pos/TableMap.tsx`
+  - `POS_UI/src/features/invoices/InvoicesScreen.tsx`
+  - `POS_UI/src/features/inventory/InventoryScreen.tsx`
+  - `POS_UI/src/features/products/ProductsScreen.tsx`
+- **Lệnh kiểm tra:**
+  - `& ".agent/skills/impeccable/scripts/impeccable.cmd" detect POS_UI`
+  - `npm --prefix POS_UI run build`
+- **Blocker / Câu hỏi:**
+  - Không có.
+
