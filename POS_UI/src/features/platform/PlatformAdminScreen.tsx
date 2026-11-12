@@ -6,6 +6,7 @@ import { Field } from '../../components/ui/Field';
 import { useToast } from '../../context/ToastContext';
 import { platformService, PlatformOwner, PlatformStore } from '../../services/platformService';
 import { formatDateTimeVN } from '../../utils/formatters';
+import { XCircle } from 'lucide-react';
 
 interface Props {
   activeTab?: 'stores' | 'owners';
@@ -13,6 +14,10 @@ interface Props {
 }
 
 const message = (error: unknown): string => error instanceof Error ? error.message : 'Có lỗi xảy ra. Vui lòng thử lại.';
+
+// Tab gạch chân cho nút Button (DESIGN.md §5.2), giữ nguyên Button để test và hành vi không đổi
+const tabStyle = (active: boolean): React.CSSProperties => ({ height: 56, padding: '0 16px', borderRadius: 0, background: 'transparent', border: 'none',
+  borderBottom: `3px solid ${active ? 'var(--color-brand-600)' : 'transparent'}`, color: active ? 'var(--color-brand-600)' : 'var(--color-text-muted)' });
 
 export const PlatformAdminScreen: React.FC<Props> = ({ activeTab = 'stores', onTabChange }) => {
   const { showToast } = useToast();
@@ -135,12 +140,12 @@ export const PlatformAdminScreen: React.FC<Props> = ({ activeTab = 'stores', onT
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Quản trị nền tảng</h1>
         <p style={{ color: 'var(--color-text-muted)' }}>Quản lý cửa hàng và tài khoản chủ. Dữ liệu vận hành thuộc riêng từng cửa hàng.</p>
       </div>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <Button variant={activeTab === 'stores' ? 'primary' : 'secondary'} onClick={() => selectTab('stores')}>Cửa hàng</Button>
-        <Button variant={activeTab === 'owners' ? 'primary' : 'secondary'} onClick={() => selectTab('owners')}>Chủ cửa hàng</Button>
+      <div className="page-bar">
+        <Button variant="text" style={tabStyle(activeTab === 'stores')} onClick={() => selectTab('stores')}>Cửa hàng</Button>
+        <Button variant="text" style={tabStyle(activeTab === 'owners')} onClick={() => selectTab('owners')}>Chủ cửa hàng</Button>
       </div>
       {loading && <p role="status">Đang tải dữ liệu...</p>}
-      {error && <div role="alert"><p>{error}</p><Button variant="secondary" onClick={reload}>Thử lại</Button></div>}
+      {error && <div role="alert" className="notice notice-danger"><XCircle size={18} /><p style={{ flex: 1, margin: 0 }}>{error}</p><Button variant="secondary" onClick={reload}>Thử lại</Button></div>}
       {!loading && !error && activeTab === 'stores' && <>
         <div><Button onClick={() => setCreateStoreOpen(true)}>Tạo cửa hàng và OWNER</Button></div>
         {stores.length === 0 ? <p>Chưa có cửa hàng.</p> : stores.map(store => (
@@ -155,6 +160,7 @@ export const PlatformAdminScreen: React.FC<Props> = ({ activeTab = 'stores', onT
               </div>
               {store.suspendedReason && <div style={{ fontSize: 13 }}>Lý do khóa: {store.suspendedReason}</div>}
             </div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {store.status === 'ACTIVE'
               ? <Button variant="danger" disabled={busy} onClick={() => { setSuspendStore(store); setReason(''); }}>Tạm khóa</Button>
               : <Button disabled={busy} onClick={() => void run(async () => {
@@ -164,6 +170,7 @@ export const PlatformAdminScreen: React.FC<Props> = ({ activeTab = 'stores', onT
             <Button variant="secondary" disabled={busy} onClick={() => {
               setStoreId(store.id); setCreateOwnerOpen(true);
             }}>Cấp OWNER</Button>
+            </div>
           </div>
         ))}
       </>}
@@ -200,8 +207,8 @@ export const PlatformAdminScreen: React.FC<Props> = ({ activeTab = 'stores', onT
 
       <Dialog isOpen={createOwnerOpen} onClose={() => setCreateOwnerOpen(false)} title="Cấp thêm OWNER">
         <form onSubmit={handleCreateOwner} style={{ display: 'grid', gap: 12 }}>
-          <label>Cửa hàng
-            <select value={storeId} onChange={e => setStoreId(e.target.value)} required style={{ display: 'block', width: '100%', minHeight: 48 }}>
+          <label className="field">Cửa hàng
+            <select className="select" value={storeId} onChange={e => setStoreId(e.target.value)} required>
               {storeId && !storeChoices.some(store => store.id === storeId) && <option value={storeId}>{stores.find(store => store.id === storeId)?.name || 'Cửa hàng đã chọn'}</option>}
               {storeChoices.map(store => <option key={store.id} value={store.id}>{store.name}</option>)}
             </select>
