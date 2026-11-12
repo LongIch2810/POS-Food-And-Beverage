@@ -1,10 +1,10 @@
 import { AuthError, restoreSession } from '../auth/client.ts';
 import { getRequestIdentity, notifySessionChange, requestIdentityKey } from '../auth/session-events.ts';
 
-export async function request<T>(path: string, method = 'GET', body?: object | FormData, retry = true, list = false): Promise<T> {
+export async function request<T>(path: string, method = 'GET', body?: object | FormData, retry = true, list = false, extraHeaders: Record<string,string> = {}): Promise<T> {
   const context = getRequestIdentity();
   const changedSession = () => new AuthError('SESSION_CHANGED', 'Tài khoản hoặc phạm vi đã thay đổi. Hãy mở lại chức năng trước khi thao tác.');
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...extraHeaders };
   if (method !== 'GET') {
     if (!document.cookie.split('; ').some(item => item.startsWith('__Host-pos_csrf='))) await request('auth/csrf');
     const csrf = document.cookie.split('; ').find(item => item.startsWith('__Host-pos_csrf='))?.slice('__Host-pos_csrf='.length);
@@ -29,7 +29,7 @@ export async function request<T>(path: string, method = 'GET', body?: object | F
         notifySessionChange('login');
         if ((context.identity !== null || method !== 'GET') &&
           (context.identity !== requestIdentityKey(user) || context.epoch !== getRequestIdentity().epoch)) throw changedSession();
-        return request<T>(path, method, body, false, list);
+        return request<T>(path, method, body, false, list, extraHeaders);
       }
     } catch (error) {
       if (error instanceof AuthError && ['ACCOUNT_DISABLED', 'STORE_SUSPENDED'].includes(error.code)) notifySessionChange('revoked');

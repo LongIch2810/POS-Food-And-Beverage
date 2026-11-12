@@ -48,7 +48,7 @@ function mount(file, exportName, props, dependencies) {
     for (const [suffix, value] of Object.entries(dependencies)) if (path.endsWith(suffix)) return value;
     const name = path.split('/').at(-1);
     if (['Button', 'Dialog', 'Field', 'Badge', 'DataTable', 'ProductGrid', 'TableMap',
-      'OrderPanel', 'PaymentDialog', 'OpenShiftGate', 'BlindCountCloseShiftModal',
+      'OrderPanel', 'PaymentDialog', 'LivePaymentDialog', 'OpenShiftGate', 'BlindCountCloseShiftModal',
       'ForceCloseShiftModal'].includes(name)) return name === 'Field'
       ? { SelectField: 'SelectField' } : { [name]: name };
     throw new Error('Unexpected dependency: ' + path);
@@ -142,7 +142,8 @@ test('PB-07 lost add response reloads invoice detail before another write', asyn
       getAllToppings: async () => [], getCategoryToppings: async () => [] } },
     '/organizationService': { organizationService: { getTables: async () => ({ data: [], meta: { nextCursor: null } }) } },
     '/salesService': { salesService: { listOpen: async () => ({ data: [{ id: invoiceId, tableId: null }], meta: { nextCursor: null } }),
-      get: async () => detail(), addItem: async () => { persisted = true; throw new Error('NETWORK_ERROR'); } } },
+      get: async () => detail(), getPendingTransferAttempt: async () => null,
+      addItem: async () => { persisted = true; throw new Error('NETWORK_ERROR'); } } },
     '/formatters': { formatVND: String },
   });
   await screen.flush();

@@ -18,7 +18,7 @@ const source = readFileSync(new URL('../src/features/settings/SettingsScreen.tsx
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS,
   jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
 
-function mount(overrides = {}, session = owner, shiftsTotal = 0) {
+function mount(overrides = {}, session = owner, shiftsTotal = 0, bankService = {}) {
   const calls = [], toasts = [], slots = [], listeners = new Map(), sessionEvents = [];
   let index = 0, dirty = true, tree, effects = [], mounted = true, lateWrites = 0;
   const service = {
@@ -54,6 +54,7 @@ function mount(overrides = {}, session = owner, shiftsTotal = 0) {
       if (path === 'react') return React;
       if (path.endsWith('/organizationService')) return { organizationService: service };
       if (path.endsWith('/shiftService')) return { shiftService: { getShifts: async () => ({ meta: { total: shiftsTotal } }) } };
+      if (path.endsWith('/bankAccountService')) return { bankAccountService: bankService };
       if (path.endsWith('/AuthContext')) return { useAuth: () => ({ session }) };
       if (path.endsWith('/ToastContext')) return { useToast: () => ({ showToast: value => toasts.push(value) }) };
       if (path.endsWith('/auth/client')) return { AuthError };
@@ -99,6 +100,108 @@ function mount(overrides = {}, session = owner, shiftsTotal = 0) {
     key: () => exports.SettingsScreen().props.key,
   };
 }
+
+test('ST8 owner bank settings accept 19 digits and reject 20 before PATCH',async()=>{
+  const saved=[],session={...owner,permissions:[...owner.permissions,'store_bank_account.manage']};
+  const bank={get:async()=>null,update:async input=>{saved.push(input);return input;}};
+  const screen=mount({},session,0,bank);await screen.flush();
+  const bankBin=screen.find('input',p=>p['aria-label']==='Mã BIN ngân hàng');assert.ok(bankBin,'Bank account settings visible to OWNER');
+  bankBin.props.onChange({target:{value:'970422'}});await screen.flush();
+  screen.find('input',p=>p['aria-label']==='Tên chủ tài khoản').props.onChange({target:{value:'CUA HANG'}});await screen.flush();
+  screen.find('input',p=>p['aria-label']==='Số tài khoản').props.onChange({target:{value:'1234567890123456789'}});await screen.flush();
+  await screen.click('Lưu tài khoản');assert.equal(saved[0].accountNumber,'1234567890123456789');
+  screen.find('input',p=>p['aria-label']==='Số tài khoản').props.onChange({target:{value:'12345678901234567890'}});await screen.flush();
+  await screen.click('Lưu tài khoản');assert.equal(saved.length,1);assert.match(screen.text(),/6 đến 19 chữ số/);await screen.unmount();
+});
+
+test('[B-29][B-31] account number error is attached to its field and shown once',async()=>{
+  const session={...owner,permissions:[...owner.permissions,'store_bank_account.manage']};
+  const bank={get:async()=>null,update:async()=>{throw new AuthError('VALIDATION_ERROR','Dữ liệu không hợp lệ.',{status:422,
+    details:[{location:'body',field:'accountNumber',message:'Số tài khoản bị ngân hàng từ chối.'}]});}};
+  const screen=mount({},session,0,bank);await screen.flush();
+  const input=()=>screen.find('input',p=>p['aria-label']==='Số tài khoản');
+  assert.equal(input().props['aria-invalid'],undefined,'no error before saving');
+  screen.find('input',p=>p['aria-label']==='Mã BIN ngân hàng').props.onChange({target:{value:'970422'}});await screen.flush();
+  screen.find('input',p=>p['aria-label']==='Tên chủ tài khoản').props.onChange({target:{value:'CUA HANG'}});await screen.flush();
+  input().props.onChange({target:{value:'1234567890123456789'}});await screen.flush();
+  await screen.click('Lưu tài khoản');
+  assert.equal(input().props['aria-invalid'],'true');
+  const id=input().props['aria-describedby'];assert.ok(id,'aria-describedby set');
+  const error=screen.find('p',p=>p.id===id);assert.ok(error,'described element exists');
+  assert.equal(error.props.role,'alert');
+  assert.equal(error.props.children.join(''),'Số tài khoản bị ngân hàng từ chối.');
+  assert.ok(!screen.text().includes('Dữ liệu không hợp lệ.'));
+  assert.equal(id,'bank-account-error');
+  assert.equal(screen.text().split('Số tài khoản bị ngân hàng từ chối.').length-1,1,'message appears once');
+  await screen.unmount();
+});
+
+test('[B-30] client-side account number error is attached to its field',async()=>{
+  const session={...owner,permissions:[...owner.permissions,'store_bank_account.manage']};
+  let updates=0,fail=false;
+  const bank={get:async()=>null,update:async input=>{updates++;if(fail)throw new AuthError('VALIDATION_ERROR','Dữ liệu không hợp lệ.',{status:422,
+    details:[{location:'body',field:'accountNumber',message:'Số tài khoản bị ngân hàng từ chối.'}]});return input;}};
+  const screen=mount({},session,0,bank);await screen.flush();
+  const input=()=>screen.find('input',p=>p['aria-label']==='Số tài khoản');
+  screen.find('input',p=>p['aria-label']==='Mã BIN ngân hàng').props.onChange({target:{value:'970422'}});await screen.flush();
+  screen.find('input',p=>p['aria-label']==='Tên chủ tài khoản').props.onChange({target:{value:'CUA HANG'}});await screen.flush();
+  input().props.onChange({target:{value:'12345678901234567890'}});await screen.flush();
+  await screen.click('Lưu tài khoản');
+  assert.equal(updates,0,'no PATCH for 20 digits');
+  assert.equal(input().props['aria-invalid'],'true');
+  assert.equal(input().props['aria-describedby'],'bank-account-error');
+  const error=screen.find('p',p=>p.id==='bank-account-error');assert.ok(error);
+  assert.match(error.props.children.join(''),/6 đến 19 chữ số/);
+  assert.equal(screen.text().split('6 đến 19 chữ số').length-1,1,'no duplicate generic alert');
+  // server 422 then client-side error replaces it
+  input().props.onChange({target:{value:'1234567890123456789'}});await screen.flush();
+  fail=true;await screen.click('Lưu tài khoản');assert.equal(updates,1);
+  assert.ok(screen.text().includes('Số tài khoản bị ngân hàng từ chối.'));
+  input().props.onChange({target:{value:'123'}});await screen.flush();
+  await screen.click('Lưu tài khoản');
+  assert.equal(updates,1);
+  assert.ok(!screen.text().includes('Số tài khoản bị ngân hàng từ chối.'),'stale server message cleared');
+  assert.equal(screen.text().split('6 đến 19 chữ số').length-1,1);
+  assert.equal(screen.find('p',p=>p.id==='bank-account-error').props.children.join('').includes('6 đến 19'),true);
+  await screen.unmount();
+});
+
+test('[B-34] stale bank errors cleared on client-side validation',async()=>{
+  const session={...owner,permissions:[...owner.permissions,'store_bank_account.manage']};
+  const fill=async(screen,values)=>{
+    for(const [label,value] of values){screen.find('input',p=>p['aria-label']===label).props.onChange({target:{value}});await screen.flush();}
+  };
+  // (1) server 422 accountNumber, then empty BIN: field error must go, BIN alert must show, no extra PATCH
+  {
+    let updates=0;
+    const bank={get:async()=>null,update:async()=>{updates++;throw new AuthError('VALIDATION_ERROR','Dữ liệu không hợp lệ.',{status:422,
+      details:[{location:'body',field:'accountNumber',message:'Số tài khoản bị ngân hàng từ chối.'}]});}};
+    const screen=mount({},session,0,bank);await screen.flush();
+    await fill(screen,[['Mã BIN ngân hàng','970422'],['Tên chủ tài khoản','CUA HANG'],['Số tài khoản','1234567890123456789']]);
+    await screen.click('Lưu tài khoản');
+    assert.equal(updates,1);
+    assert.ok(screen.find('p',p=>p.id==='bank-account-error'),'server field error shown first');
+    await fill(screen,[['Mã BIN ngân hàng','']]);
+    await screen.click('Lưu tài khoản');
+    assert.equal(updates,1,'no PATCH when BIN empty');
+    assert.equal(screen.find('p',p=>p.id==='bank-account-error'),undefined,'stale account error cleared');
+    assert.ok(screen.find('p',p=>p.role==='alert'&&String(p.children.join('')).includes('Nhập mã BIN')),'BIN alert shown');
+    await screen.unmount();
+  }
+  // (2) generic error, then 20-digit account: generic text must go, account error shown
+  {
+    const bank={get:async()=>null,update:async()=>{throw new Error('QA 500');}};
+    const screen=mount({},session,0,bank);await screen.flush();
+    await fill(screen,[['Mã BIN ngân hàng','970422'],['Tên chủ tài khoản','CUA HANG'],['Số tài khoản','1234567890123456789']]);
+    await screen.click('Lưu tài khoản');
+    assert.ok(screen.text().includes('QA 500'),'generic error shown first');
+    await fill(screen,[['Số tài khoản','12345678901234567890']]);
+    await screen.click('Lưu tài khoản');
+    assert.ok(!screen.text().includes('QA 500'),'stale generic error cleared');
+    assert.ok(screen.find('p',p=>p.id==='bank-account-error'),'account error shown');
+    await screen.unmount();
+  }
+});
 
 test('PB13-NAV OWNER opens settings, permission-only staff entry and platform isolation', () => {
   assert.equal(accessibleTabs(owner)[0], 'settings');

@@ -48,12 +48,10 @@ export const Dialog: React.FC<DialogProps> = ({
         }
       }, 30);
 
-      return () => clearTimeout(timer);
-    } else {
-      // Hoàn trả focus về phần tử kích hoạt khi modal đóng
-      if (previousActiveElementRef.current && typeof previousActiveElementRef.current.focus === 'function') {
-        previousActiveElementRef.current.focus();
-      }
+      return () => {
+        clearTimeout(timer);
+        previousActiveElementRef.current?.focus();
+      };
     }
   }, [isOpen]);
 
