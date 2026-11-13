@@ -47,7 +47,11 @@
 [docs, spec, ui, pos, payment] B-38/R17-2 spec nói QR chờ khóa cả thanh toán nhưng code vẫn hiện nút → 20261111-spec-qr-pending-locks-payment-wrong.md
 [docs, errors, template] B-37/R17-1 file lỗi mới sai found_by và thiếu dòng Test tái hiện → 20261111-error-file-metadata-off-template.md
 [ui, pos, notice, test] B-39/B-40 thông báo đơn cũ còn hiện khi làm đơn mới; thiếu assert đơn đã đóng → 20261111-stale-notice-and-missing-closed-order-asserts.md
+[sales, api, permission, cancel, test] R1-1 đổi ưu tiên lỗi cancel() (404 trước 409 SHIFT_NOT_OPEN) không có test → 20261113-cancel-open-scope-order-untested.md
 
+[sales, shifts, test, cash, concurrency] B-41/B-42/B-45/B-47/B-48 khoảng trống test sau Sprint 09 (fixture sai nguồn, ca biên, đồng thời) → 20261113-sprint09-test-gaps-money-and-concurrency.md
+[shifts, api, swagger, format] B-43/B-44/B-46 Swagger lệch, định dạng, trim thừa → 20261113-sprint09-dto-docs-and-format-nits.md
+[test, sales, shifts, flaky, clock] B-50 seed giờ vào ca bằng đồng hồ DB làm [R14-1] và 4 test sau flaky → 20261113-payment-test-seed-db-clock-flaky.md
 <!-- Historical errors imported 2026-11-12; original statuses unchanged. -->
 [legacy, 2026-10-28-argon2-install-path] Lỗi cài Argon2 trên đường dẫn có `&` -> 2026-10-28-argon2-install-path.md
 [legacy, 2026-10-28-codex-doctor-sandbox] Codex doctor báo lỗi cấp phát Windows sandbox -> 2026-10-28-codex-doctor-sandbox.md

@@ -1,7 +1,7 @@
 # .devloopflow/devloopflow.md
 <!-- Sinh bởi /devloopflow:init. Cấu hình RIÊNG cho quy trình devloopflow của dự án này. Mọi fact có path nguồn; không ghi secret. -->
 
-- Cập nhật lần cuối: 2026-11-12
+- Cập nhật lần cuối: 2026-11-13
 
 ## 1. Liên kết với tài liệu chung
 - Giới thiệu chung: `AGENTS.md`, `CLAUDE.md` (bản sao nội dung của `AGENTS.md`, tạo 2026-11-09), `README.md`.
@@ -20,7 +20,7 @@
 - Dừng app local: `docker compose --env-file POS_INFRA/.env.local -f POS_INFRA/compose.local.yml down`; không thêm `-v` vì sẽ xóa volume dữ liệu local. Nguồn: `README.md`. Chưa chạy thử.
 - Build API: trong `POS_API/`, `npm run build`. Nguồn: `POS_API/package.json`, `.github/workflows/ci.yml`. Đã chạy thử 2026-11-10 (local): exit 0.
 - Build UI: trong `POS_UI/`, `npm run build`. Lệnh này typecheck rồi build Vite. Nguồn: `POS_UI/package.json`, `.github/workflows/ci.yml`. Đã chạy thử 2026-11-10 (local): exit 0.
-- Test toàn bộ API: trong `POS_API/`, `npm test`; lệnh tự build rồi chạy `node:test`. Cần `DATABASE_URL` trỏ tới PostgreSQL local/test; test tạo và xóa database thử ngẫu nhiên với prefix `pos_pb01_test_`, `pos_pb02_test_`, `pos_pb03_test_`, `pos_pb04_test_`, `pos_pb04_migration_` hoặc prefix theo module trong test. Tài khoản DB cần quyền `CREATE DATABASE`. Tuyệt đối không dùng DB production. Nguồn: `POS_API/package.json`, `POS_API/README.md`, `POS_API/src/**/tests/`. Đã chạy thử 2026-11-11 (local, `DATABASE_URL` trỏ PostgreSQL sandbox, không phải DB production): exit 0, 155/155 pass.
+- Test toàn bộ API: trong `POS_API/`, `npm test`; lệnh tự build rồi chạy `node:test`. Cần `DATABASE_URL` trỏ tới PostgreSQL local/test; test tạo và xóa database thử ngẫu nhiên với prefix `pos_pb01_test_`, `pos_pb02_test_`, `pos_pb03_test_`, `pos_pb04_test_`, `pos_pb04_migration_` hoặc prefix theo module trong test. Tài khoản DB cần quyền `CREATE DATABASE`. Tuyệt đối không dùng DB production. Nguồn: `POS_API/package.json`, `POS_API/README.md`, `POS_API/src/**/tests/`. Đã chạy thử 2026-11-13 (local, `DATABASE_URL` trỏ PostgreSQL sandbox Docker cổng 15432, không phải DB production): exit 0, 204/204 pass.
 - Test toàn bộ UI: trong `POS_UI/`, `npm test` (Node `node:test`). Nguồn: `POS_UI/package.json`, `.github/workflows/ci.yml`. Đã chạy thử 2026-11-11 (local): exit 0, 85/85 pass.
 - Test một file / một case: manifest không định nghĩa script riêng. API test TypeScript phải build trước; test UI là `test/*.test.mjs`. Dùng `node --test` với file hoặc `--test-name-pattern` khi cần tập trung; xác nhận đúng đường dẫn output `dist/` và lệnh cụ thể theo test liên quan trước khi chạy. Chưa chạy thử.
 - Lint: không có script lint trong `POS_API/package.json` hoặc `POS_UI/package.json`; CI hiện chạy build, test và audit dependency.
@@ -104,3 +104,5 @@
 - 2026-11-10 — Mục 2 (sync-docs lần 5, sau review vòng 10): cập nhật số test đã chạy thử: API 148/148 (từ 138/138), UI 62/62 (từ 60/60); lệnh không đổi — task 20261109-sprint08-payment.
 - 2026-11-10 — Mục 2: đổi "Chưa chạy thử" thành "Đã chạy thử 2026-11-10 (local)" cho build API, build UI, test API (132/132), test UI (57/57), typecheck UI, đều exit 0 — task 20261109-sprint08-payment (sync-docs, sau fix-backlog). Không đổi lệnh, không đổi mục khác.
 - 2026-11-11 — Mục 2 (sync-docs lần 6, sau verify-ac vòng 17 và fix-backlog B-39/B-40): cập nhật số test đã chạy thử: API 155/155 (từ 148/148), UI 85/85 (từ 62/62); lệnh không đổi (agent chính chạy lại local, UI typecheck/build exit 0) — task 20261109-sprint08-payment.
+- 2026-11-13 — Mục 2 (sync-docs lần 7, sau verify-ac lần 1 task 20261112-sprint09-drawer-cancel-invoices): cập nhật số test API đã chạy thử: 199/199 (từ 155/155); lệnh không đổi (agent chính chạy lại local, exit 0). Số migration hiện tại 11 (test `foundation.test.ts:37`).
+- 2026-11-13 — Mục 2 (sync-docs lần 8, task 20261112-sprint09-drawer-cancel-invoices): số test API 199/199 → 204/204 sau vòng review và fix-backlog (bằng chứng: `.devloopflow/verify/20261112-sprint09-drawer-cancel-invoices/report-3.md`, `npm test` xanh 3 lần).
