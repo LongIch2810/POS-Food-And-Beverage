@@ -227,6 +227,7 @@ Cấu hình thật nằm ở `role_permissions`. Bảng này là mặc định k
 | Bán hàng, thêm món, thanh toán                      | Không            | Có            | Có                  | Có                 |
 | Hủy đơn chưa thanh toán                             | Không            | Có            | Có                  | Có                 |
 | Hủy đơn đã thanh toán                               | Không            | Có            | Có                  | Không              |
+| Ghi chi phí từ két trong ca thu ngân của mình       | Không            | Có            | Có                  | Có                 |
 | Đóng cưỡng chế ca                                   | Không            | Có            | Có                  | Không              |
 | Nhập kho, kiểm kê, ghi hao hụt (GĐ2)                | Không            | Có            | Có                  | Không              |
 | Xem báo cáo                                         | Không            | Toàn cửa hàng | Chi nhánh mình      | Ca của mình        |
