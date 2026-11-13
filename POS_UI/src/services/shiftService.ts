@@ -1,5 +1,20 @@
 import { request } from '../http/client.ts';
-import type { ShiftExpense } from '../types/entities.ts';
+import { getRequestIdentity } from '../auth/session-events.ts';
+
+export interface ShiftExpenseDto {
+  id: string;
+  workShiftId: string;
+  amount: number;
+  reason: string;
+  paidFromDrawer: boolean;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface ShiftExpensesResponse {
+  data: ShiftExpenseDto[];
+  meta: { limit: number; nextCursor: string | null; total: number };
+}
 
 const notifyShiftChanged = () => {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('pos-shift-changed'));
@@ -89,8 +104,9 @@ export const shiftService = {
     shiftId: string,
     input: { countedCash?: number; note?: string }
   ): Promise<WorkShiftDto> {
+    const epoch = getRequestIdentity().epoch;
     const shift = await request<WorkShiftDto>(`work-shifts/${encodeURIComponent(shiftId)}/close`, 'POST', input);
-    notifyShiftChanged();
+    if (epoch === getRequestIdentity().epoch) notifyShiftChanged();
     return shift;
   },
 
@@ -99,8 +115,9 @@ export const shiftService = {
     shiftId: string,
     input: { countedCash: number; reason: string; note?: string }
   ): Promise<WorkShiftDto> {
+    const epoch = getRequestIdentity().epoch;
     const shift = await request<WorkShiftDto>(`work-shifts/${encodeURIComponent(shiftId)}/force-close`, 'POST', input);
-    notifyShiftChanged();
+    if (epoch === getRequestIdentity().epoch) notifyShiftChanged();
     return shift;
   },
 
@@ -135,7 +152,13 @@ export const shiftService = {
     return this.closeShift(shiftId, { countedCash: Number(countedCash), note });
   },
 
-  addExpense(_shiftId: string, _amount: bigint, _reason: string, _paidFromDrawer: boolean): Promise<ShiftExpense> {
-    return Promise.resolve({} as ShiftExpense);
+  addExpense(shiftId: string, amount: number, reason: string, paidFromDrawer: boolean): Promise<ShiftExpenseDto> {
+    return request(`work-shifts/${encodeURIComponent(shiftId)}/expenses`, 'POST', { amount, reason, paidFromDrawer }, false);
+  },
+
+  getExpenses(shiftId: string, query: { limit?: number; cursor?: string } = {}): Promise<ShiftExpensesResponse> {
+    const params = new URLSearchParams({ limit: String(query.limit ?? 20), sort: '-createdAt' });
+    if (query.cursor !== undefined) params.set('cursor', query.cursor);
+    return request(`work-shifts/${encodeURIComponent(shiftId)}/expenses?${params}`, 'GET', undefined, true, true);
   },
 };

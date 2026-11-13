@@ -1,0 +1,11 @@
+﻿import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
+import vm from 'node:vm';
+import ts from 'typescript';
+const session={user:{id:'u',store_id:'s',branch_id:null,role_code:'OWNER'},permissions:['branch.access_all','invoice.read'],branch_name:null};
+const react={createElement:(type,props,...children)=>({type,props:{...props,children}}),useState:value=>[typeof value==='function'?value():value,()=>{}],useEffect:()=>{}};
+function load(path,mocks,append=''){const source=readFileSync(new URL(path,import.meta.url),'utf8')+append;const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true}}).outputText;const exports={};vm.runInNewContext(js,{exports,window:{innerWidth:1024},require:mocks});return exports}
+function find(node,p){if(Array.isArray(node))return node.map(x=>find(x,p)).find(Boolean);if(!node||typeof node!=='object')return;return p(node)?node:find(node.props?.children,p)}
+test('[S9-06 banner] Hóa đơn không hiện cảnh báo demo, Báo cáo vẫn hiện',()=>{let tab='invoices';const React={...react,useState:value=>[value==='invoices'?tab:value,()=>{}]};const {AuthenticatedRouter}=load('../src/app/App.tsx',name=>name==='react'?React:name.endsWith('AuthContext')?{useAuth:()=>({session})}:name.endsWith('navigation')?{accessibleTabs:()=>['invoices','reports']}:{},'\nexport { AuthenticatedRouter };');const banner=()=>find(AuthenticatedRouter({error:''}),x=>x.props?.role==='status');assert.equal(banner(),undefined);tab='reports';assert.ok(banner())});
+test('[S9-06 branch] Hóa đơn của owner không hiển thị hoặc chọn chi nhánh mẫu',()=>{const {AppShell}=load('../src/components/common/AppShell.tsx',name=>name==='react'?react:name.endsWith('AuthContext')?{useAuth:()=>({session,logout(){}})}:name.endsWith('mockEngine')?{MockEngine:{getAccessibleBranches:()=>[{id:'demo',name:'Chi nhánh Nam Lý'}],getEffectiveBranchId:()=> 'demo'}}:name.endsWith('navigation')?{canOpenSettings:()=>false}:{});const tree=AppShell({currentTab:'invoices',onSelectTab(){},children:null});assert.equal(find(tree,x=>x.props?.['aria-haspopup']==='menu'),undefined);assert.ok(find(tree,x=>x.props?.children?.includes('Tất cả chi nhánh')))});

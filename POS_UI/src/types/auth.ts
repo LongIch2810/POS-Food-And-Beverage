@@ -23,10 +23,11 @@ export type PermissionCode =
   | 'shift.read'
   | 'shift.open'
   | 'shift.close'
+  | 'shift.expense'
   | 'shift.open_close' // Quyền chỉ còn trong dữ liệu demo
   | 'shift.force_close' // Đóng cưỡng chế ca của người khác (MANAGER, OWNER)
   | 'pos.sell' // Bán hàng, tạo đơn, thanh toán
-  | 'invoice.read'
+  | 'invoice.read' | 'invoice.read_branch'
   | 'invoice.cancel_open' // Hủy đơn OPEN
   | 'invoice.cancel_paid' // Hủy đơn PAID (cần quyền quản lý & ca còn mở)
   | 'store_bank_account.manage'

@@ -1,7 +1,7 @@
 # MEMORY: kinh nghiệm của dự án này
 <!-- Bộ nhớ của dự án cho AGENT đọc. Do skill reflect và remember ghi. Cấu trúc cố định: bảng "Chỉ mục" (agent quét trước) + khối "Chi tiết" cho từng mục (mở khi cần). Mỗi mục có MỘT dòng ở Chỉ mục và MỘT khối ở Chi tiết, hai chỗ phải khớp nhau. Chỉ ghi điều có bằng chứng (task id, path:dòng, id finding, hoặc lời user nguyên văn). Không secret, token, mật khẩu, PII. Chỉ thêm hoặc cập nhật, không xoá; mục sai đổi sang `hết hiệu lực` kèm lý do và ngày. Lỗi đã sửa có nguyên nhân gốc thì ghi ở .devloopflow/errors/, ở đây chỉ dẫn link. File này được commit. -->
 
-- Cập nhật lần cuối: 2026-11-12
+- Cập nhật lần cuối: 2026-11-14
 - Id `M-<n>` tăng dần trong toàn dự án, không dùng lại.
 
 ## Cách đọc (dành cho agent)
@@ -22,7 +22,7 @@
 | M-6 | Quy trình | tdd, qa-evidence, subagent | Giao `tdd` cho việc nhiều bước có nguy cơ bị giới hạn phiên | Yêu cầu worker ghi log RED/GREEN và output test ngay từng bước vào `qa-evidence/`, không chỉ báo cáo cuối | 3 | có hiệu lực |
 | M-7 | Quy trình | verify-ac, sandbox, environment | Chuẩn bị chạy verify-ac cần app, container hoặc DB đang chạy | Xác nhận quyền khởi động môi trường trước vòng kiểm; khi bị chặn, dừng và báo user thay vì lặp lại lệnh bị chặn | 1 | có hiệu lực |
 | M-8 | Đã học được | config, secret, auth, test-fixture | Siết ngưỡng độ dài secret hoặc đổi cấu hình bắt buộc | Kiểm mọi fixture test đang dùng giá trị cũ trước khi siết; không đổi fixture nếu user chưa đồng ý | 1 | có hiệu lực |
-| M-9 | Quy trình | qa, acceptance, evidence, provenance | Chuẩn bị nghiệm thu có nhiều vế và thay đổi UI/API | Lập ma trận từng vế AC với artifact trước khi chạy và lưu hash mã được kiểm cùng bằng chứng | 1 | có hiệu lực |
+| M-9 | Quy trình | qa, acceptance, evidence, provenance | Chuẩn bị nghiệm thu có nhiều vế và thay đổi UI/API | Lập ma trận từng vế AC với artifact trước khi chạy và lưu hash mã được kiểm cùng bằng chứng | 1 | hết hiệu lực |
 | M-10 | Hay quên | permission, roles, integration-test | Thêm hoặc thay đổi quyền theo vai trò | Kiểm hành vi qua HTTP bằng vai trò thật, gồm ca được phép và các trường hợp thiếu điều kiện hoặc sai phạm vi | 1 | có hiệu lực |
 
 | M-11 | Hay quên | ui, state, query-key | UI đổi tab/filter/cursor và tái sử dụng state danh sách với các kiểu row khác nhau. | Generation guard ở promise callback chưa đủ; render đầu tiên sau đổi tab vẫn có thể nhận rows cũ trước useEffect. Gắn rows với query key và chỉ render bảng khi key khớp, hiện loading trong khoảng chuyển tiếp. Test phải thực thi callback cột, không chỉ stub bảng rồi kiểm props. | chưa ghi | có hiệu lực |
@@ -30,8 +30,7 @@
 | M-13 | Hay quên | ui, toast, session | Provider hiển thị toast hoặc trạng thái tạm sống xuyên logout/login hay đổi user/store. | Xóa thông báo cũ khi danh tính hoặc trạng thái xác thực đổi; kiểm bằng browser sau logout/login cửa hàng khác, kể cả toast lỗi không tự biến mất. | chưa ghi | có hiệu lực |
 | M-14 | Đã học được | db, transaction, locking | PostgreSQL READ COMMITTED, truy vấn JOIN quan hệ mutable cùng FOR UPDATE và phải chờ transaction khác sửa khóa ngoại. | Lấy khóa dòng gốc trong scope bằng statement riêng, rồi đọc lại quan hệ trong statement sau của cùng transaction; kiểm thử thứ tự chờ khóa thật bằng pg_locks/pg_blocking_pids. JOIN trước khi chờ có thể trả thiếu dòng sau khi khóa ngoại đổi, gây401/404 sai. | chưa ghi | có hiệu lực |
 | M-15 | Hay quên | auth, permission, uuid | Khi so actor với ID tài nguyên, đặc biệt chặn tự khóa/tự hạ quyền. | So với ID chuẩn đọc từ DB hoặc chuẩn hóa đồng nhất; không so UUID path thô bằng chuỗi JavaScript. PostgreSQL coi UUID viết hoa/thường là một ID, JavaScript so chuỗi thì khác. Thêm tình huống UUID viết hoa cho guard tự thao tác. | chưa ghi | có hiệu lực |
-| M-16 | Quy trình | qa, acceptance, evidence | Khi kiểm tra hoặc báo hoàn thành tiêu chí nghiệm thu. | Đối chiếu từng vế của spec/docs đã chốt với mã/UI cuối, tình huống kiểm tra và artifact gốc; mở lại ảnh, log, request/response và trạng thái DB khi cần để xác nhận đúng commit và kết quả. Không suy diễn từ test pass, ảnh đơn lẻ hay chứng cứ phiên bản cũ; không dựng chứng cứ từ trí nhớ. Thiếu hoặc mâu thuẫn thì ghi **chưa xác minh**, để trống tiêu chí và chạy lại để thu chứng cứ thật. | chưa ghi | có hiệu lực |
-| M-17 | Quy trình | spec, pos, product-owner | Khi phỏng vấn, tạo, sửa hoặc rà soát đặc tả chức năng hay endpoint POS, kể cả khi việc viết spec là một bước trong task triển khai. | Chủ động đọc và áp dụng `.agents/skills/create-pos-spec/SKILL.md` trước khi làm spec; đối chiếu tài liệu, trình bản nháp, hỏi các quyết định còn mở và chỉ ghi vào `specs/` sau khi đã chốt. Thông tin có sẵn không thay thế bước rà và chốt. | chưa ghi | có hiệu lực |
+| M-16 | Quy trình | qa, acceptance, evidence | Khi kiểm tra hoặc báo hoàn thành tiêu chí nghiệm thu. | Đối chiếu từng vế của spec/docs đã chốt với mã/UI cuối, tình huống kiểm tra và artifact gốc; mở lại ảnh, log, request/response và trạng thái DB khi cần để xác nhận đúng commit và kết quả. Không suy diễn từ test pass, ảnh đơn lẻ hay chứng cứ phiên bản cũ; không dựng chứng cứ từ trí nhớ. Thiếu hoặc mâu thuẫn thì ghi **chưa xác minh**, để trống tiêu chí và chạy lại để thu chứng cứ thật. | chưa ghi | hết hiệu lực |
 | M-18 | Hay quên | http, delete, no-content | API Guard validate Content-Type application/json và Frontend fetch client xử lý response status. | Request `DELETE` thông thường không có body; `JsonBodyGuard` phải bỏ qua kiểm tra Content-Type cho `DELETE` để không trả 400 sai. Phía client UI `request()` phải kiểm tra `response.status === 204` để trả về `undefined` thay vì parse JSON `response.json()` gây crash `UNKNOWN` error. | chưa ghi | có hiệu lực |
 | M-19 | Đã học được | auth, qa, uuid, seed | Tạo fixture / seed dữ liệu PostgreSQL cho user, store, session liên quan xác thực JWT. | `AccessGuard` và `AuthService.authenticateAccess` dùng regex kiểm tra claims UUID chuẩn RFC 4122 Variant 1 (`[89ab][0-9a-f]{3}` ở nhóm 4). Nếu tự viết UUID bằng tay có nhóm 4 bắt đầu bằng ký tự khác (như `0`, `4`), token JWT sẽ bị từ chối và văng 401 UNAUTHENTICATED ngay sau khi login 200. Khi seed, luôn dùng `gen_random_uuid()` của PostgreSQL hoặc hàm sinh UUID v4 chuẩn. | chưa ghi | có hiệu lực |
 | M-20 | Đã học được | db, postgres, test | Lấy khóa bi quan (pessimistic write) trong PostgreSQL và chạy bộ test tích hợp backend. | (1) PostgreSQL cấm `FOR UPDATE` trên nullable side của `LEFT JOIN`. Luôn tách thành câu lệnh khóa base entity (`innerJoin`) với `.setLock('pessimistic_write', undefined, ['alias'])`, rồi đọc quan hệ nullable ở câu lệnh tiếp theo trong cùng transaction. (2) Runner `node --test` mặc định chạy song song các file test; khi nhiều integration test cùng chạy trên một DB PostgreSQL có khóa dòng dài sẽ gây nghẽn `statement_timeout (57014)`. Cần chỉ định `--test-concurrency=1` để chạy tuần tự các suite kiểm thử cơ sở dữ liệu. | chưa ghi | có hiệu lực |
@@ -43,6 +42,19 @@
 | M-26 | Hay quên | records, tests, ci, paths | Di chuyển, đổi tên hoặc xóa thư mục tài liệu (`specs`, `plans`, `tasks`, `errors`, `qa-evidence`...) trong repo. | Trước khi commit, tìm cả tên thư mục trần (`specs`, `qa-evidence`...) trong `POS_API/src`, `POS_UI/src`, `POS_UI/test`, `.github`, vì test có thể đọc file bằng `resolve(__dirname, '../..', 'specs', file)` mà grep chuỗi `specs/` không thấy; rồi chạy toàn bộ `npm test` của POS_API (cần PostgreSQL) hoặc ít nhất các test không cần DB, và xem CI sau khi push. | 1 | có hiệu lực |
 | M-27 | Đã học được | ci, github, logs | Debug CI GitHub Actions khi `gh run view --log` hoặc `--log-failed` không hiện dòng `not ok`. | `gh` cắt log lớn (log step test của POS_API ~12 MB, `gh` chỉ trả ~2.200 dòng). Tải log gốc bằng `gh api repos/<owner>/<repo>/actions/runs/<run_id>/logs > logs.zip`, đọc file `Backend API (POS_API)/8_Run unit & integration tests.txt` trong zip (giải nén vào thư mục riêng, đọc bằng `python -I`), tìm `not ok`, `# fail`, `failureType` và `##[error]`. Tên repo trong URL là tên mới `POS-Food-And-Beverage`. | 1 | có hiệu lực |
 | M-28 | Hay quên | ui, tests, node-vm | Sửa giao diện của `LivePosScreen.tsx`, `LivePaymentDialog.tsx`, `SettingsScreen.tsx` hoặc màn nào có test nạp mã nguồn bằng `node:vm`. | Trước khi thêm import mới (kể cả `lucide-react`, `Dialog`) hoặc đổi cấu trúc nút, mở test của màn đó: `require` giả ném lỗi với module lạ, React giả không render component hàm tự định nghĩa, và nhiều câu kiểm so chuỗi chính xác nội dung nút (`'Đóng'`, `'Thanh toán'`, `'+'`, `'−'`). Thêm mock vào harness thay vì bỏ import; giữ chữ trên nút và đặt biểu tượng ngoài thẻ `<p role="alert">` khi test so cả nội dung thẻ. | 1 | có hiệu lực |
+| M-29 | Hay quên | migration, test, foundation, plan | Plan hoặc task thêm một migration mới trong `POS_API/src/database/migrations/`. | Kiểm và đưa vào plan việc cập nhật số migration gắn cứng ở `POS_API/src/foundation.test.ts:37` (`runMigrations().length`), cùng chạy toàn bộ `npm test` ngay sau khi thêm migration. | 1 | có hiệu lực |
+| M-30 | Hay quên | plan, sales, error-order, test | Plan ghi một thay đổi hợp đồng lỗi hoặc thứ tự các kiểm tra (scope/quyền/trạng thái) của hàm có sẵn, ví dụ mục 'Ảnh hưởng tới code hiện có'. | Thêm AC và test HTTP riêng cho chính thay đổi đó với người gọi thiếu điều kiện (không có ca, `branch_id` NULL, ngoài phạm vi), rồi kiểm bằng đột biến 'đảo thứ tự' để có test đỏ; không chỉ ghi chú trong plan. | 1 | có hiệu lực |
+| M-31 | Hay quên | test, flaky, clock, shifts | Viết test seed mốc thời gian (`started_at`, `created_at`) bằng đồng hồ DB `now()` rồi gọi API ghi mốc sau bằng đồng hồ Node (`new Date()`), đặc biệt khi PostgreSQL chạy trong Docker. | Seed mốc lùi (`now() - interval '1 minute'`) hoặc dùng cùng một đồng hồ; không dựa vào hai đồng hồ khớp nhau. Đồng hồ container Postgres lệch host tới ±1 s và có thể đổi sau khi Docker Desktop khởi động lại. | 1 | có hiệu lực |
+| M-32 | Đã học được | test, node-test, command | Chạy một case của `node --test` bằng `--test-name-pattern` khi test nằm lồng trong subtest (ví dụ `[R14-1]` trong `payment.integration.test.js`). | Dùng pattern theo tên test CHA; pattern khớp subtest không chạy được test cha nên lệnh báo `pass 1` mà thực tế không chạy gì. Xác nhận số test đã chạy trong output trước khi coi là xanh. | 1 | có hiệu lực |
+| M-33 | Quy trình | verify-ac, subagent, report | Giao `ac-verifier` (hoặc subagent khác) ghi `report-<n>.md`, `fails.md` dưới `.devloopflow/verify/<id>/`. | Dặn subagent trả toàn bộ nội dung report ở cuối câu trả lời (Write bị từ chối trong ngữ cảnh subagent: 'Subagents should return findings as text'); agent chính tự mở bằng chứng thô (đếm `# pass`, `pass:false`, `cleanup.txt`) rồi mới chép vào file, và ghi rõ điều đó trong report. | 1 | có hiệu lực |
+| M-34 | Đã học được | env, docker, database, test | Chạy `npm test` hoặc migration cho `POS_API` trên máy Windows của dự án. | `DATABASE_URL` trong `POS_API/.env` có thể không dùng được (cổng 5432 là relay WSL, sai mật khẩu); dùng PostgreSQL Docker `pos_infra-postgres-1` ở `127.0.0.1:15432` với `POSTGRES_USER/PASSWORD/DB` từ `POS_INFRA/.env.local`, dựng URL trong lệnh, không in hay ghi bí mật. Sau khi Docker Desktop khởi động lại, container thoát mã 255: `docker start pos_infra-postgres-1`. | 1 | có hiệu lực |
+| M-35 | Quy trình | tdd, mutation, subagent | Giao `tdd` kiểm đột biến bằng script tự động trên file production. | Yêu cầu `timeout` cho mỗi lần chạy, khôi phục file bằng `cmp` với bản sao sau MỖI đột biến và xác nhận lại bằng `grep`; không dùng đột biến gây treo (ví dụ đưa `INSERT` ra ngoài transaction) và agent chính kiểm `git diff` file production sau khi `tdd` báo xong. | 1 | có hiệu lực |
+| M-36 | Ý của user | workflow, communication, approval | Trình user các câu hỏi làm rõ, đề xuất hoặc thuật ngữ kỹ thuật cần user duyệt. | Giải thích từng điểm bằng lời thường (đề xuất là gì, vì sao, hậu quả nếu chọn khác) trước khi xin duyệt; gọi tên thuật ngữ (flaky, 'chưa chắc', bước 10c) kèm nghĩa; không coi 'đồng ý hết' khi user nói chưa hiểu. | 1 | có hiệu lực |
+
+| M-37 | Ý của user | reuse, tdd, existing-behavior | Khi task đã có hành vi hoặc mã đáp ứng yêu cầu. | Tái sử dụng phần đã có; kiểm xác nhận hành vi hiện tại và báo kết quả thật. | 1 | có hiệu lực |
+| M-38 | Hay quên | backlog, ledger, records | Khi ghi hoặc cập nhật một finding trong backlog. | Cập nhật cả bảng Tổng hợp lẫn phần Chi tiết cùng trạng thái và kiểm dòng nằm trong bảng Markdown. | 1 | có hiệu lực |
+| M-39 | Hay quên | qa, acceptance, evidence, ui, tablet, accessibility | Khi chuẩn bị hoặc kiểm nghiệm thu, đặc biệt form và hộp thoại trên tablet. | Lập ma trận AC–chứng cứ và lưu hash mã; đối chiếu từng vế với mã/UI cuối và artifact gốc, ghi chưa xác minh khi thiếu; kiểm browser thật kích thước chạm, nhãn và tương phản theo DESIGN. | 1 | có hiệu lực |
+| M-40 | Hay quên | ui, touch, keyboard, pointercancel | Khi xử lý cử chỉ chạm và chặn click tổng hợp. | Kiểm thao tác chuột, Enter và Space đầu tiên sau pointercancel, cùng việc hủy không kích hoạt action. | 1 | có hiệu lực |
 
 Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY.md` gốc không có bộ đếm số lần cùng bài học tái diễn. Đây không phải 0 lần và không phải số test/chứng cứ. Khi có lần tái diễn mới, ghi căn cứ và ngày rồi bắt đầu đếm các lần **sau chuyển đổi**; không suy ngược số lần lịch sử.
 
@@ -156,7 +168,7 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - số lần: 1
 - ghi lần đầu: 2026-11-12 (task 20261109-sprint08-payment)
 - cập nhật gần nhất: 2026-11-12
-- trạng thái: có hiệu lực
+- trạng thái: hết hiệu lực — đã gộp vào M-39 theo yêu cầu user, 2026-11-13
 
 ### M-10
 - loại: Hay quên
@@ -171,6 +183,9 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - trạng thái: có hiệu lực
 
 ## Lịch sử (chỉ thêm, không xoá)
+- 2026-11-14 — task 20261114-icon-tooltip-ui — thêm M-40 về thao tác sau pointercancel.
+- 2026-11-13 — theo yêu cầu user: gộp M-9, M-16 vào M-39; giữ hai mục cũ ở trạng thái hết hiệu lực.\n- 2026-11-13 — task 20261113-sprint09-ui — thêm M-37 (tái sử dụng), M-38 (nhất quán backlog), M-39 (kiểm tablet và trợ năng).
+- 2026-11-13 — task 20261112-sprint09-drawer-cancel-invoices — thêm M-29 (số migration gắn cứng), M-30 (đổi thứ tự kiểm tra cần AC), M-31 (seed thời gian bằng đồng hồ DB), M-32 (`--test-name-pattern` subtest), M-33 (subagent không ghi report), M-34 (DATABASE_URL/Docker), M-35 (đột biến treo), M-36 (ý user: giải thích trước khi duyệt).
 - 2026-11-12 — task 20261109-sprint08-payment — thêm M-9 (ma trận chứng cứ và hash), M-10 (test hành vi quyền qua HTTP).
 - 2026-11-09 — task 20261109-sprint08-payment — thêm M-2 (đối chiếu tài liệu provider), M-1 (phạm vi chi nhánh, lần đầu), M-3 (trạng thái chờ), M-5 (rà tài liệu sau PASS), M-6 (tdd bị ngắt), M-7 (verify-ac bị chặn).
 - 2026-11-10 — task 20261109-sprint08-payment — thêm M-4 (mã lỗi và spec), M-8 (secret và fixture); cập nhật M-1 (số lần 3), M-3 (số lần 2), M-5 (số lần 2), M-6 (số lần 3) theo backlog B-1..B-4 và sync-docs.
@@ -247,19 +262,7 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - số lần: chưa ghi trong nguồn lịch sử
 - ghi lần đầu: không ghi trong nguồn lịch sử
 - cập nhật gần nhất: 2026-11-12 (chuyển hồ sơ, không tái xác minh)
-- trạng thái: có hiệu lực
-
-### M-17
-- loại: Quy trình
-- tag: spec, pos, product-owner
-- khi nào áp dụng: Khi phỏng vấn, tạo, sửa hoặc rà soát đặc tả chức năng hay endpoint POS, kể cả khi việc viết spec là một bước trong task triển khai.
-- quy tắc: Chủ động đọc và áp dụng `.agents/skills/create-pos-spec/SKILL.md` trước khi làm spec; đối chiếu tài liệu, trình bản nháp, hỏi các quyết định còn mở và chỉ ghi vào `specs/` sau khi đã chốt. Thông tin có sẵn không thay thế bước rà và chốt.
-- vì sao: Bài học lịch sử nhập từ MEMORY.md gốc; không xác minh lại trong đợt chuyển hồ sơ.
-- bằng chứng: Người dùng nhắc kiểm tra việc dùng skill khi lập `specs/platform.md` ngày 2026-10-30; phần mô tả và quy trình của `.agents/skills/create-pos-spec/SKILL.md`.. Nguồn gốc: MEMORY.md mục Dùng skill khi làm đặc tả POS.
-- số lần: chưa ghi trong nguồn lịch sử
-- ghi lần đầu: không ghi trong nguồn lịch sử
-- cập nhật gần nhất: 2026-11-12 (chuyển hồ sơ, không tái xác minh)
-- trạng thái: có hiệu lực
+- trạng thái: hết hiệu lực — đã gộp vào M-39 theo yêu cầu user, 2026-11-13
 
 ### M-18
 - loại: Hay quên
@@ -391,4 +394,149 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - số lần: 1
 - ghi lần đầu: 2026-11-12
 - cập nhật gần nhất: 2026-11-12
+- trạng thái: có hiệu lực
+
+### M-29
+- loại: Hay quên
+- tag: migration, test, foundation, plan
+- khi nào áp dụng: Plan hoặc task thêm một migration mới trong `POS_API/src/database/migrations/`.
+- quy tắc: Kiểm và đưa vào plan việc cập nhật số migration gắn cứng ở `POS_API/src/foundation.test.ts:37` (`runMigrations().length`), cùng chạy toàn bộ `npm test` ngay sau khi thêm migration.
+- vì sao: Migration `20261113000000-ShiftExpenses.ts` làm số migration từ 10 thành 11; plan không nhắc nên `tdd` DỪNG ở ST-1 (`11 !== 10`) và phải sửa plan, xin user duyệt (delta ST-1).
+- bằng chứng: Task 20261112-sprint09-drawer-cancel-invoices: report `tdd` ST-1 (trạng thái DỪNG), Changelog plan ngày 2026-11-13 ('delta ST-1, user duyệt "có sửa luôn"'), `POS_API/src/foundation.test.ts:37`.
+- số lần: 1
+- ghi lần đầu: 2026-11-13 (task 20261112-sprint09-drawer-cancel-invoices)
+- cập nhật gần nhất: 2026-11-13
+- trạng thái: có hiệu lực
+
+### M-30
+- loại: Hay quên
+- tag: plan, sales, error-order, test
+- khi nào áp dụng: Plan ghi một thay đổi hợp đồng lỗi hoặc thứ tự các kiểm tra (scope/quyền/trạng thái) của hàm có sẵn, ví dụ mục 'Ảnh hưởng tới code hiện có'.
+- quy tắc: Thêm AC và test HTTP riêng cho chính thay đổi đó với người gọi thiếu điều kiện (không có ca, `branch_id` NULL, ngoài phạm vi), rồi kiểm bằng đột biến 'đảo thứ tự' để có test đỏ; không chỉ ghi chú trong plan.
+- vì sao: Sprint 09 đổi `cancel()` đọc đơn theo phạm vi trước `writable()` (404 `NOT_FOUND` thay vì 409 `SHIFT_NOT_OPEN`) nhưng plan ghi 'không test hiện có nào kiểm' và không đặt AC; reviewer vòng 1 bắt thành R1-1 [Medium].
+- bằng chứng: Task 20261112-sprint09-drawer-cancel-invoices: Lịch sử review R1-1; `.devloopflow/errors/20261113-cancel-open-scope-order-untested.md`.
+- số lần: 1
+- ghi lần đầu: 2026-11-13 (task 20261112-sprint09-drawer-cancel-invoices)
+- cập nhật gần nhất: 2026-11-13
+- trạng thái: có hiệu lực
+
+### M-31
+- loại: Hay quên
+- tag: test, flaky, clock, shifts
+- khi nào áp dụng: Viết test seed mốc thời gian (`started_at`, `created_at`) bằng đồng hồ DB `now()` rồi gọi API ghi mốc sau bằng đồng hồ Node (`new Date()`), đặc biệt khi PostgreSQL chạy trong Docker.
+- quy tắc: Seed mốc lùi (`now() - interval '1 minute'`) hoặc dùng cùng một đồng hồ; không dựa vào hai đồng hồ khớp nhau. Đồng hồ container Postgres lệch host tới ±1 s và có thể đổi sau khi Docker Desktop khởi động lại.
+- vì sao: `[R14-1]` và 4 test sau đỏ 2/3 lần `npm test` với `chk_work_shifts_ended_at` (`23514`); sau khi đổi 9 chỗ seed thì xanh 3/3 dù độ lệch vẫn ±1 s.
+- bằng chứng: Task 20261112-sprint09-drawer-cancel-invoices: verify-ac lần 2 (`evidence/v2/clock-skew.txt`, `npm-test.raw.log`), lần 3 (xanh 3/3), backlog B-50; `.devloopflow/errors/20261113-payment-test-seed-db-clock-flaky.md`.
+- số lần: 1
+- ghi lần đầu: 2026-11-13 (task 20261112-sprint09-drawer-cancel-invoices)
+- cập nhật gần nhất: 2026-11-13
+- trạng thái: có hiệu lực
+
+### M-32
+- loại: Đã học được
+- tag: test, node-test, command
+- khi nào áp dụng: Chạy một case của `node --test` bằng `--test-name-pattern` khi test nằm lồng trong subtest (ví dụ `[R14-1]` trong `payment.integration.test.js`).
+- quy tắc: Dùng pattern theo tên test CHA; pattern khớp subtest không chạy được test cha nên lệnh báo `pass 1` mà thực tế không chạy gì. Xác nhận số test đã chạy trong output trước khi coi là xanh.
+- vì sao: Lần Red của B-50 dùng pattern `R14-1` báo xanh giả; phải dùng `--test-name-pattern="ST-4.AC-1 BR-31/32/34/35 CASH"` mới chạy được 7 test và thấy 6 đỏ.
+- bằng chứng: Task 20261112-sprint09-drawer-cancel-invoices: report `tdd` fix-backlog B-50 (`evidence/fix-backlog-b50/red.log`).
+- số lần: 1
+- ghi lần đầu: 2026-11-13 (task 20261112-sprint09-drawer-cancel-invoices)
+- cập nhật gần nhất: 2026-11-13
+- trạng thái: có hiệu lực
+
+### M-33
+- loại: Quy trình
+- tag: verify-ac, subagent, report
+- khi nào áp dụng: Giao `ac-verifier` (hoặc subagent khác) ghi `report-<n>.md`, `fails.md` dưới `.devloopflow/verify/<id>/`.
+- quy tắc: Dặn subagent trả toàn bộ nội dung report ở cuối câu trả lời (Write bị từ chối trong ngữ cảnh subagent: 'Subagents should return findings as text'); agent chính tự mở bằng chứng thô (đếm `# pass`, `pass:false`, `cleanup.txt`) rồi mới chép vào file, và ghi rõ điều đó trong report.
+- vì sao: Cả 3 lần verify-ac của task, subagent không ghi được `report-*.md`/`fails.md`; không lách bằng Bash.
+- bằng chứng: Task 20261112-sprint09-drawer-cancel-invoices: report-1.md, report-2.md, report-3.md (mục 'Kiểm lại của agent chính').
+- số lần: 1
+- ghi lần đầu: 2026-11-13 (task 20261112-sprint09-drawer-cancel-invoices)
+- cập nhật gần nhất: 2026-11-13
+- trạng thái: có hiệu lực
+
+### M-34
+- loại: Đã học được
+- tag: env, docker, database, test
+- khi nào áp dụng: Chạy `npm test` hoặc migration cho `POS_API` trên máy Windows của dự án.
+- quy tắc: `DATABASE_URL` trong `POS_API/.env` có thể không dùng được (cổng 5432 là relay WSL, sai mật khẩu); dùng PostgreSQL Docker `pos_infra-postgres-1` ở `127.0.0.1:15432` với `POSTGRES_USER/PASSWORD/DB` từ `POS_INFRA/.env.local`, dựng URL trong lệnh, không in hay ghi bí mật. Sau khi Docker Desktop khởi động lại, container thoát mã 255: `docker start pos_infra-postgres-1`.
+- vì sao: Kiểm thử 2026-11-13: 'password authentication failed for user' với `.env`; container exited (255) sau restart Docker; tài khoản có quyền `CREATEDB` nên test tạo DB riêng.
+- bằng chứng: Task 20261112-sprint09-drawer-cancel-invoices: phiên 2026-11-13 (kết nối thử bằng `pg`, `docker ps -a`); ST-1..ST-5 và verify-ac chạy trên cổng 15432.
+- số lần: 1
+- ghi lần đầu: 2026-11-13 (task 20261112-sprint09-drawer-cancel-invoices)
+- cập nhật gần nhất: 2026-11-13
+- trạng thái: có hiệu lực
+
+### M-35
+- loại: Quy trình
+- tag: tdd, mutation, subagent
+- khi nào áp dụng: Giao `tdd` kiểm đột biến bằng script tự động trên file production.
+- quy tắc: Yêu cầu `timeout` cho mỗi lần chạy, khôi phục file bằng `cmp` với bản sao sau MỖI đột biến và xác nhận lại bằng `grep`; không dùng đột biến gây treo (ví dụ đưa `INSERT` ra ngoài transaction) và agent chính kiểm `git diff` file production sau khi `tdd` báo xong.
+- vì sao: Ở ST-4, đột biến 'ngoài transaction' làm script treo, chết giữa chừng khi `sales.service.ts` đang bị đột biến; phải khôi phục tay và kiểm lại.
+- bằng chứng: Task 20261112-sprint09-drawer-cancel-invoices: report `tdd` ST-4; agent chính đọc `git diff POS_API/src/sales/sales.service.ts` sạch.
+- số lần: 1
+- ghi lần đầu: 2026-11-13 (task 20261112-sprint09-drawer-cancel-invoices)
+- cập nhật gần nhất: 2026-11-13
+- trạng thái: có hiệu lực
+
+### M-36
+- loại: Ý của user
+- tag: workflow, communication, approval
+- khi nào áp dụng: Trình user các câu hỏi làm rõ, đề xuất hoặc thuật ngữ kỹ thuật cần user duyệt.
+- quy tắc: Giải thích từng điểm bằng lời thường (đề xuất là gì, vì sao, hậu quả nếu chọn khác) trước khi xin duyệt; gọi tên thuật ngữ (flaky, 'chưa chắc', bước 10c) kèm nghĩa; không coi 'đồng ý hết' khi user nói chưa hiểu.
+- vì sao: User nhiều lần dừng để hỏi nghĩa trước khi quyết.
+- bằng chứng: Lời user nguyên văn, task 20261112-sprint09-drawer-cancel-invoices: "cần chốt lại 9 điều trước khi viết spec đã t cần mày giải thích" (2026-11-13); "còn 4 điều đó cần giải thích"; "chưa chắc là sao"; "bị flaky là sao"; "bước 10c là gì thế".
+- số lần: 1
+- ghi lần đầu: 2026-11-13 (task 20261112-sprint09-drawer-cancel-invoices)
+- cập nhật gần nhất: 2026-11-13
+- trạng thái: có hiệu lực
+
+
+### M-37
+- loại: Ý của user
+- tag: reuse, tdd, existing-behavior
+- khi nào áp dụng: Khi task đã có hành vi hoặc mã đáp ứng yêu cầu.
+- quy tắc: Tái sử dụng phần đã có; kiểm xác nhận hành vi hiện tại và báo kết quả thật.
+- vì sao: User chọn kiểm xác nhận message đã có thay vì viết lại phần đã làm.
+- bằng chứng: User nói nguyên văn “có rồi thì tái sử dụng thôi”; task `.devloopflow/tasks/active/20261113-sprint09-ui.md`, lịch sử ST-2.
+- số lần: 1
+- ghi lần đầu: 2026-11-13 (task 20261113-sprint09-ui)
+- cập nhật gần nhất: 2026-11-13
+- trạng thái: có hiệu lực
+
+### M-38
+- loại: Hay quên
+- tag: backlog, ledger, records
+- khi nào áp dụng: Khi ghi hoặc cập nhật một finding trong backlog.
+- quy tắc: Cập nhật cả bảng Tổng hợp lẫn phần Chi tiết cùng trạng thái và kiểm dòng nằm trong bảng Markdown.
+- vì sao: B-51 ban đầu chỉ có phần chi tiết; dòng tổng hợp thêm sau lại cách bảng bởi dòng trống, khiến cách đếm theo bảng không nhất quán.
+- bằng chứng: `.devloopflow/review/backlog.md`, B-51; cuộc hội thoại task 20261113-sprint09-ui.
+- số lần: 1
+- ghi lần đầu: 2026-11-13 (task 20261113-sprint09-ui)
+- cập nhật gần nhất: 2026-11-13
+- trạng thái: có hiệu lực
+
+### M-40
+- loại: Hay quên
+- tag: ui, touch, keyboard, pointercancel
+- khi nào áp dụng: Khi xử lý cử chỉ chạm và chặn click tổng hợp.
+- quy tắc: Kiểm thao tác chuột, Enter và Space đầu tiên sau pointercancel, cùng việc hủy không kích hoạt action.
+- vì sao: Cờ chặn click sau hủy cảm ứng từng nuốt thao tác hợp lệ kế tiếp; test hủy riêng không phát hiện lỗi.
+- bằng chứng: `.devloopflow/errors/20261114-icon-touch-cancel-blocks-next-action.md`, review R1-1 task `20261114-icon-tooltip-ui`.
+- số lần: 1
+- ghi lần đầu: 2026-11-14 (task 20261114-icon-tooltip-ui)
+- cập nhật gần nhất: 2026-11-14
+- trạng thái: có hiệu lực
+
+### M-39
+- loại: Hay quên
+- tag: qa, acceptance, evidence, ui, tablet, accessibility
+- khi nào áp dụng: Khi chuẩn bị hoặc kiểm nghiệm thu, đặc biệt form và hộp thoại trên tablet.
+- quy tắc: Lập ma trận AC–chứng cứ và lưu hash mã; đối chiếu từng vế spec/docs với mã/UI cuối, tình huống và artifact gốc (ảnh, log, request/response, DB khi cần); không suy từ test pass, ảnh đơn lẻ, chứng cứ cũ hay trí nhớ; thiếu hoặc mâu thuẫn thì ghi chưa xác minh và thu lại chứng cứ; kiểm browser thật kích thước chạm, nhãn liên kết và tương phản ở các viewport theo DESIGN.
+- vì sao: Nghiệm thu lần 1 phát hiện ba lỗi V1-1..3 dù test và build xanh; test trên browser sau sửa đo từng điều khiển và nhãn.
+- bằng chứng: M-9: `.devloopflow/verify/20261109-sprint08-payment/report-14.md`, `report-15.md`, vòng 17 và manifest `qa-evidence/20261111-194533-48ed476-s8-verify-ac-r17/run.md`; M-16: yêu cầu người dùng phiên 2026-10-29 và quy tắc bằng chứng QA trong `AGENTS.md`; M-39: `.devloopflow/verify/20261113-sprint09-ui/fails.md`, `report-1.md`, `report-2.md` và các hồ sơ lỗi `20261113-shift-close-touch-targets.md`, `20261113-shift-close-field-labels.md`, `20261113-force-close-field-contrast.md`.
+- số lần: 1
+- ghi lần đầu: 2026-11-13 (task 20261113-sprint09-ui)
+- cập nhật gần nhất: 2026-11-13 — gộp M-9 và M-16 theo yêu cầu user.
 - trạng thái: có hiệu lực

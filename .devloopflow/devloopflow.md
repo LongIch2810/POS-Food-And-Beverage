@@ -1,7 +1,7 @@
 # .devloopflow/devloopflow.md
 <!-- Sinh bởi /devloopflow:init. Cấu hình RIÊNG cho quy trình devloopflow của dự án này. Mọi fact có path nguồn; không ghi secret. -->
 
-- Cập nhật lần cuối: 2026-11-12
+- Cập nhật lần cuối: 2026-11-14
 
 ## 1. Liên kết với tài liệu chung
 - Giới thiệu chung: `AGENTS.md`, `CLAUDE.md` (bản sao nội dung của `AGENTS.md`, tạo 2026-11-09), `README.md`.
@@ -20,15 +20,17 @@
 - Dừng app local: `docker compose --env-file POS_INFRA/.env.local -f POS_INFRA/compose.local.yml down`; không thêm `-v` vì sẽ xóa volume dữ liệu local. Nguồn: `README.md`. Chưa chạy thử.
 - Build API: trong `POS_API/`, `npm run build`. Nguồn: `POS_API/package.json`, `.github/workflows/ci.yml`. Đã chạy thử 2026-11-10 (local): exit 0.
 - Build UI: trong `POS_UI/`, `npm run build`. Lệnh này typecheck rồi build Vite. Nguồn: `POS_UI/package.json`, `.github/workflows/ci.yml`. Đã chạy thử 2026-11-10 (local): exit 0.
-- Test toàn bộ API: trong `POS_API/`, `npm test`; lệnh tự build rồi chạy `node:test`. Cần `DATABASE_URL` trỏ tới PostgreSQL local/test; test tạo và xóa database thử ngẫu nhiên với prefix `pos_pb01_test_`, `pos_pb02_test_`, `pos_pb03_test_`, `pos_pb04_test_`, `pos_pb04_migration_` hoặc prefix theo module trong test. Tài khoản DB cần quyền `CREATE DATABASE`. Tuyệt đối không dùng DB production. Nguồn: `POS_API/package.json`, `POS_API/README.md`, `POS_API/src/**/tests/`. Đã chạy thử 2026-11-11 (local, `DATABASE_URL` trỏ PostgreSQL sandbox, không phải DB production): exit 0, 155/155 pass.
-- Test toàn bộ UI: trong `POS_UI/`, `npm test` (Node `node:test`). Nguồn: `POS_UI/package.json`, `.github/workflows/ci.yml`. Đã chạy thử 2026-11-11 (local): exit 0, 85/85 pass.
+- Test toàn bộ API: trong `POS_API/`, `npm test`; lệnh tự build rồi chạy `node:test`. Cần `DATABASE_URL` trỏ tới PostgreSQL local/test; test tạo và xóa database thử ngẫu nhiên với prefix `pos_pb01_test_`, `pos_pb02_test_`, `pos_pb03_test_`, `pos_pb04_test_`, `pos_pb04_migration_` hoặc prefix theo module trong test. Tài khoản DB cần quyền `CREATE DATABASE`. Tuyệt đối không dùng DB production. Nguồn: `POS_API/package.json`, `POS_API/README.md`, `POS_API/src/**/tests/`. Đã chạy thử 2026-11-13 (local, `DATABASE_URL` trỏ PostgreSQL sandbox Docker cổng 15432, không phải DB production): exit 0, 224/224 pass (task 20261113-sprint09-ui, evidence/b51/primary-api.log).
+- Test toàn bộ UI: trong `POS_UI/`, `npm test` (Node `node:test`). Nguồn: `POS_UI/package.json`, `.github/workflows/ci.yml`. Đã chạy thử 2026-11-13 (local): exit 0, 143/143 pass (task 20261113-sprint09-ui, evidence/b51/ui-test-final.log).
 - Test một file / một case: manifest không định nghĩa script riêng. API test TypeScript phải build trước; test UI là `test/*.test.mjs`. Dùng `node --test` với file hoặc `--test-name-pattern` khi cần tập trung; xác nhận đúng đường dẫn output `dist/` và lệnh cụ thể theo test liên quan trước khi chạy. Chưa chạy thử.
-- Lint: không có script lint trong `POS_API/package.json` hoặc `POS_UI/package.json`; CI hiện chạy build, test và audit dependency.
+- Test giao diện đóng ca trên Chrome (chạy riêng, không thuộc `npm test`): từ `POS_UI/`, `node --test test/shift-close-accessibility.browser.mjs`; cần Chrome hoặc Chromium, có thể chỉ đường dẫn qua `CHROME_BIN`. Đã chạy thử local: 3/3 pass (task 20261113-sprint09-ui, evidence/fix-verify/green.log).\n- Lint: không có script lint trong `POS_API/package.json` hoặc `POS_UI/package.json`; CI hiện chạy build, test và audit dependency.
 - Format: không có script format trong manifest hai package.
 - Typecheck: trong `POS_UI/`, `npm run typecheck`. API kiểm kiểu qua `npm run build`. Nguồn: hai `package.json`. Đã chạy thử 2026-11-10 (local): `npm run typecheck` của `POS_UI/` exit 0.
 - Coverage: không có script hoặc ngưỡng coverage trong manifest/CI.
 - Migration / seed: trong `POS_API/`, `npm run migration:run` chạy TypeScript build rồi TypeORM migration theo `DATABASE_URL`; chỉ chạy với DB local/test đã xác nhận. Không dùng `schema:sync`; migration không tự chạy khi API khởi động. Nguồn: `POS_API/package.json`, `POS_API/README.md`, `docs/architecture/ARCHITECTURE.md`. Đã chạy trên sandbox local ngày 2026-11-11: output ghi migration `ManagerCancelOpen20261111000000` thành công và `COMMIT`; không có metadata exit code riêng. Bằng chứng local: `.devloopflow/verify/20261111-194533-48ed476-s8-verify-ac-r17/evidence/r17b-migration.command.json`, `r17b-migration.stdout.txt`.
 - Lệnh an toàn đã chạy trong lần init: `node --version` → `v22.22.2`; `npm --version` → `10.9.7`; `npm run` trong từng package để liệt kê script (exit 0). Không chạy build, test, migration hoặc khởi động dịch vụ.
+
+- Test browser icon/tooltip chạy riêng ngoài `npm test`: từ `POS_UI/`, `node --test test/icon-actions.browser.mjs`; cần Chrome hoặc Chromium. Đã kiểm local 2026-11-14: 22/22 pass (task 20261114-icon-tooltip-ui, evidence/verify-r1/icon-tests.log).
 
 ## 3. Cách kiểm AC thật (cho `ac-verifier`)
 - Chạy app local bằng Docker Compose theo lệnh ở mục 2; kiểm tra health tại `http://localhost:3000/api/v1/health`; mở UI tại `http://localhost:5173`. Chỉ dùng sandbox/local.
@@ -104,3 +106,8 @@
 - 2026-11-10 — Mục 2 (sync-docs lần 5, sau review vòng 10): cập nhật số test đã chạy thử: API 148/148 (từ 138/138), UI 62/62 (từ 60/60); lệnh không đổi — task 20261109-sprint08-payment.
 - 2026-11-10 — Mục 2: đổi "Chưa chạy thử" thành "Đã chạy thử 2026-11-10 (local)" cho build API, build UI, test API (132/132), test UI (57/57), typecheck UI, đều exit 0 — task 20261109-sprint08-payment (sync-docs, sau fix-backlog). Không đổi lệnh, không đổi mục khác.
 - 2026-11-11 — Mục 2 (sync-docs lần 6, sau verify-ac vòng 17 và fix-backlog B-39/B-40): cập nhật số test đã chạy thử: API 155/155 (từ 148/148), UI 85/85 (từ 62/62); lệnh không đổi (agent chính chạy lại local, UI typecheck/build exit 0) — task 20261109-sprint08-payment.
+- 2026-11-13 — Mục 2 (sync-docs lần 7, sau verify-ac lần 1 task 20261112-sprint09-drawer-cancel-invoices): cập nhật số test API đã chạy thử: 199/199 (từ 155/155); lệnh không đổi (agent chính chạy lại local, exit 0). Số migration hiện tại 11 (test `foundation.test.ts:37`).
+- 2026-11-13 — Mục 2 (sync-docs lần 8, task 20261112-sprint09-drawer-cancel-invoices): số test API 199/199 → 204/204 sau vòng review và fix-backlog (bằng chứng: `.devloopflow/verify/20261112-sprint09-drawer-cancel-invoices/report-3.md`, `npm test` xanh 3 lần).
+
+- 2026-11-13 — Mục 2: cập nhật kết quả test API 224/224, UI 143/143 và thêm lệnh kiểm Chrome chạy riêng — task 20261113-sprint09-ui (sync-docs).\n
+- 2026-11-14 — Mục 2: bổ sung lệnh kiểm browser icon/tooltip và kết quả local — task 20261114-icon-tooltip-ui (sync-docs).

@@ -110,7 +110,7 @@ test('ST-7 manual bank confirmation and exception scope', {timeout:120_000},asyn
     // Shared by [B-16] and [B-23]: a CASHIER without branch assignment and without branch.access_all.
     await db.query(`INSERT INTO users(id,store_id,branch_id,role_id,full_name,username,password_hash,must_change_password)
       VALUES($1,$2,NULL,(SELECT id FROM roles WHERE name='CASHIER'),'b16_nobranch','b16_nobranch',$3,false)`,[randomUUID(),store,hash]);
-    await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now())`,[shift,branch,cashier]);
+    await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now() - interval '1 minute')`,[shift,branch,cashier]);
     const category=randomUUID(),size=randomUUID(),product=randomUUID(),ps=randomUUID(),ingredient=randomUUID();
     await db.query('INSERT INTO categories(id,store_id,name) VALUES($1,$2,$3)',[category,store,'Manual drinks']);
     await db.query('INSERT INTO sizes(id,store_id,name) VALUES($1,$2,$3)',[size,store,'M']);
@@ -154,7 +154,7 @@ test('ST-7 manual bank confirmation and exception scope', {timeout:120_000},asyn
     await t.test('[R1-1] OWNER access_all cancels QR of another branch while holding a cashier shift there',async()=>{
       const branch3=randomUUID(),shift3=randomUUID();
       await db.query('INSERT INTO branches(id,store_id,code,name) VALUES($1,$2,$3,$4)',[branch3,store,'M3','Third']);
-      await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now())`,[shift3,branch3,branchOwner]);
+      await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now() - interval '1 minute')`,[shift3,branch3,branchOwner]);
       const qr=await pending({branch:branch3,shift:shift3,cashier:branchOwner});
       const cancel=(headers:Record<string,string>)=>{const {'Content-Type':_type,...bodyless}=headers;return fetch(`${base}/transfer-attempts/${qr.attemptId}/cancel`,{method:'POST',headers:bodyless});};
       assert.equal((await cancel(bh)).status,404,'MANAGER other branch must not cancel');
@@ -356,7 +356,7 @@ test('ST-7 manual bank confirmation and exception scope', {timeout:120_000},asyn
       const actor2=randomUUID(),shift2=randomUUID();
       await db.query(`INSERT INTO users(id,store_id,branch_id,role_id,full_name,username,password_hash)
         VALUES($1,$2,$3,(SELECT id FROM roles WHERE name='CASHIER'),'Cashier','st7_race_cashier','hash')`,[actor2,store,branch2]);
-      await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now())`,[shift2,branch2,actor2]);
+      await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now() - interval '1 minute')`,[shift2,branch2,actor2]);
       const manual=await pending(),auto=await pending({branch:branch2,shift:shift2,cashier:actor2}),ref='FT-MANUAL-RACE';
       const [manualResponse,webhookResponse]=await Promise.all([confirm(manual,oh,{...body,transactionRef:ref}),webhook(auto,7402,ref)]);
       assert.equal(webhookResponse.status,200);assert.ok([201,409].includes(manualResponse.status));
@@ -463,7 +463,7 @@ test('ST-1.AC-2 E2E-AC-7 bank account and QR snapshot accept 19 digits and rejec
     await db.query('INSERT INTO stores(id,name) VALUES($1,$2)',[store,'Account boundary store']);
     await db.query('INSERT INTO branches(id,store_id,code,name) VALUES($1,$2,$3,$4)',[branch,store,'LIMIT','Branch']);
     await db.query(`INSERT INTO users(id,store_id,branch_id,role_id,full_name,username,password_hash) VALUES($1,$2,$3,(SELECT id FROM roles WHERE name='CASHIER'),'Cashier','limit_cashier','hash')`,[actor,store,branch]);
-    await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now())`,[shift,branch,actor]);
+    await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now() - interval '1 minute')`,[shift,branch,actor]);
     await db.query(`INSERT INTO invoices(id,branch_id,work_shift_id,created_by,invoice_code,order_type,status,subtotal,total_amount)
       VALUES($1,$2,$3,$4,'HD12345678','TAKEAWAY','OPEN',50000,50000)`,[invoice,branch,shift,actor]);
     await t.test('test_ST1_bank_account_19_limit',async()=>{
@@ -498,7 +498,7 @@ test('ST-4.AC-1 BR-31/32/34/35 CASH payment is atomic and replay safe', {timeout
     await db.query('INSERT INTO branches(id,store_id,code,name) VALUES($1,$2,$3,$4)',[branch,store,'ST4','Branch']);
     await db.query(`INSERT INTO users(id,store_id,branch_id,role_id,full_name,username,password_hash) VALUES($1,$2,$3,(SELECT id FROM roles WHERE name='CASHIER'),'Cashier','st4_cashier','hash')`,[actor,store,branch]);
     const password=randomBytes(18).toString('base64url');await db.query('UPDATE users SET password_hash=$2,must_change_password=false WHERE id=$1',[actor,await bcrypt.hash(password,4)]);
-    await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now())`,[shift,branch,actor]);
+    await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now() - interval '1 minute')`,[shift,branch,actor]);
     await db.query('INSERT INTO categories(id,store_id,name) VALUES($1,$2,$3)',[category,store,'Drinks']);
     await db.query('INSERT INTO sizes(id,store_id,name) VALUES($1,$2,$3)',[size,store,'M']);
     await db.query('INSERT INTO products(id,category_id,name) VALUES($1,$2,$3)',[product,category,'Tea']);
@@ -647,7 +647,7 @@ test('ST-3.AC-1 BR-35/39/42/43/72/104 zero completion is atomic and idempotent',
     await db.query(`INSERT INTO users(id,store_id,branch_id,role_id,full_name,username,password_hash) VALUES($1,$2,$3,(SELECT id FROM roles WHERE name='CASHIER'),'Cashier','st3_cashier','hash')`,[actor,store,branch]);
     const password=randomBytes(18).toString('base64url');
     await db.query('UPDATE users SET password_hash=$2,must_change_password=false WHERE id=$1',[actor,await bcrypt.hash(password,4)]);
-    await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now())`,[shift,branch,actor]);
+    await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now() - interval '1 minute')`,[shift,branch,actor]);
     await db.query('INSERT INTO categories(id,store_id,name) VALUES($1,$2,$3)',[category,store,'Drinks']);
     await db.query('INSERT INTO sizes(id,store_id,name) VALUES($1,$2,$3)',[size,store,'M']);
     await db.query('INSERT INTO products(id,category_id,name) VALUES($1,$2,$3)',[product,category,'Tea']);
@@ -759,7 +759,7 @@ test('ST-2.AC-1 BR-24/36/39/40 promo on OPEN invoices and readonly preview', { t
     await db.query(`INSERT INTO users(id,store_id,branch_id,role_id,full_name,username,password_hash) VALUES($1,$2,$3,(SELECT id FROM roles WHERE name='CASHIER'),'Cashier','st2_cashier','hash')`,[actor,store,branch]);
     const password=randomBytes(18).toString('base64url');
     await db.query('UPDATE users SET password_hash=$2,must_change_password=false WHERE id=$1',[actor,await bcrypt.hash(password,4)]);
-    await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now())`,[shift,branch,actor]);
+    await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now() - interval '1 minute')`,[shift,branch,actor]);
     await db.query(`INSERT INTO cash_reconciliations(id,work_shift_id,opening_cash,status) VALUES($1,$2,0,'PENDING')`,[randomUUID(),shift]);
     await db.query('INSERT INTO categories(id,store_id,name) VALUES($1,$2,$3)',[category,store,'Drinks']);
     await db.query('INSERT INTO sizes(id,store_id,name) VALUES($1,$2,$3)',[size,store,'M']);
@@ -893,7 +893,7 @@ test('ST-5.AC-1/2 bank account and QR attempts use live HTTP and isolated Postgr
       [manager,store,branch,'MANAGER','st5_manager'],[otherOwner,otherStore,null,'OWNER','st5_other_owner'],
     ] as const)await db.query(`INSERT INTO users(id,store_id,branch_id,role_id,full_name,username,password_hash,must_change_password)
       VALUES($1,$2,$3,(SELECT id FROM roles WHERE name=$4),$5,$5,$6,false)`,[id,storeId,branchId,role,username,hash]);
-    await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now())`,[shift,branch,cashier]);
+    await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now() - interval '1 minute')`,[shift,branch,cashier]);
     await db.query(`INSERT INTO cash_reconciliations(id,work_shift_id,opening_cash,status) VALUES($1,$2,0,'PENDING')`,[randomUUID(),shift]);
     const category=randomUUID(),size=randomUUID(),product=randomUUID(),ps=randomUUID();
     await db.query('INSERT INTO categories(id,store_id,name) VALUES($1,$2,$3)',[category,store,'QR drinks']);
@@ -1255,7 +1255,7 @@ test('ST-6.AC-1 SePay authentication, quarantine and deduplication on PostgreSQL
       await db.query('INSERT INTO branches(id,store_id,code,name) VALUES($1,$2,$3,$4)',[branch2,store,'WEB2','Second branch']);
       await db.query(`INSERT INTO users(id,store_id,branch_id,role_id,full_name,username,password_hash)
         VALUES($1,$2,$3,(SELECT id FROM roles WHERE name='CASHIER'),'Cashier','st6_cashier2','hash')`,[actor2,store,branch2]);
-      await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now())`,[shift2,branch2,actor2]);
+      await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now() - interval '1 minute')`,[shift2,branch2,actor2]);
       const first=await makePending(),second=await makePending(50000,undefined,{branch:branch2,shift:shift2,actor:actor2});
       const event=(id:number,qr:any)=>JSON.stringify(payload(id,{code:qr.transferReference,content:qr.transferReference,referenceCode:'FT-RACE-ST6'}));
       const bodies=[event(9711,first),event(9712,second)],responses=await Promise.all(bodies.map(body=>post(body)));

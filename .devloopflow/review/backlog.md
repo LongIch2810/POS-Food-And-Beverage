@@ -1,7 +1,7 @@
 # Backlog lỗi nhẹ (Low, Very Low) chờ xử lý
 <!-- Do agent chính ghi vào .devloopflow/review/backlog.md khi user chọn "đưa vào backlog" ở bước 10 của run (hoặc khi review dùng rời và user muốn xử lý sau). Được commit nên chỉ ghi tóm tắt và trích đoạn ngắn không nhạy cảm, không secret. Chỉ thêm, không xoá mục cũ; đổi trạng thái khi xử lý và ghi thêm dòng lịch sử. Xử lý các mục bằng /devloopflow:fix-backlog. -->
 
-- Cập nhật lần cuối: 2026-11-11
+- Cập nhật lần cuối: 2026-11-14
 - Id `B-<n>` tăng dần trong toàn dự án, không dùng lại.
 
 ## Tổng hợp
@@ -47,6 +47,19 @@
 | B-39 | Low | 20261109-sprint08-payment (review vòng 16, R16-4) | `POS_UI/src/features/pos/LivePosScreen.tsx:122,209,255` | `notice` của đơn cũ ("Thanh toán thành công.", "Đã hủy đơn.", ...) không bị xóa khi chọn/tạo đơn mới, vẫn hiện khi làm đơn khác | 2026-11-11 | đã sửa |
 | B-40 | Low | 20261109-sprint08-payment (review vòng 16, R16-5) | `POS_UI/test/live-payment.test.mjs:332-361` | Thiếu assert "Chuyển bàn" ẩn với đơn DINE_IN không OPEN và nhánh `perform()` trả PAID hiện "Đơn đã đóng."; `[PAID-DONE-1]` gần trùng `[PAID-DONE-4]` | 2026-11-11 | đã sửa |
 | B-16 | Low | 20261109-sprint08-payment (review vòng 5, case test thiếu) | `POS_API/src/sales/tests/payment.integration.test.ts` (paymentPreview, createTransferAttempt) | Thiếu test HTTP kiểm phạm vi chi nhánh cho `paymentPreview` và `createTransferAttempt` (đã dùng chung helper được test ở B-2) | 2026-11-10 | đã sửa |
+| B-41 | Low | 20261112-sprint09-drawer-cancel-invoices (R1-2) | `POS_API/src/sales/tests/cancel-paid.integration.test.ts:188-192` | Fixture TRANSFER (`seedPaidTransfer`) ghi `SALE` dạng USER; webhook thật ghi `SALE` SYSTEM (`created_by NULL`, `source 'SYSTEM'`) | 2026-11-13 | đã sửa |
+| B-42 | Low | 20261112-sprint09-drawer-cancel-invoices (R1-3) | `POS_API/src/sales/sales.service.ts:446,457` | Thiếu test MANAGER `branch_id=NULL` hủy đơn `PAID` (plan có dòng edge case 404 `NOT_FOUND`) | 2026-11-13 | đã sửa |
+| B-43 | Low | 20261112-sprint09-drawer-cancel-invoices (R1-4) | `POS_API/src/shifts/http/shifts.dto.ts:72` | `@ApiProperty` của `reason` khai báo bắt buộc nhưng validator `@IsOptional()` (Swagger lệch hành vi) | 2026-11-13 | đã sửa |
+| B-44 | Very Low | 20261112-sprint09-drawer-cancel-invoices (R1-5) | `POS_API/src/sales/tests/cancel-paid.integration.test.ts:193; POS_API/src/shifts/http/shifts.response.ts:43-44` | `return invoice;` thụt lề sai (8 khoảng thay vì 6); hai dòng trống liên tiếp ở `shifts.response.ts` | 2026-11-13 | đã sửa |
+| B-45 | Very Low | 20261112-sprint09-drawer-cancel-invoices (ST2-M1) | `POS_API/src/shifts/shifts.service.ts (listExpenses, ORDER BY e.created_at DESC, e.id DESC)` | Đột biến chưa test nào bắt: đổi tiebreak `e.id DESC` thành `ASC` | 2026-11-13 | đã sửa |
+| B-46 | Very Low | 20261112-sprint09-drawer-cancel-invoices (ST2-M2) | `POS_API/src/shifts/shifts.service.ts (addExpense, `input.reason?.trim()`)` | `.trim()` ở service thừa vì DTO `Transform(trim)` đã trim trước | 2026-11-13 | đã sửa |
+| B-47 | Low | 20261112-sprint09-drawer-cancel-invoices (ST5-M1) | `POS_API/src/shifts/shifts.service.ts:83 (cashSales)` | Đột biến chưa test nào bắt: `cashSales` bỏ điều kiện `p.method='CASH'` (tính cả TRANSFER vào tiền mặt); một lần chạy script đột biến thoát exit 1 chưa rõ nguyên nhân | 2026-11-13 | đã sửa |
+| B-48 | Low | 20261112-sprint09-drawer-cancel-invoices (R2-N1) | `POS_API/src/sales/sales.service.ts (cancelPaid) và payCash` | Chưa có test cho cặp `payCash` và `cancelPaid` chạy đồng thời (reviewer chưa kiểm chứng deadlock khóa ca `FOR UPDATE OF s,b` và `KEY SHARE` FK) | 2026-11-13 | đã sửa |
+| B-49 | Low | 20261112-sprint09-drawer-cancel-invoices (V1-N1) | `.devloopflow/verify/20261112-sprint09-drawer-cancel-invoices/report-1.md` | ST-5.AC-4/5 (hủy+đóng ca, hủy+chi, hai thứ tự) chỉ có chứng cứ từ `npm test`, chưa chạy HTTP thật bằng app chạy riêng | 2026-11-13 | đã sửa |
+| B-50 | Low | 20261112-sprint09-drawer-cancel-invoices (verify-ac lần 2, V2-N1) | `POS_API/src/sales/tests/payment.integration.test.ts:113,157,359,466,501,650,762,896,1258` | Test seed `started_at` bằng `now()` của PostgreSQL nhưng `closeShift` đặt `ended_at` bằng `new Date()` của Node; khi đồng hồ container DB đi trước host hơn ~190 ms, CHECK `chk_work_shifts_ended_at` ném `23514` ở `[R14-1]` và kéo theo 4 test sau (flaky) | 2026-11-13 | đã sửa |
+| B-51 | Low | 20261113-sprint09-ui (review vòng 1, R1-7) | `POS_UI/src/features/invoices/InvoicesScreen.tsx:70,80` | Hai catch bỏ toàn bộ lỗi server, thay bằng thông báo chung. Người dùng mất nguyên nhân và mã yêu cầu để tra soát. | 2026-11-13 | đã sửa |
+| B-52 | Low | Dùng rời, review riêng B-51 (R1-1) | `POS_UI/test/invoices-screen.test.mjs:117` | Test stale-list reject request đã resolve, chưa thực sự kiểm lỗi của request cũ đang chờ | 2026-11-14 | đã sửa |
+| B-53 | Very Low | 20261114-icon-tooltip-ui (review vòng 2, R2-1) | `POS_UI/test/icon-actions.browser.mjs:31` | Chuỗi tiếng Việt trong fixture và expected bị thay thành dấu `?` | 2026-11-14 | đã sửa |
 
 - Trạng thái: `chờ xử lý` | `đã sửa` | `bỏ` (finding sai, hoặc không còn áp dụng vì code đã đổi; ghi lý do trong lịch sử)
 
@@ -284,3 +297,139 @@
 - 2026-11-10 (fix-backlog, subagent `tdd` + kiểm lại bởi agent chính): B-1 đã sửa — `POS_UI/src/features/pos/LivePaymentDialog.tsx` (hàm `release()`), test `POS_UI/test/live-payment.test.mjs::[B-1]` ×3; errors `.devloopflow/errors/20261110-backlog-payment-dialog-stuck-uncertain.md`. B-2 đã sửa — `POS_API/src/sales/transfer-attempts.service.ts:24`, `POS_API/src/sales/sales.service.ts:46` (bỏ vế `&& user.branchId`), test `[B-2]` trong `POS_API/src/sales/tests/payment.integration.test.ts`; errors `.devloopflow/errors/20261110-backlog-branch-scope-null-branchid-fail-open.md`. B-3 đã sửa theo quyết định user (phương án a: 409 `INVOICE_NOT_OPEN`) — `POS_API/src/sales/sales.service.ts` (hàm `paymentPreview`), test `[B-3]`; errors `.devloopflow/errors/20261110-backlog-payment-preview-non-open-invoice.md`. B-4 đã sửa — `POS_API/src/auth/auth-config.ts` (ngưỡng 32 byte), test `[B-4]` trong `POS_API/src/auth/tests/auth-config.test.ts`; đổi fixture `payment.integration.test.ts` dòng ~95 từ 31 sang 33 byte theo đồng ý của user; errors `.devloopflow/errors/20261110-backlog-sepay-secret-minimum-length.md`. Kiểm chứng agent chính (chạy lại): API `npm run build` exit 0, `npm test` 132/132 pass, exit 0; UI `npm run typecheck` exit 0, `npm run build` exit 0, `npm test` 57/57 pass, exit 0 (local, sandbox PostgreSQL `pos_sprint08_test_pg`, chưa có CI độc lập). B-5 đã sửa theo duyệt của user — `AGENTS.md:29`, `CLAUDE.md:29` cập nhật trạng thái SePay Test mode (chưa kiểm Live); không tạo errors/ vì là sửa tài liệu, không phải lỗi code; `THIRD_PARTY_INTEGRATIONS.md:3,10,12` chưa được sửa trong mục này (cần sync-docs riêng). B-6 đã sửa theo lựa chọn của user — thêm `graphify-out/` vào `POS_API/.gitignore`; `git check-ignore` xác nhận; không tạo errors/ vì là cấu hình. Chưa qua `code-reviewer` hay `verify-ac`; chưa commit.
 - 2026-11-10: ghi B-1 đến B-6 từ task `20261109-sprint08-payment` theo lựa chọn "đưa vào backlog" của user ở bước 10 của `run`. Trạng thái ban đầu `chờ xử lý`. Đã đối chiếu `AGENTS.md:29`, `CLAUDE.md:29`, `POS_API/src/auth/auth-config.ts:16-19`, `POS_API/src/sales/transfer-attempts.service.ts:24`, `POS_API/src/sales/sales.service.ts:46,321-323` và `git status` (`?? POS_API/graphify-out/`) trước khi ghi; B-1 chưa đối chiếu lại dòng code, sẽ kiểm khi `fix-backlog`.
 - 2026-11-11 (xử lý V12-1 theo yêu cầu user "fix v12-1"): ghi file `errors/` cho nhóm lỗi chất lượng test đã sửa: B-22 → `errors/20261110-webhook-timestamp-boundary-flaky.md`; B-23, B-27 → `errors/20261110-cancel-qr-forbidden-cases-missing.md`; B-26 → `errors/20261110-test-order-dependency-b16-user.md`; B-24 → bổ sung "Cập nhật (B-24)" vào `errors/20261110-payment-test-event-id-collision.md`. B-25, B-32, B-33 là sửa tài liệu (`THIRD_PARTY_INTEGRATIONS.md:3`, `README.md:9,10`), không có test tái hiện; không tạo `errors/` theo cách đã áp dụng cho B-28 (dòng 2026-11-10 "tài liệu, không có test tái hiện"). Lý do miễn này do agent chính áp dụng theo tiền lệ B-28; cần user xác nhận hoặc yêu cầu bổ sung file.
+
+### B-41 — R1-2 [Low]
+- Task nguồn: 20261112-sprint09-drawer-cancel-invoices (`.devloopflow/tasks/active/20261112-sprint09-drawer-cancel-invoices.md`)
+- File:dòng: POS_API/src/sales/tests/cancel-paid.integration.test.ts:188-192
+- Finding (nguyên văn của reviewer/tdd/ac-verifier): Fixture TRANSFER (`seedPaidTransfer`) ghi dòng `SALE` với `created_by = cashierId, source 'USER'`; đơn TRANSFER thật do webhook hoàn tất ghi `SALE` với `actorId=null`, tức `created_by NULL, source 'SYSTEM'` (`sales.service.ts:320-321`, `sepay-webhook.service.ts:82`). ST-4.AC-8 và ST-5.AC-3 chưa phủ đúng dạng dữ liệu thật; code vẫn đúng vì `SALE_REVERSAL` luôn lấy `user.id` và `'USER'`.
+- Căn cứ và đề xuất sửa: Seed `SALE` dạng SYSTEM rồi assert `SALE_REVERSAL` có `created_by = managerId, source 'USER'`.
+- Test tái hiện đề xuất: `[R1-2] reversal of SYSTEM-sourced SALE is attributed to the canceller` | input: như ST-4.AC-8 nhưng `SALE` dạng SYSTEM | mong đợi: 200, 1 dòng `SALE_REVERSAL` `+100.000`, `created_by=managerId`, `source='USER'`
+- Ngày ghi: 2026-11-13
+- Trạng thái: đã sửa
+- Lịch sử trạng thái (chỉ thêm): 2026-11-13 — chờ xử lý — user chọn "Đưa hết vào backlog" ở bước 10 của task 20261112-sprint09-drawer-cancel-invoices; 2026-11-13 — đã sửa — fix-backlog `tất cả` (tdd, sonnet): test `[B-41]` (khoảng trống test, xanh ngay; đột biến chép created_by/source từ SALE → đỏ); build + `npm test` 204/204 (agent chính chạy lại); file errors `.devloopflow/errors/20261113-sprint09-test-gaps-money-and-concurrency.md`; chưa qua code-reviewer
+
+### B-42 — R1-3 [Low]
+- Task nguồn: 20261112-sprint09-drawer-cancel-invoices (`.devloopflow/tasks/active/20261112-sprint09-drawer-cancel-invoices.md`)
+- File:dòng: POS_API/src/sales/sales.service.ts:446,457
+- Finding (nguyên văn của reviewer/tdd/ac-verifier): Plan có dòng edge case "Người không có `branchId`, không `access_all` → 404 `NOT_FOUND` từ `invoice()`" cho nhánh `PAID`, nhưng chưa có test. `invoice()` đã chặn khi thiếu `branchId` từ lỗi B-2, nên rủi ro thấp.
+- Căn cứ và đề xuất sửa: Thêm test HTTP.
+- Test tái hiện đề xuất: `[R1-3] manager with NULL branch cannot cancel PAID` | input: MANAGER `branch_id=NULL` hủy đơn `PAID` chi nhánh A | mong đợi: 404 `NOT_FOUND`, `snapshot` không đổi
+- Ngày ghi: 2026-11-13
+- Trạng thái: đã sửa
+- Lịch sử trạng thái (chỉ thêm): 2026-11-13 — chờ xử lý — user chọn "Đưa hết vào backlog" ở bước 10 của task 20261112-sprint09-drawer-cancel-invoices; 2026-11-13 — đã sửa — fix-backlog `tất cả` (tdd, sonnet): test `[B-42]` (khoảng trống test; đột biến bỏ vế NULL của `invoice()` → đỏ); build + `npm test` 204/204 (agent chính chạy lại); file errors `.devloopflow/errors/20261113-sprint09-test-gaps-money-and-concurrency.md`; chưa qua code-reviewer
+
+### B-43 — R1-4 [Low]
+- Task nguồn: 20261112-sprint09-drawer-cancel-invoices (`.devloopflow/tasks/active/20261112-sprint09-drawer-cancel-invoices.md`)
+- File:dòng: POS_API/src/shifts/http/shifts.dto.ts:72
+- Finding (nguyên văn của reviewer/tdd/ac-verifier): `@ApiProperty` của `reason` khai báo trường bắt buộc, nhưng validator dùng `@IsOptional()`. Swagger nói khác hành vi thật (thiếu `reason` trả `EXPENSE_REASON_REQUIRED`, không phải `VALIDATION_ERROR`). Mẫu `CancelInvoiceDto` cũng vậy.
+- Căn cứ và đề xuất sửa: Đổi sang `@ApiPropertyOptional`, giữ mô tả.
+- Test tái hiện đề xuất: Không áp dụng (chỉ tài liệu Swagger); lệnh kiểm thay thế: mở `/api/docs` ở development
+- Ngày ghi: 2026-11-13
+- Trạng thái: đã sửa
+- Lịch sử trạng thái (chỉ thêm): 2026-11-13 — chờ xử lý — user chọn "Đưa hết vào backlog" ở bước 10 của task 20261112-sprint09-drawer-cancel-invoices; 2026-11-13 — đã sửa — fix-backlog `tất cả` (tdd, sonnet): không đổi hành vi: `@ApiPropertyOptional`; test bảo vệ ST-2.AC-4 xanh trước và sau; build + `npm test` 204/204 (agent chính chạy lại); file errors `.devloopflow/errors/20261113-sprint09-dto-docs-and-format-nits.md`; chưa qua code-reviewer
+
+### B-44 — R1-5 [Very Low]
+- Task nguồn: 20261112-sprint09-drawer-cancel-invoices (`.devloopflow/tasks/active/20261112-sprint09-drawer-cancel-invoices.md`)
+- File:dòng: POS_API/src/sales/tests/cancel-paid.integration.test.ts:193; POS_API/src/shifts/http/shifts.response.ts:43-44
+- Finding (nguyên văn của reviewer/tdd/ac-verifier): `return invoice;` thụt lề sai (8 khoảng thay vì 6). `shifts.response.ts:43-44` có hai dòng trống liên tiếp.
+- Căn cứ và đề xuất sửa: Sửa định dạng.
+- Test tái hiện đề xuất: Không áp dụng: không đổi hành vi
+- Ngày ghi: 2026-11-13
+- Trạng thái: đã sửa
+- Lịch sử trạng thái (chỉ thêm): 2026-11-13 — chờ xử lý — user chọn "Đưa hết vào backlog" ở bước 10 của task 20261112-sprint09-drawer-cancel-invoices; 2026-11-13 — đã sửa — fix-backlog `tất cả` (tdd, sonnet): không đổi hành vi: sửa định dạng; test xanh trước và sau; build + `npm test` 204/204 (agent chính chạy lại); file errors `.devloopflow/errors/20261113-sprint09-dto-docs-and-format-nits.md`; chưa qua code-reviewer
+
+### B-45 — ST2-M1 [Very Low]
+- Task nguồn: 20261112-sprint09-drawer-cancel-invoices (`.devloopflow/tasks/active/20261112-sprint09-drawer-cancel-invoices.md`)
+- File:dòng: POS_API/src/shifts/shifts.service.ts (listExpenses, ORDER BY e.created_at DESC, e.id DESC)
+- Finding (nguyên văn của reviewer/tdd/ac-verifier): Report `tdd` ST-2: đổi tiebreak `e.id DESC` thành `ASC` không test nào đỏ vì `created_at` luôn khác nhau giữa các INSERT tuần tự.
+- Căn cứ và đề xuất sửa: Thêm test hai khoản chi cùng `created_at` (INSERT SQL cùng `now()` trong một transaction) kiểm thứ tự theo `id DESC`.
+- Test tái hiện đề xuất: `expense list breaks created_at ties by id DESC` | input: 2 dòng `shift_expenses` cùng `created_at` | mong đợi: GET trả dòng `id` lớn hơn trước
+- Ngày ghi: 2026-11-13
+- Trạng thái: đã sửa
+- Lịch sử trạng thái (chỉ thêm): 2026-11-13 — chờ xử lý — user chọn "Đưa hết vào backlog" ở bước 10 của task 20261112-sprint09-drawer-cancel-invoices; 2026-11-13 — đã sửa — fix-backlog `tất cả` (tdd, sonnet): test `[B-45]` (đột biến `e.id ASC` → đỏ); build + `npm test` 204/204 (agent chính chạy lại); file errors `.devloopflow/errors/20261113-sprint09-test-gaps-money-and-concurrency.md`; chưa qua code-reviewer
+
+### B-46 — ST2-M2 [Very Low]
+- Task nguồn: 20261112-sprint09-drawer-cancel-invoices (`.devloopflow/tasks/active/20261112-sprint09-drawer-cancel-invoices.md`)
+- File:dòng: POS_API/src/shifts/shifts.service.ts (addExpense, `input.reason?.trim()`)
+- Finding (nguyên văn của reviewer/tdd/ac-verifier): Report `tdd` ST-2: bỏ `.trim()` ở service là đột biến tương đương (DTO đã trim); bước trim ở service chỉ phòng thủ.
+- Căn cứ và đề xuất sửa: Bỏ `.trim()` thừa hoặc giữ làm phòng thủ có chú thích; không đổi hành vi.
+- Test tái hiện đề xuất: Không áp dụng: không đổi hành vi
+- Ngày ghi: 2026-11-13
+- Trạng thái: đã sửa
+- Lịch sử trạng thái (chỉ thêm): 2026-11-13 — chờ xử lý — user chọn "Đưa hết vào backlog" ở bước 10 của task 20261112-sprint09-drawer-cancel-invoices; 2026-11-13 — đã sửa — fix-backlog `tất cả` (tdd, sonnet): không đổi hành vi: bỏ `?.trim()` thừa; ST-2.AC-1/AC-4 xanh trước và sau; build + `npm test` 204/204 (agent chính chạy lại); file errors `.devloopflow/errors/20261113-sprint09-dto-docs-and-format-nits.md`; chưa qua code-reviewer
+
+### B-47 — ST5-M1 [Low]
+- Task nguồn: 20261112-sprint09-drawer-cancel-invoices (`.devloopflow/tasks/active/20261112-sprint09-drawer-cancel-invoices.md`)
+- File:dòng: POS_API/src/shifts/shifts.service.ts:83 (cashSales)
+- Finding (nguyên văn của reviewer/tdd/ac-verifier): Report `tdd` ST-5: đột biến bỏ `p.method='CASH'` trong `cashSales` không test nào bắt; lần chạy riêng 21/21 xanh. Trong fixture, đơn TRANSFER đã hủy nên không còn `PAID` để tính.
+- Căn cứ và đề xuất sửa: Thêm test đóng ca có đơn TRANSFER `PAID` còn nguyên (không hủy) và đơn CASH, kiểm `cashSalesAmount` chỉ gồm CASH.
+- Test tái hiện đề xuất: `close shift counts only CASH payments in cash_sales_amount` | input: opening 100000, CASH PAID 50000, TRANSFER PAID 30000 giữ nguyên, đóng `countedCash 150000` | mong đợi: `cashSalesAmount 50000`, `expectedCash 150000`, `MATCHED`
+- Ngày ghi: 2026-11-13
+- Trạng thái: đã sửa
+- Lịch sử trạng thái (chỉ thêm): 2026-11-13 — chờ xử lý — user chọn "Đưa hết vào backlog" ở bước 10 của task 20261112-sprint09-drawer-cancel-invoices; 2026-11-13 — đã sửa — fix-backlog `tất cả` (tdd, sonnet): test `[B-47]` (đột biến bỏ `p.method='CASH'` → đỏ); build + `npm test` 204/204 (agent chính chạy lại); file errors `.devloopflow/errors/20261113-sprint09-test-gaps-money-and-concurrency.md`; chưa qua code-reviewer
+
+### B-48 — R2-N1 [Low]
+- Task nguồn: 20261112-sprint09-drawer-cancel-invoices (`.devloopflow/tasks/active/20261112-sprint09-drawer-cancel-invoices.md`)
+- File:dòng: POS_API/src/sales/sales.service.ts (cancelPaid) và payCash
+- Finding (nguyên văn của reviewer/tdd/ac-verifier): Review vòng 2: `cancelPaid` giữ khóa ca rồi chèn `stock_movements` (khóa FK `KEY SHARE` lên `branches`); `payCash` khóa `FOR UPDATE OF s,b`. Hai thao tác chỉ deadlock nếu PostgreSQL khóa `b` trước `s`. Mẫu này đã có ở webhook và xác nhận thủ công; không test nào cho cặp này chạy đồng thời.
+- Căn cứ và đề xuất sửa: Thêm test đồng thời dùng `gate` + `waitLock` (hoặc `pg_blocking_pids`) cho một đơn `OPEN` đang thanh toán CASH và một đơn `PAID` đang hủy cùng ca.
+- Test tái hiện đề xuất: `concurrent payCash and PAID cancel in one shift do not deadlock` | input: gate giữ khóa ca; gửi `POST /payments` CASH cho đơn A và `POST /cancel` cho đơn B (PAID) | mong đợi: cả hai hoàn tất (200/201), không timeout, `SELECT` cuối nhất quán
+- Ngày ghi: 2026-11-13
+- Trạng thái: đã sửa
+- Lịch sử trạng thái (chỉ thêm): 2026-11-13 — chờ xử lý — user chọn "Đưa hết vào backlog" ở bước 10 của task 20261112-sprint09-drawer-cancel-invoices; 2026-11-13 — đã sửa — fix-backlog `tất cả` (tdd, sonnet): test `[B-48]` (không có deadlock thật; đột biến thêm khóa `branches` trước ca → đỏ 500); build + `npm test` 204/204 (agent chính chạy lại); file errors `.devloopflow/errors/20261113-sprint09-test-gaps-money-and-concurrency.md`; chưa qua code-reviewer
+
+### B-49 — V1-N1 [Low]
+- Task nguồn: 20261112-sprint09-drawer-cancel-invoices (`.devloopflow/tasks/active/20261112-sprint09-drawer-cancel-invoices.md`)
+- File:dòng: .devloopflow/verify/20261112-sprint09-drawer-cancel-invoices/report-1.md
+- Finding (nguyên văn của reviewer/tdd/ac-verifier): Verify-ac lần 1: hủy↔hủy và chi↔đóng ca đã chạy HTTP thật; hủy↔đóng ca và hủy↔chi chỉ có chứng cứ từ `npm test`.
+- Căn cứ và đề xuất sửa: Chạy lại verify-ac cho ST-5.AC-4/5 với kịch bản HTTP thật khi cần bằng chứng độc lập hơn.
+- Test tái hiện đề xuất: Không áp dụng: việc kiểm chứng, không đổi code
+- Ngày ghi: 2026-11-13
+- Trạng thái: đã sửa
+- Lịch sử trạng thái (chỉ thêm): 2026-11-13 — chờ xử lý — user chọn "Đưa hết vào backlog" ở bước 10 của task 20261112-sprint09-drawer-cancel-invoices; 2026-11-13 — đã sửa — verify-ac lần 2 task 20261112-sprint09-drawer-cancel-invoices: ST-5.AC-4/5 (hai thứ tự) và cặp payCash+cancelPaid có chứng cứ HTTP thật (`.devloopflow/verify/20261112-sprint09-drawer-cancel-invoices/report-2.md`, `evidence/v2/e2e-http.log`); không phải sửa code nên không có file errors
+
+### B-50 — V2-N1 [Low]
+- Task nguồn: 20261112-sprint09-drawer-cancel-invoices (`.devloopflow/tasks/active/20261112-sprint09-drawer-cancel-invoices.md`)
+- File:dòng: `POS_API/src/sales/tests/payment.integration.test.ts:113,157,359,466,501,650,762,896,1258` (và `POS_API/src/shifts/shifts.service.ts:310,403` đặt `ended_at = new Date()`)
+- Finding (nguyên văn của ac-verifier, verify-ac lần 2): "Test cũ `[R14-1]` trong `payment.integration.test.ts` flaky vì đồng hồ container PostgreSQL lệch đồng hồ host. CHECK `ended_at IS NULL OR ended_at > started_at` (`20261103000000-Shifts.ts:22`); test seed `started_at` bằng `now()` của PostgreSQL (`payment.integration.test.ts:501`), `closeShift` đặt `ended_at = new Date()` của Node. Đồng hồ container lệch host theo dạng răng cưa, khoảng -1000..+530 ms (`clock-skew.txt`, 12 mẫu: từ -962 đến 467 rồi -998). Khi DB đi trước host hơn khoảng 190 ms thì `ended_at <= started_at` và CHECK ném lỗi." Lần 1 và 2 của `npm test`: 198/204 pass; lần 3: 204/204; chạy riêng file: 72/72. Không phải hồi quy của Sprint 09.
+- Căn cứ và đề xuất sửa: seed `started_at = now() - interval '1 minute'` ở các chỗ seed ca trong file test (hoặc `closeShift` dùng đồng hồ DB — ngoài phạm vi task). Chọn sửa fixture test, không đổi production.
+- Test tái hiện đề xuất: `[R14-1]` | input: seed `started_at = now() + interval '5 seconds'` (mô phỏng DB đi trước host) | kết quả mong đợi: đỏ `23514` trước khi sửa fixture; sau khi seed lùi 1 phút thì xanh bất kể lệch đồng hồ
+- Ngày ghi: 2026-11-13
+- Trạng thái: đã sửa
+- Lịch sử trạng thái (chỉ thêm): 2026-11-13 — chờ xử lý — user: "đưa vào backlog fix luôn" sau verify-ac lần 2 task 20261112-sprint09-drawer-cancel-invoices; 2026-11-13 — đã sửa — fix-backlog B-50 (tdd, sonnet): 9 chỗ seed ca trong `payment.integration.test.ts` đổi `now()` → `now() - interval '1 minute'`; RED bằng đột biến `+5 seconds` (6 test đỏ, `23514`), GREEN 72/72 ×3 và `npm test` 204/204 (agent chính chạy lại: 204/204, file payment 72/72 ×2); file errors `.devloopflow/errors/20261113-payment-test-seed-db-clock-flaky.md`; chưa qua code-reviewer
+
+### B-51 — R1-7 [Low]
+- Task nguồn: 20261113-sprint09-ui
+- File:dòng: POS_UI/src/features/invoices/InvoicesScreen.tsx:70,80
+- Finding (nguyên văn): Hai catch bỏ toàn bộ lỗi server, thay bằng thông báo chung. Người dùng mất nguyên nhân và mã yêu cầu để tra soát.
+- Căn cứ và đề xuất sửa: API contract tổng của plan yêu cầu hiển thị tiếng Việt và requestId khi có; giữ message/requestId, có fallback khi lỗi không có thông tin.
+- Test tái hiện đề xuất: T4-list/T4-race nhận lỗi có message và requestId → cả hai hiển thị, vẫn tải lại được.
+- Phạm vi ảnh hưởng khi sửa: hai catch trong InvoiceList; caller POS_UI/src/app/App.tsx:100; chạy lại invoices-screen.test.mjs. Không đổi API hoặc module khác. Mức: Hẹp.
+- Ngày ghi: 2026-11-13
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-13 — chờ xử lý — review vòng 1 Task B.; 2026-11-13 — đã sửa — TDD `[B-51]` RED/GREEN; `InvoicesScreen.tsx`, `invoices-screen.test.mjs`; agent chính chạy focused 4/4, UI 143/143, build exit 0 và API độc lập 224/224 (`evidence/b51/primary-api.log`); API subagent timeout 300s. Hồ sơ `.devloopflow/errors/20261113-invoice-load-error-details-lost.md`; chưa qua code-reviewer.
+- Lịch sử trạng thái: 2026-11-14 — review riêng B-51 vòng 1 PASS; phát hiện khoảng trống test độc lập R1-1 [Low] được ghi B-52, không phát hiện lỗi production B-51.
+
+### B-52 — R1-1 [Low]
+- Task nguồn: dùng rời, review riêng B-51 khi chuẩn bị đóng Sprint 09.
+- File:dòng: `POS_UI/test/invoices-screen.test.mjs:117`.
+- Finding (nguyên văn reviewer): Case stale-list không tạo request pending mới. Vòng lặp trước kết thúc với trạng thái `OPEN`; dòng 117 tiếp tục chọn `OPEN`, nên query key không đổi. `staleList` ở dòng 118 là request đã resolve tại dòng 100; `reject()` ở dòng 120 không có tác dụng. Assertion dòng 121 xanh nhưng không kiểm việc bỏ lỗi từ request danh sách cũ.
+- Căn cứ và đề xuất sửa: `rules/testing.md`, mục “Test đáng tin”; plan ST-4.AC-2 yêu cầu bỏ lỗi của request cũ. Chọn trạng thái khác trạng thái hiện tại, ví dụ `PAID`; assert số request tăng một trước khi lưu `staleList`, rồi đổi `CANCELLED` và reject request pending vừa lưu. Reviewer xác minh bằng test instrument trong bộ nhớ; chưa thấy lỗi production.
+- Test tái hiện đề xuất: `[B-51] stale list error after changing filters` | input: request PAID pending, chuyển CANCELLED, PAID reject có message/requestId | kết quả mong đợi: lỗi cũ không xuất hiện, CANCELLED vẫn có thể tải thành công.
+- Phạm vi ảnh hưởng khi sửa: đổi `POS_UI/test/invoices-screen.test.mjs:117` trong test `[B-51]`; runner `POS_UI/package.json:11`, không có import/caller khác sau khi tìm kiếm. Chạy lại `node --experimental-strip-types --test test/invoices-screen.test.mjs`, sau đó `npm test`; không cần sửa production hoặc module khác. Mức: Hẹp.
+- Ngày ghi: 2026-11-14
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-14 — chờ xử lý — review riêng B-51 vòng 1; Low, không chặn kết quả review.
+- Lịch sử trạng thái: 2026-11-14 — đã sửa — `POS_UI/test/invoices-screen.test.mjs` tạo PAID pending rồi chuyển CANCELLED, xác nhận dữ liệu mới; test 4/4, đột biến lỗi cũ bị bắt; UI 143/143, typecheck/build exit 0. Hồ sơ `errors/20261114-backlog-stale-list-test-settled-request.md`; chưa review riêng.
+
+### B-53 — R2-1 [Very Low]
+- Task nguồn: 20261114-icon-tooltip-ui, review vòng 2.
+- File:dòng: `POS_UI/test/icon-actions.browser.mjs:31-34,144-167`.
+- Finding nguyên văn: chuỗi tiếng Việt trong fixture bổ sung đã bị hỏng thành dấu `?`. `mountTraversal` dùng `Tr??c`, `Kh?ng kh? d?ng`; `mountButtons` dùng `L?u`, `X?a`, `Kh?ng c? quy?n`. Các assert tại dòng 144–167 cũng dùng cùng chuỗi hỏng nên test vẫn xanh. Không ảnh hưởng nhãn production, nhưng làm fixture và thông báo kiểm tra khó đọc.
+- Căn cứ và đề xuất sửa: `rules/testing.md`, mục “Test đáng tin”; quy tắc UI tiếng Việt tại `AGENTS.md`. Đổi fixture và expected tương ứng về Unicode tiếng Việt đúng.
+- Test tái hiện đề xuất: giữ `[R1-2]` và `[R1-3]`, dùng nhãn `Trước`, `Không khả dụng`, `Sau`, `Lưu`, `Xóa`, `Không có quyền`; expected tên/mô tả/lý do đúng nguyên văn, số callback giữ như hiện tại.
+- Phạm vi ảnh hưởng khi sửa: `POS_UI/test/icon-actions.browser.mjs:31-34,144-167`; `mountTraversal` gọi tại dòng 138, `mountButtons` tại dòng 157, không thấy caller khác; chạy `node --test test/icon-actions.browser.mjs`. Không lan module, không sửa production. Mức: Hẹp.
+- Ngày ghi: 2026-11-14
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-14 — chờ xử lý — review vòng 2, Very Low.
+- Lịch sử trạng thái: 2026-11-14 — đã sửa — khôi phục Unicode fixture và expected trong `POS_UI/test/icon-actions.browser.mjs`; browser 22/22 trước/sau, UI 143/143, typecheck/build exit 0. Hồ sơ `errors/20261114-backlog-icon-test-vietnamese-encoding.md`; chưa review riêng.

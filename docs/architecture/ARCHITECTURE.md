@@ -12,7 +12,7 @@ Nếu các nguồn mâu thuẫn về kết quả nghiệp vụ hoặc bảo mậ
 
 | Thư mục | Hiện trạng khi viết tài liệu | Đích MVP |
 | --- | --- | --- |
-| `POS_UI/` | React/TypeScript/Vite: auth, platform và Cài đặt tổ chức dùng API/cookie/CSRF thật; các màn POS/ca/thực đơn/kho/báo cáo còn mock. Cài đặt dùng service/DTO riêng và không đọc mock như nguồn thật | Nối từng lát cắt theo backend đã hoàn thành |
+| `POS_UI/` | React/TypeScript/Vite: auth, platform, tổ chức, thực đơn, ca, POS/thanh toán và Hóa đơn dùng API/cookie/CSRF thật; Báo cáo và tab lịch sử biến động của Kho còn mock. | Nối từng lát cắt theo backend đã hoàn thành |
 | `POS_API/` | Đã có nền tảng PB-01, API auth PB-02, platform PB-03 và tổ chức/nhân viên PB-04; UI tổ chức đã nối API | Một ứng dụng NestJS/TypeScript chia module nghiệp vụ |
 | `POS_INFRA/` | Đã có Docker Compose PostgreSQL local; chưa có cấu hình production | Docker Compose, reverse proxy, cấu hình production và sao lưu |
 

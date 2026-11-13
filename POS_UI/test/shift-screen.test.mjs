@@ -18,6 +18,11 @@ function mount(file, exportName, props, dependencies) {
   const React = {
     Fragment: 'Fragment',
     createElement: (type, nodeProps, ...children) => ({ type, props: { ...nodeProps, children } }),
+    useRef(initial) {
+      const key = index++;
+      if (!slots[key]) slots[key] = { current: initial };
+      return slots[key];
+    },
     useState(initial) {
       const key = index++;
       if (!slots[key]) slots[key] = { value: typeof initial === 'function' ? initial() : initial };
@@ -44,12 +49,13 @@ function mount(file, exportName, props, dependencies) {
     innerWidth: 1200, addEventListener() {}, removeEventListener() {},
   }, require: path => {
     if (path === 'react') return React;
+    if (path.endsWith('/session-events')) return { getRequestIdentity: () => ({ epoch: 1 }) };
     if (path === 'lucide-react') return new Proxy({}, { get: (_, name) => name });
     for (const [suffix, value] of Object.entries(dependencies)) if (path.endsWith(suffix)) return value;
     const name = path.split('/').at(-1);
     if (['Button', 'Dialog', 'Field', 'Badge', 'DataTable', 'ProductGrid', 'TableMap',
       'OrderPanel', 'PaymentDialog', 'LivePaymentDialog', 'OpenShiftGate', 'BlindCountCloseShiftModal',
-      'ForceCloseShiftModal'].includes(name)) return name === 'Field'
+      'ForceCloseShiftModal', 'ShiftDetailDrawer'].includes(name)) return name === 'Field'
       ? { SelectField: 'SelectField' } : { [name]: name };
     throw new Error('Unexpected dependency: ' + path);
   } });

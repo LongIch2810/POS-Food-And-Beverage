@@ -34,7 +34,7 @@ test('PB-01 migration, bootstrap and database constraints', async () => {
     await dataSource.query(`CREATE DATABASE "${databaseName}"`);
     created = true;
     await db.initialize();
-    assert.equal((await db.runMigrations()).length, 10);
+    assert.equal((await db.runMigrations()).length, 12);
     assert.equal((await db.runMigrations()).length, 0);
 
     delete process.env.BOOTSTRAP_ADMIN_USERNAME;

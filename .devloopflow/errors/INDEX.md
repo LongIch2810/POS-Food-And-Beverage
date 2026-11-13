@@ -47,7 +47,14 @@
 [docs, spec, ui, pos, payment] B-38/R17-2 spec nói QR chờ khóa cả thanh toán nhưng code vẫn hiện nút → 20261111-spec-qr-pending-locks-payment-wrong.md
 [docs, errors, template] B-37/R17-1 file lỗi mới sai found_by và thiếu dòng Test tái hiện → 20261111-error-file-metadata-off-template.md
 [ui, pos, notice, test] B-39/B-40 thông báo đơn cũ còn hiện khi làm đơn mới; thiếu assert đơn đã đóng → 20261111-stale-notice-and-missing-closed-order-asserts.md
+[sales, api, permission, cancel, test] R1-1 đổi ưu tiên lỗi cancel() (404 trước 409 SHIFT_NOT_OPEN) không có test → 20261113-cancel-open-scope-order-untested.md
 
+[sales, shifts, test, cash, concurrency] B-41/B-42/B-45/B-47/B-48 khoảng trống test sau Sprint 09 (fixture sai nguồn, ca biên, đồng thời) → 20261113-sprint09-test-gaps-money-and-concurrency.md
+[shifts, api, swagger, format] B-43/B-44/B-46 Swagger lệch, định dạng, trim thừa → 20261113-sprint09-dto-docs-and-format-nits.md
+[test, sales, shifts, flaky, clock] B-50 seed giờ vào ca bằng đồng hồ DB làm [R14-1] và 4 test sau flaky → 20261113-payment-test-seed-db-clock-flaky.md
+[ui, shifts, expense, error-handling, uncertain] Task B R1-1 HTTP 500 sau ghi chi cho phép gửi lại trước GET khôi phục → 20261113-expense-http-500-allows-repost.md
+[ui, shifts, drawer, dialog, keyboard] Task B R1-2 Escape đóng drawer khi form ghi chi đang POST → 20261113-drawer-escape-closes-busy-expense.md
+[ui, drawer, dialog, a11y] Task B R1-3 (lần 2, task khác) Drawer thiếu focus khi mở, trap Tab và khôi phục focus → 20261109-payment-dialog-focus-trap.md
 <!-- Historical errors imported 2026-11-12; original statuses unchanged. -->
 [legacy, 2026-10-28-argon2-install-path] Lỗi cài Argon2 trên đường dẫn có `&` -> 2026-10-28-argon2-install-path.md
 [legacy, 2026-10-28-codex-doctor-sandbox] Codex doctor báo lỗi cấp phát Windows sandbox -> 2026-10-28-codex-doctor-sandbox.md
@@ -83,3 +90,11 @@
 [legacy, 2026-11-06-pb07-sold-topping-delete] 2026-11-06-pb07-sold-topping-delete -> 2026-11-06-pb07-sold-topping-delete.md
 [legacy, 2026-11-06-pb07-uppercase-topping] 2026-11-06-pb07-uppercase-topping -> 2026-11-06-pb07-uppercase-topping.md
 [legacy, 2026-11-07-sprint07-update-returning] Lỗi đọc sai kết quả UPDATE RETURNING trong API Sprint 07 -> 2026-11-07-sprint07-update-returning.md
+[ui, shifts, accessibility] V1-1 Điều khiển đóng ca nhỏ hơn mục tiêu chạm → 20261113-shift-close-touch-targets.md
+[ui, shifts, accessibility] V1-2 Nhãn trường đóng ca không liên kết điều khiển → 20261113-shift-close-field-labels.md
+[ui, shifts, accessibility] V1-3 Viền trường đóng cưỡng chế không đủ tương phản → 20261113-force-close-field-contrast.md
+
+[ui, invoices, error-handling] B-51 mất message/requestId khi tải hóa đơn lỗi → 20261113-invoice-load-error-details-lost.md
+[ui, tooltip, touch, keyboard] Hủy chạm làm mất thao tác hợp lệ kế tiếp → 20261114-icon-touch-cancel-blocks-next-action.md
+[ui, invoices, test, race] B-52 test lỗi danh sách cũ dùng request đã hoàn tất → 20261114-backlog-stale-list-test-settled-request.md
+[ui, test, fixture, encoding] B-53 chữ tiếng Việt trong fixture test bị hỏng → 20261114-backlog-icon-test-vietnamese-encoding.md

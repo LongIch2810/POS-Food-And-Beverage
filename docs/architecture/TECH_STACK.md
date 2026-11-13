@@ -20,7 +20,7 @@ File này ghi **công nghệ đã có trong mã hoặc cấu hình repository**;
 
 | Công nghệ | Vai trò hiện tại |
 | --- | --- |
-| React 18, React DOM 18, TypeScript 5 | UI xác thực, quản trị nền tảng, tổ chức, thực đơn, ca và POS/thanh toán dùng API thật; màn Hóa đơn và Báo cáo còn mô phỏng, Kho còn mô phỏng tab lịch sử biến động. |
+| React 18, React DOM 18, TypeScript 5 | UI xác thực, quản trị nền tảng, tổ chức, thực đơn, ca, POS/thanh toán và Hóa đơn dùng API thật; màn Báo cáo còn mô phỏng, Kho còn mô phỏng tab lịch sử biến động. |
 | Vite 6, plugin React | Dev server và build UI |
 | `lucide-react` | Icon giao diện |
 | `puppeteer-core` | Thư viện dev điều khiển Chrome/CDP phục vụ kiểm thử E2E trực quan |

@@ -3,7 +3,7 @@ import { AccessGuard, AuthenticatedRequest, RequirePermission } from '../auth/se
 import { dataResponse } from '../http/api-response';
 import { JsonBodyGuard, noInput, requestValidationPipe, validId } from '../http/request-validation';
 import { ShiftsService } from './shifts.service';
-import { CloseShiftDto, ForceCloseShiftDto, OpenShiftDto } from './http/shifts.dto';
+import { CloseShiftDto, CreateShiftExpenseDto, ForceCloseShiftDto, OpenShiftDto } from './http/shifts.dto';
 
 @Controller('api/v1/work-shifts')
 @UseGuards(AccessGuard, JsonBodyGuard)
@@ -71,6 +71,23 @@ export class ShiftsController {
   ) {
     const shift = await this.shiftsService.forceCloseShift(request.authUser!, validId(id), input);
     return dataResponse(shift);
+  }
+
+  @Post(':id/expenses')
+  @RequirePermission('shift.expense')
+  @HttpCode(201)
+  async addExpense(
+    @Param('id') id: string,
+    @Req() request: AuthenticatedRequest,
+    @Body(requestValidationPipe) input: CreateShiftExpenseDto,
+  ) {
+    return dataResponse(await this.shiftsService.addExpense(request.authUser!, validId(id), input));
+  }
+
+  @Get(':id/expenses')
+  @RequirePermission('shift.read')
+  async listExpenses(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.shiftsService.listExpenses(request.authUser!, validId(id), request.query);
   }
 }
 

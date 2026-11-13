@@ -350,7 +350,7 @@ Mỗi mã gắn với một business rule. Danh sách đầy đủ và `message`
 | `SHIFT_HAS_OPEN_INVOICES`      | 409  | BR-19         | Đóng ca khi còn đơn `OPEN`. Kèm danh sách mã đơn trong `details`       |
 | `FORCE_CLOSE_COUNT_REQUIRED`   | 422  | BR-88         | Đóng cưỡng chế thiếu tiền đã đếm                                       |
 | `RECONCILIATION_NOTE_REQUIRED` | 422  | BR-60         | Ca lệch mà thiếu ghi chú                                               |
-| `INVOICE_NOT_OPEN`             | 409  | BR-22         | Sửa món, thêm món, xem trước thanh toán khi đơn không còn `OPEN`       |
+| `INVOICE_NOT_OPEN`             | 409  | BR-22         | Sửa món, thêm món, xem trước thanh toán khi đơn không còn `OPEN`; hủy đơn không còn `OPEN`/`PAID` (ví dụ đã `CANCELLED`)       |
 | `INVOICE_EMPTY`                | 422  | BR-27         | Thanh toán đơn chưa có món                                             |
 | `INVOICE_BRANCH_MISMATCH`      | 422  | BR-69         | Chi nhánh của ca, bàn, đơn không khớp                                  |
 | `TABLE_REQUIRED`               | 422  | BR-69         | Đơn tại chỗ thiếu bàn                                                  |
@@ -373,6 +373,10 @@ Mỗi mã gắn với một business rule. Danh sách đầy đủ và `message`
 | `INVALID_WEBHOOK_SIGNATURE` | 401  | BR-33         | Webhook SePay thiếu hoặc sai chữ ký (không dùng cookie/CSRF) |
 | `INVALID_WEBHOOK_PAYLOAD` | 400  | BR-33         | Timestamp webhook thiếu, sai định dạng hoặc lệch quá ±300 giây (kiểm trước HMAC; chữ ký sai trả 401) hoặc nội dung không hợp lệ |
 | `EXPENSE_REASON_REQUIRED`      | 422  | BR-52         | Chi phí thiếu lý do                                                    |
+| `SHIFT_NOT_FOUND`              | 404  | BR-17         | Ca không tồn tại, khác cửa hàng hoặc khác chi nhánh khi không có `branch.access_all` |
+| `FORBIDDEN_NOT_SHIFT_OWNER`    | 403  | BR-16         | Thao tác trên ca của người khác (đóng ca, ghi chi phí)                 |
+| `EXPENSE_EXCEEDS_DRAWER`       | 422  | BR-53, BR-56  | Khoản chi từ két làm tiền kỳ vọng trong két nhỏ hơn 0                  |
+| `CANCEL_EXCEEDS_DRAWER`        | 409  | BR-29, BR-56  | Hủy đơn tiền mặt làm tiền kỳ vọng trong két nhỏ hơn 0                  |
 
 
 - Thêm mã lỗi mới thì cập nhật bảng này và tham chiếu mã `BR-xx` tương ứng.
@@ -480,7 +484,7 @@ Chỉ liệt kê **nhóm route** và người dùng chính. Danh sách endpoint,
 | Vai trò và quyền   | `/roles`, `/permissions`                                                     | Đọc: người có quyền                            | `.devloopflow/specs/users.md`               |
 | Danh mục sản phẩm  | `/categories`, `/products`, `/sizes`, `/toppings`, `/products/{id}/image`   | `OWNER`, `MANAGER`                             | `.devloopflow/specs/legacy-catalog.md`           |
 | Mã giảm giá        | `/promotion-codes`                                                           | `OWNER`, `MANAGER`                             | `.devloopflow/specs/promotions.md`     |
-| Hóa đơn            | `/invoices`, `/invoices/{id}/items`, `/invoices/{id}/payments`, `/invoices/{id}/complete-zero`, `/invoices/{id}/payment-preview`, `/invoices/{id}/apply-promotion`, `/invoices/{id}/remove-promotion` | `CASHIER`, `MANAGER`, `OWNER` | `.devloopflow/specs/invoices.md` |
+| Hóa đơn            | `/invoices`, `/invoices/{id}/items`, `/invoices/{id}/payments`, `/invoices/{id}/complete-zero`, `/invoices/{id}/payment-preview`, `/invoices/{id}/apply-promotion`, `/invoices/{id}/remove-promotion`, `/invoices/{id}/cancel` | `CASHIER`, `MANAGER`, `OWNER` | `.devloopflow/specs/invoices.md`; `.devloopflow/specs/20261113-sprint09-ui.md` (phạm vi đọc, lọc, phân trang) |
 | Chuyển khoản QR | `/store-bank-account`, `/invoices/{id}/transfer-attempts`, `/transfer-attempts/{id}/confirm-manual`, `/transfer-attempts/{id}/cancel`, `/bank-transfer-exceptions`, `/payments/sepay/webhook` (webhook không dùng cookie/CSRF, xác thực bằng HMAC) | `OWNER` (tài khoản nhận), `CASHIER`/`MANAGER`/`OWNER` (QR), `MANAGER`/`OWNER` (xác nhận thủ công, ngoại lệ), SePay (webhook) | `.devloopflow/specs/invoices.md` |
 | Ca làm và đối soát | `/work-shifts`, `/work-shifts/{id}/expenses`                                 | Mọi vai trò theo phạm vi                       | `.devloopflow/specs/shifts.md`             |
 | Kho và công thức   | `/ingredients`, `/ingredient-stocks`, `/stock-movements`, công thức theo món | `OWNER`, `MANAGER`                             | `.devloopflow/specs/inventory.md`       |

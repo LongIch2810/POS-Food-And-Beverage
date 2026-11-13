@@ -474,3 +474,20 @@
 .sum-row dd { font-size: 18px; font-weight: 600; }
 .sum-total dt, .sum-total dd { font-size: 20px; font-weight: 700; }
 .sum-total dd { color: var(--color-brand-600); }
+
+.icon-action { padding: 0; }
+.icon-action-glyph, .icon-action-glyph svg { display: block; width: 20px; height: 20px; }
+.icon-action-tooltip { position: fixed; z-index: 6000; }
+.icon-action-tooltip {
+  max-width: min(240px, calc(100vw - 16px));
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-overlay);
+  font-size: 13px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.icon-action-wrap { display: inline-flex; flex-shrink: 0; }

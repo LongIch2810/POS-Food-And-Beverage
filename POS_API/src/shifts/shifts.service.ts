@@ -1,13 +1,21 @@
+import { randomUUID } from 'node:crypto';
 import { HttpException, Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { UserSummary } from '../auth/auth.service';
 import { httpError } from '../http/http-error';
+import { uuidPattern } from '../http/request-validation';
 import { Branch } from '../organization/entities/branch.entity';
 import { User } from '../auth/entities/user.entity';
 import { WorkShift } from './entities/work-shift.entity';
 import { CashReconciliation } from './entities/cash-reconciliation.entity';
-import { CloseShiftDto, ForceCloseShiftDto, OpenShiftDto } from './http/shifts.dto';
-import { CashReconciliationResponse, ShiftsListResponse, WorkShiftResponse } from './http/shifts.response';
+import { CloseShiftDto, CreateShiftExpenseDto, ForceCloseShiftDto, OpenShiftDto } from './http/shifts.dto';
+import {
+  CashReconciliationResponse,
+  ShiftExpenseResponse,
+  ShiftExpensesListResponse,
+  ShiftsListResponse,
+  WorkShiftResponse,
+} from './http/shifts.response';
 import { shiftsPage } from './shifts.pagination';
 
 function toInt(value: string | number | null | undefined): number {
@@ -30,6 +38,18 @@ function reconciliationView(r?: CashReconciliation | null): CashReconciliationRe
     reconciledAt: r.reconciled_at ? r.reconciled_at.toISOString() : null,
     createdAt: r.created_at.toISOString(),
     updatedAt: r.updated_at.toISOString(),
+  };
+}
+
+function expenseView(row: Record<string, any>): ShiftExpenseResponse {
+  return {
+    id: row.id,
+    workShiftId: row.work_shift_id,
+    amount: Number(row.amount),
+    reason: row.reason,
+    paidFromDrawer: row.paid_from_drawer,
+    createdBy: row.created_by,
+    createdAt: row.created_at.toISOString(),
   };
 }
 
@@ -61,6 +81,12 @@ export class ShiftsService {
     const [row] = await manager.query(`SELECT COALESCE(SUM(p.amount), 0)::text AS total
       FROM payments p JOIN invoices i ON i.id=p.invoice_id
       WHERE i.work_shift_id=$1 AND i.status='PAID' AND p.method='CASH'`, [shiftId]);
+    return BigInt(row.total);
+  }
+
+  private async drawerExpenses(manager: EntityManager, shiftId: string): Promise<bigint> {
+    const [row] = await manager.query(`SELECT COALESCE(SUM(amount), 0)::text AS total
+      FROM shift_expenses WHERE work_shift_id=$1 AND paid_from_drawer=true`, [shiftId]);
     return BigInt(row.total);
   }
 
@@ -295,7 +321,7 @@ export class ShiftsService {
 
         const openingCash = BigInt(reconciliation.opening_cash);
         const cashSalesAmount = await this.cashSales(manager, shift.id);
-        const expenseAmount = 0n;
+        const expenseAmount = await this.drawerExpenses(manager, shift.id);
         const expectedCash = openingCash + cashSalesAmount - expenseAmount;
         const countedCash = BigInt(input.countedCash);
         const difference = countedCash - expectedCash;
@@ -305,7 +331,7 @@ export class ShiftsService {
         }
 
         reconciliation.cash_sales_amount = String(cashSalesAmount);
-        reconciliation.expense_amount = '0';
+        reconciliation.expense_amount = String(expenseAmount);
         reconciliation.expected_cash = String(expectedCash);
         reconciliation.counted_cash = String(countedCash);
         reconciliation.difference = String(difference);
@@ -384,13 +410,13 @@ export class ShiftsService {
 
         const openingCash = BigInt(reconciliation.opening_cash);
         const cashSalesAmount = await this.cashSales(manager, shift.id);
-        const expenseAmount = 0n;
+        const expenseAmount = await this.drawerExpenses(manager, shift.id);
         const expectedCash = openingCash + cashSalesAmount - expenseAmount;
         const countedCash = BigInt(input.countedCash);
         const difference = countedCash - expectedCash;
 
         reconciliation.cash_sales_amount = String(cashSalesAmount);
-        reconciliation.expense_amount = '0';
+        reconciliation.expense_amount = String(expenseAmount);
         reconciliation.expected_cash = String(expectedCash);
         reconciliation.counted_cash = String(countedCash);
         reconciliation.difference = String(difference);
@@ -409,6 +435,81 @@ export class ShiftsService {
       const updatedShift = await manager.getRepository(WorkShift).save(shift);
       return shiftView(updatedShift, shift.reconciliation);
     });
+  }
+
+  async addExpense(user: UserSummary, shiftId: string, input: CreateShiftExpenseDto): Promise<ShiftExpenseResponse> {
+    this.checkTenant(user);
+    const reason = input.reason;
+    if (!reason) throw httpError(422, 'EXPENSE_REASON_REQUIRED', 'Cần nhập lý do chi.');
+
+    return this.db.transaction(async (manager) => {
+      const [shift] = await manager.query(`SELECT s.id, s.branch_id, s.user_id, s.shift_type, s.status
+        FROM work_shifts s JOIN branches b ON b.id=s.branch_id
+        WHERE s.id=$1 AND b.store_id=$2 FOR UPDATE OF s`, [shiftId, user.storeId]);
+      if (!shift || (!user.permissions.includes('branch.access_all') && shift.branch_id !== user.branchId)) {
+        throw httpError(404, 'SHIFT_NOT_FOUND', 'Ca làm việc không tồn tại');
+      }
+      if (shift.status === 'CLOSED') throw httpError(409, 'SHIFT_CLOSED', 'Ca làm việc đã được đóng từ trước');
+      if (shift.user_id !== user.id) {
+        throw httpError(403, 'FORBIDDEN_NOT_SHIFT_OWNER', 'Chỉ người trực tiếp làm ca mới được ghi chi phí của ca.');
+      }
+      if (shift.shift_type !== 'CASHIER') throw httpError(409, 'CONFLICT', 'Ca này không có két');
+
+      const paidFromDrawer = input.paidFromDrawer ?? true;
+      if (paidFromDrawer) {
+        const [rec] = await manager.query('SELECT opening_cash::text AS opening_cash FROM cash_reconciliations WHERE work_shift_id=$1', [shift.id]);
+        if (!rec) throw httpError(500, 'INTERNAL_ERROR', 'Không tìm thấy bản ghi đối soát của ca thu ngân');
+        const expected = BigInt(rec.opening_cash) + await this.cashSales(manager, shift.id)
+          - await this.drawerExpenses(manager, shift.id) - BigInt(input.amount);
+        if (expected < 0n) throw httpError(422, 'EXPENSE_EXCEEDS_DRAWER', 'Số tiền chi vượt quá tiền mặt hiện có trong két.');
+      }
+
+      const [row] = await manager.query(`INSERT INTO shift_expenses (id, work_shift_id, amount, reason, paid_from_drawer, created_by)
+        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`, [randomUUID(), shift.id, input.amount, reason, paidFromDrawer, user.id]);
+      return expenseView(row);
+    });
+  }
+
+  async listExpenses(user: UserSummary, shiftId: string, rawQuery: Record<string, unknown>): Promise<ShiftExpensesListResponse> {
+    const invalid = () => httpError(422, 'VALIDATION_ERROR', 'Tham số danh sách không hợp lệ.');
+    if (Object.keys(rawQuery).some((key) => !['limit', 'cursor', 'sort'].includes(key))
+      || (rawQuery.sort !== undefined && rawQuery.sort !== '-createdAt')) throw invalid();
+    const rawLimit = rawQuery.limit ?? '20';
+    if (typeof rawLimit !== 'string' || !/^[1-9]\d{0,2}$/.test(rawLimit)) throw invalid();
+    const limit = Math.min(Number(rawLimit), 100);
+    if (rawQuery.cursor !== undefined && (typeof rawQuery.cursor !== 'string' || !/^[A-Za-z0-9_-]{1,1024}$/.test(rawQuery.cursor))) {
+      throw invalid();
+    }
+
+    const shift = await this.getShiftDetail(user, shiftId);
+    let after: { createdAt: string; id: string } | null = null;
+    if (typeof rawQuery.cursor === 'string') {
+      try {
+        const parsed = JSON.parse(Buffer.from(rawQuery.cursor, 'base64url').toString('utf8'));
+        if (parsed.scope !== shift.id || typeof parsed.createdAt !== 'string' || !Number.isFinite(Date.parse(parsed.createdAt))
+          || typeof parsed.id !== 'string' || !uuidPattern.test(parsed.id)) throw new Error();
+        after = parsed;
+      } catch { throw invalid(); }
+    }
+
+    const rows: Record<string, any>[] = await this.db.query(`SELECT e.*,
+        to_char(e.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_created_at
+      FROM shift_expenses e
+      WHERE e.work_shift_id=$1 AND ($2::timestamptz IS NULL OR (e.created_at,e.id) < ($2::timestamptz,$3::uuid))
+      ORDER BY e.created_at DESC, e.id DESC LIMIT $4`, [shift.id, after?.createdAt ?? null, after?.id ?? null, limit + 1]);
+    const [count] = await this.db.query('SELECT COUNT(*)::int AS total FROM shift_expenses WHERE work_shift_id=$1', [shift.id]);
+    const page = rows.slice(0, limit);
+    const last = page[page.length - 1];
+    return {
+      data: page.map(expenseView),
+      meta: {
+        limit,
+        nextCursor: rows.length > limit
+          ? Buffer.from(JSON.stringify({ scope: shift.id, createdAt: last.cursor_created_at, id: last.id })).toString('base64url')
+          : null,
+        total: count.total,
+      },
+    };
   }
 
   async getShiftDetail(user: UserSummary, shiftId: string): Promise<WorkShiftResponse> {
