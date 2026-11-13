@@ -65,6 +65,8 @@ Sửa `POS_API/.env` với cấu hình DB/auth và `PUBLIC_ORIGIN`; backend tự
 
 ## Quy trình phát triển
 
+Dự án sử dụng các coding assistant **Codex** và **Claude Code** để hỗ trợ khảo sát, viết mã, kiểm thử, review và cập nhật tài liệu, nhằm nâng cao hiệu quả phát triển. Hướng dẫn dự án cho từng công cụ nằm trong [`AGENTS.md`](AGENTS.md) và [`CLAUDE.md`](CLAUDE.md).
+
 Dự án dùng **devloopflow** cho spec, plan, task, TDD, review và verify AC; hồ sơ hiện hành nằm trong [`.devloopflow/`](.devloopflow/), cấu hình lệnh và nguồn ở [devloopflow.md](.devloopflow/devloopflow.md). Chọn đúng skill cho bước đang làm, không chạy cả flow khi chỉ sửa tài liệu hoặc việc nhỏ.
 
 **Graphify** dùng để tìm symbol và quan hệ trước khi đọc source. AST code chạy cục bộ; chỉ trích xuất ngữ nghĩa tài liệu thay đổi khi cần, tránh quét lại bản lưu lịch sử. **Caveman** rút gọn lời đáp khi được gọi, giữ đủ dữ kiện. **Ponytail** ưu tiên thay đổi nhỏ nhất vẫn đủ yêu cầu và kiểm tra rủi ro. Các công cụ này giúp tránh đọc/làm thừa; không có số liệu tiết kiệm chi phí được đo cho repository.
