@@ -438,10 +438,51 @@ export class SalesService {
   async cancel(user: UserSummary, id: string, reason: string) {
     if (!reason?.trim()) throw httpError(422, 'CANCEL_REASON_REQUIRED', 'Cần nhập lý do hủy đơn.');
     return this.db.transaction(async manager => {
-      await this.writable(manager, user, id);
-      await manager.query(`UPDATE invoices SET status='CANCELLED',cancel_reason=$2,cancelled_by=$3,
-        cancelled_at=now(),updated_at=now() WHERE id=$1`, [id, reason.trim(), user.id]);
+      const row = await this.invoice(manager, user, id);
+      if (row.status === 'PAID') await this.cancelPaid(manager, user, row, reason.trim());
+      else if (row.status === 'OPEN') {
+        await this.writable(manager, user, id);
+        await manager.query(`UPDATE invoices SET status='CANCELLED',cancel_reason=$2,cancelled_by=$3,
+          cancelled_at=now(),updated_at=now() WHERE id=$1`, [id, reason.trim(), user.id]);
+      } else throw httpError(409, 'INVOICE_NOT_OPEN', 'Đơn không còn mở.');
       return this.detail(manager, await this.invoice(manager, user, id));
     });
+  }
+
+  // Lock order: shift -> invoice -> promotion codes -> stock (same as payCash).
+  private async cancelPaid(manager: EntityManager, user: UserSummary, row: Row, reason: string): Promise<void> {
+    if (!user.permissions.includes('invoice.cancel_paid')) throw httpError(403, 'PERMISSION_DENIED', 'Bạn không có quyền thực hiện thao tác này.');
+    const [shift] = await manager.query('SELECT id, status FROM work_shifts WHERE id=$1 FOR UPDATE', [row.work_shift_id]);
+    if (shift.status !== 'OPEN') throw httpError(409, 'CANCEL_NOT_ALLOWED', 'Chỉ hủy được đơn đã thanh toán khi ca của đơn còn mở.');
+    const locked = await this.invoice(manager, user, row.id, true);
+    if (locked.status !== 'PAID') throw httpError(409, 'INVOICE_NOT_OPEN', 'Đơn không còn mở.');
+
+    const [payment] = await manager.query('SELECT method, amount::text AS amount FROM payments WHERE invoice_id=$1', [row.id]);
+    if (payment?.method === 'CASH') {
+      const [cash] = await manager.query(`SELECT r.opening_cash::text AS opening_cash,
+        COALESCE((SELECT SUM(p.amount) FROM payments p JOIN invoices i ON i.id=p.invoice_id
+          WHERE i.work_shift_id=r.work_shift_id AND i.status='PAID' AND p.method='CASH'),0)::text AS cash_sales,
+        COALESCE((SELECT SUM(e.amount) FROM shift_expenses e
+          WHERE e.work_shift_id=r.work_shift_id AND e.paid_from_drawer=true),0)::text AS expenses
+        FROM cash_reconciliations r WHERE r.work_shift_id=$1`, [row.work_shift_id]);
+      if (!cash) throw httpError(500, 'INTERNAL_ERROR', 'Không tìm thấy bản ghi đối soát của ca thu ngân.');
+      if (BigInt(cash.opening_cash) + BigInt(cash.cash_sales) - BigInt(cash.expenses) - BigInt(payment.amount) < 0n)
+        throw httpError(409, 'CANCEL_EXCEEDS_DRAWER', 'Tiền mặt trong két không đủ để hoàn cho khách.');
+    }
+
+    const promos: Row[] = await manager.query(`SELECT p.id FROM promotion_codes p
+      JOIN invoice_promotion_codes ip ON ip.promotion_code_id=p.id WHERE ip.invoice_id=$1 FOR UPDATE OF p`, [row.id]);
+    // CHECK used_count >= 0 aborts the transaction (500) if the counter is already 0.
+    for (const promo of promos) await manager.query('UPDATE promotion_codes SET used_count=used_count-1,updated_at=now() WHERE id=$1', [promo.id]);
+
+    const sales: Row[] = await manager.query(`SELECT branch_id, ingredient_id, quantity FROM stock_movements
+      WHERE invoice_id=$1 AND type='SALE' ORDER BY ingredient_id, id`, [row.id]);
+    for (const sale of sales) {
+      await manager.query(`INSERT INTO stock_movements(id,branch_id,ingredient_id,type,quantity,balance_after,invoice_id,created_by,source)
+        VALUES($1,$2,$3,'SALE_REVERSAL',-$4::numeric,0,$5,$6,'USER')`,
+        [randomUUID(), sale.branch_id, sale.ingredient_id, sale.quantity, row.id, user.id]);
+    }
+    await manager.query(`UPDATE invoices SET status='CANCELLED',cancel_reason=$2,cancelled_by=$3,
+      cancelled_at=now(),updated_at=now() WHERE id=$1`, [row.id, reason, user.id]);
   }
 }

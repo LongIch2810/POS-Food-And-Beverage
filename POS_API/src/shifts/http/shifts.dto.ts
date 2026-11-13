@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateIf } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 
 const trim = ({ value }: { value: unknown }) => typeof value === 'string' ? value.trim() : value;
 
@@ -62,3 +62,22 @@ export class ForceCloseShiftDto {
   note?: string | null;
 }
 
+export class CreateShiftExpenseDto {
+  @ApiProperty({ type: 'integer', minimum: 1, maximum: 1000000000000, description: 'Số tiền chi (đồng)' })
+  @IsInt()
+  @Min(1)
+  @Max(1000000000000)
+  amount!: number;
+
+  @ApiPropertyOptional({ maxLength: 255, description: 'Lý do chi (bắt buộc; thiếu hoặc rỗng trả EXPENSE_REASON_REQUIRED)' })
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(255)
+  reason!: string;
+
+  @ApiPropertyOptional({ default: true, description: 'Có trừ vào tiền kỳ vọng của két hay không' })
+  @IsOptional()
+  @IsBoolean()
+  paidFromDrawer?: boolean;
+}

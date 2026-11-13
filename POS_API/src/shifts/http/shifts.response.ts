@@ -41,3 +41,21 @@ export interface ShiftsListResponse {
   };
 }
 
+export interface ShiftExpenseResponse {
+  id: string;
+  workShiftId: string;
+  amount: number;
+  reason: string;
+  paidFromDrawer: boolean;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface ShiftExpensesListResponse {
+  data: ShiftExpenseResponse[];
+  meta: {
+    limit: number;
+    nextCursor: string | null;
+    total: number;
+  };
+}
