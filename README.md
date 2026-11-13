@@ -6,17 +6,15 @@ POS và quản lý kho cho quán cà phê, trà sữa và quán ăn nhỏ. Sản
 
 | Thành phần | Đã có trong mã |
 | --- | --- |
-| `POS_API/` | Nền API NestJS/PostgreSQL, xác thực/phiên, quản trị nền tảng PB-03, tổ chức/nhân viên PB-04, thực đơn PB-05, ca làm PB-06, kho và khuyến mãi (Sprint 07), bán hàng và thanh toán (Sprint 08, kiểm trên local). |
+| `POS_API/` | API NestJS/PostgreSQL: xác thực, quản trị, tổ chức, thực đơn, ca, kho, khuyến mãi, bán hàng và thanh toán; Sprint 09 bổ sung chi phí ca, đối soát và hủy hóa đơn đã thanh toán. |
 | `POS_UI/` | Giao diện React; đăng nhập, quản trị nền tảng, tổ chức, thực đơn, ca làm, bán hàng, thanh toán và Hóa đơn đã nối API thật. Các luồng Sprint 09 đã kiểm trên local; màn Báo cáo còn dữ liệu mô phỏng, Kho còn mô phỏng tab lịch sử biến động. |
 | `POS_INFRA/` | Docker Compose để chạy PostgreSQL, API và UI tại máy local. |
 
-Báo cáo trong tài liệu là **phạm vi sản phẩm**, chưa phải chức năng backend đã triển khai. Luồng bán hàng và thanh toán đã triển khai ở Sprint 08 nhưng mới kiểm trên local, chưa có CI độc lập. Không dùng dữ liệu demo để vận hành cửa hàng thật.
+Báo cáo trong tài liệu là **phạm vi sản phẩm**, chưa phải chức năng backend đã triển khai. Mã Sprint 09 và thay đổi icon/tooltip đã được tích hợp vào `master`; [CI backend và frontend thành công trên commit `ba681e1`](https://github.com/LongIch2810/POS-Food-And-Beverage/actions/runs/43498164472). Không dùng dữ liệu demo để vận hành cửa hàng thật.
 
-[Sprint 2 đã kết thúc ngày 30/10/2026](sprints/sprint-02/SPRINT.md#kết-luận-sprint-2--2026-10-30): PB-03 và lát cắt PB-13 quản trị nền tảng được nghiệm thu local; CI backend/frontend thành công trên master `9cc3299`. Browser E2E vẫn là bằng chứng local, chưa xác nhận production.
+[Sprint 09](sprints/sprint-09/SPRINT.md) đã đóng với 6/6 tiêu chí đạt trong [QA local](.devloopflow/verify/sprint-09-ac/report-1.md): chi từ két, đối soát, hủy đơn `PAID` và giao diện Hóa đơn/Ca dùng API thật. Kết quả QA gắn với working tree đã kiểm tại thời điểm chạy; raw evidence chỉ có local. Báo cáo sprint giữ nguyên trạng thái tích hợp tại thời điểm đóng.
 
-[Sprint 3 đã kết thúc ngày 01/11/2026](sprints/sprint-03/SPRINT.md#kết-luận-sprint-3--2026-11-01): PB-04 và PB-13 tổ chức được Product Owner nghiệm thu local sau [đối chiếu QA](.devloopflow/verify/20261101-203100-9ce75dd-pb13-final/acceptance-readiness.md). Ngày02/11 đã tách commit và push lên nhánh `feat/pb13-organization-ui`; [CI backend/frontend thành công tại dafd0b5](https://github.com/LongIch2810/POS-Food-And-Beverage/actions/runs/41379713471). Chưa merge hoặc xác nhận production. Quy tắc khóa sửa quỹ sau ca đầu tiên được tích hợp ở PB-06 trước khi bật API mở ca.
-
-[Sprint 5 đã kết thúc ngày 05/11/2026](sprints/sprint-05/SPRINT.md#kết-luận-đóng-sprint-05--05112026): PB-06 và lát cắt PB-13 Ca làm đạt 19/19 tiêu chí theo [QA local độc lập](.devloopflow/verify/20261105-212738-1132f12-sprint05-qa-independent/sprint05-criteria.md). Lượt QA này chạy trên working tree dirty; tình trạng tích hợp và CI sau đó được ghi trong hồ sơ Sprint. Chưa xác nhận production.
+SePay đã kiểm ở Test mode trong phạm vi [tích hợp bên thứ ba](THIRD_PARTY_INTEGRATIONS.md); **chưa kiểm SePay Live hoặc production**. CI không thay thế kiểm tra trên môi trường vận hành.
 
 ## Chạy local với Docker Compose
 
@@ -63,6 +61,7 @@ Sửa `POS_API/.env` với cấu hình DB/auth và `PUBLIC_ORIGIN`; backend tự
 | `POS_API/` | `npm test` | Build và chạy test API; test tích hợp cần PostgreSQL và quyền tạo database thử. |
 | `POS_UI/` | `npm ci`, `npm run dev` | Cài dependency và chạy Vite trên cổng 5173; API cần chạy để đăng nhập. |
 | `POS_UI/` | `npm run build`, `npm test` | Kiểm tra TypeScript/build và chạy test UI. |
+| `POS_UI/` | `node --test test/icon-actions.browser.mjs`, `node --test test/shift-close-accessibility.browser.mjs` | Kiểm tra browser riêng cho icon/tooltip và trợ năng đóng ca; cần Chrome hoặc Chromium. Các file này không nằm trong `npm test`. |
 
 ## Quy trình phát triển
 
@@ -79,4 +78,4 @@ Hồ sơ cũ nằm nguyên byte, tên gốc trong `.devloopflow/specs|plans|task
 - [`POS_INFRA/`](POS_INFRA/): môi trường Docker local.
 - [Tổng quan sản phẩm](docs/PRODUCT_OVERVIEW.md), [quy tắc nghiệp vụ](docs/BUSINESS_RULES.md), [thiết kế cơ sở dữ liệu](docs/DESIGN_DB_POS_SYSTEM.md).
 - [Quy ước API](docs/api-spec.md), [spec hiện hành](.devloopflow/specs/), [kiến trúc mục tiêu](docs/architecture/ARCHITECTURE.md), [tech stack hiện dùng](docs/architecture/TECH_STACK.md).
-- [Thiết kế giao diện](DESIGN.md), [Sprint 1](sprints/sprint-01/SPRINT.md), [Sprint 2](sprints/sprint-02/SPRINT.md), [Sprint 3](sprints/sprint-03/SPRINT.md), [bằng chứng QA](.devloopflow/verify/EVIDENCE-INDEX.md).
+- [Thiết kế giao diện](DESIGN.md), [các sprint](sprints/), [Sprint 09](sprints/sprint-09/SPRINT.md), [bằng chứng QA](.devloopflow/verify/EVIDENCE-INDEX.md).
