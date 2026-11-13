@@ -3,7 +3,7 @@
 ## Trạng thái dự án
 
 - Đây là dự án POS và quản lý kho SaaS cho quán cà phê, trà sữa và quán ăn nhỏ: một `store` có nhiều `branch`, mỗi chi nhánh có bàn, ca thu ngân và tồn kho riêng.
-- `POS_API/` đã triển khai nền tảng, xác thực, quản trị, tổ chức, thực đơn, ca, kho, khuyến mãi, bán hàng và thanh toán (chuyển khoản QR/SePay, xác nhận thủ công); Sprint 08 đã merge vào `master` (PR #18), đã kiểm trên local và SePay Test mode, **chưa kiểm Live**. `POS_UI/` có các màn đã nối API và các phần còn mô phỏng; `POS_INFRA/` có Docker Compose local. Xem `README.md` để phân biệt phạm vi đã triển khai và UI demo.
+- `POS_API/` đã triển khai nền tảng, xác thực, quản trị, tổ chức, thực đơn, ca, kho, khuyến mãi, bán hàng và thanh toán (chuyển khoản QR/SePay, xác nhận thủ công); Sprint 08 đã merge vào `master` (PR #18), đã kiểm trên local và SePay Test mode. Đây là dự án cá nhân học tập; theo quyết định chủ dự án, chỉ dùng SePay Test mode, Live ngoài phạm vi. `POS_UI/` có các màn đã nối API và các phần còn mô phỏng; `POS_INFRA/` có Docker Compose local. Xem `README.md` để phân biệt phạm vi đã triển khai và UI demo.
 
 ## Tổng quan kỹ thuật
 
@@ -68,7 +68,7 @@ Mọi đường dẫn dưới đây tính từ **gốc repository** (thư mục 
 | `docs/architecture/ARCHITECTURE.md` | Thành phần, ranh giới module, triển khai và luồng dữ liệu **mục tiêu**. |
 | `docs/architecture/auth.md` | Phiên, JWT, cookie, mật khẩu và giới hạn thử. |
 | `docs/architecture/TECH_STACK.md` | Công nghệ/framework/thư viện **đang dùng** theo backend, frontend và hạ tầng; đọc trước khi chọn hoặc thêm dependency. |
-| `THIRD_PARTY_INTEGRATIONS.md` | Tích hợp SePay (webhook) và VietQR (QR) đã triển khai trong Sprint 08 trên local, đã kiểm trên SePay Test mode (verify-ac vòng 10, 10/11/2026, chưa có CI độc lập), **chưa kiểm Live**; đọc khi làm luồng chuyển khoản hoặc mã QR. |
+| `THIRD_PARTY_INTEGRATIONS.md` | Tích hợp SePay (webhook) và VietQR (QR) đã triển khai trong Sprint 08 trên local, đã kiểm trên SePay Test mode (verify-ac vòng 10, 10/11/2026, chưa có CI độc lập); dự án chỉ dùng Test mode, Live ngoài phạm vi. Đọc khi làm luồng chuyển khoản hoặc mã QR. |
 | `DESIGN.md` | Giao diện POS, component, tương tác, ngôn ngữ và thiết bị. |
 | `rules/` | Quy tắc làm việc chung; chọn file phù hợp theo bảng bên dưới. |
 | Vai trò khám phá / review / QA | Dùng skill devloopflow cho cả hai agent: khám phá `devloopflow:explore`, review `devloopflow:review-code`, kiểm thử/nghiệm thu `devloopflow:verify-ac`; các vai trò này không sửa source theo chỉ dẫn. Cấu hình `.codex/agents/` (`explorer`, `code-reviewer`, `qa`) hiện đã bị xóa khỏi working tree (chưa commit), không còn là nguồn. |

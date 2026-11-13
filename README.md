@@ -7,14 +7,14 @@ POS và quản lý kho cho quán cà phê, trà sữa và quán ăn nhỏ. Sản
 | Thành phần | Đã có trong mã |
 | --- | --- |
 | `POS_API/` | API NestJS/PostgreSQL: xác thực, quản trị, tổ chức, thực đơn, ca, kho, khuyến mãi, bán hàng và thanh toán; Sprint 09 bổ sung chi phí ca, đối soát và hủy hóa đơn đã thanh toán. |
-| `POS_UI/` | Giao diện React; đăng nhập, quản trị nền tảng, tổ chức, thực đơn, ca làm, bán hàng, thanh toán và Hóa đơn đã nối API thật. Các luồng Sprint 09 đã kiểm trên local; màn Báo cáo còn dữ liệu mô phỏng, Kho còn mô phỏng tab lịch sử biến động. |
+| `POS_UI/` | Giao diện React; đăng nhập, quản trị nền tảng, tổ chức, thực đơn, ca làm, bán hàng, thanh toán và Hóa đơn đã nối API thật. Các luồng Sprint 09 đã kiểm trên local; màn Báo cáo còn dữ liệu mô phỏng. Source tab Sổ kho gọi API thật; xem Sprint 10 để theo dõi việc kiểm lại trên ứng dụng. |
 | `POS_INFRA/` | Docker Compose để chạy PostgreSQL, API và UI tại máy local. |
 
 Báo cáo trong tài liệu là **phạm vi sản phẩm**, chưa phải chức năng backend đã triển khai. Mã Sprint 09 và thay đổi icon/tooltip đã được tích hợp vào `master`; [CI backend và frontend thành công trên commit `ba681e1`](https://github.com/LongIch2810/POS-Food-And-Beverage/actions/runs/43498164472). Không dùng dữ liệu demo để vận hành cửa hàng thật.
 
 [Sprint 09](sprints/sprint-09/SPRINT.md) đã đóng với 6/6 tiêu chí đạt trong [QA local](.devloopflow/verify/sprint-09-ac/report-1.md): chi từ két, đối soát, hủy đơn `PAID` và giao diện Hóa đơn/Ca dùng API thật. Kết quả QA gắn với working tree đã kiểm tại thời điểm chạy; raw evidence chỉ có local. Báo cáo sprint giữ nguyên trạng thái tích hợp tại thời điểm đóng.
 
-SePay đã kiểm ở Test mode trong phạm vi [tích hợp bên thứ ba](THIRD_PARTY_INTEGRATIONS.md); **chưa kiểm SePay Live hoặc production**. CI không thay thế kiểm tra trên môi trường vận hành.
+Đây là dự án cá nhân phục vụ học tập; theo quyết định của chủ dự án, SePay chỉ sử dụng **Test mode**, không đưa SePay Live vào phạm vi. SePay Test mode đã được kiểm trong phạm vi [tích hợp bên thứ ba](THIRD_PARTY_INTEGRATIONS.md); production chưa được kiểm. CI không thay thế kiểm tra trên môi trường vận hành.
 
 ## Chạy local với Docker Compose
 
