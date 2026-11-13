@@ -1,10 +1,29 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import { shiftService as service } from '../src/services/shiftService.ts';
+import { rememberRequestIdentity } from '../src/auth/session-events.ts';
 
 afterEach(() => {
   delete globalThis.document;
   delete globalThis.fetch;
+  delete globalThis.window;
+  rememberRequestIdentity(null);
+});
+
+test('ST-8 close response from old identity does not broadcast a shift change', async () => {
+  let resolve, events = 0;
+  const pending = new Promise(r => { resolve = r; });
+  globalThis.window = { dispatchEvent() { events++; } };
+  globalThis.document = { cookie: '__Host-pos_csrf=token' };
+  globalThis.fetch = () => pending;
+  const user = id => ({ id, storeId: 'store', branchId: 'branch', role: 'CASHIER', permissions: [] });
+  rememberRequestIdentity(user('first'));
+  const close = service.closeShiftBlind('shift', 0);
+  rememberRequestIdentity(user('second'));
+  resolve(Response.json({ data: { id: 'shift', status: 'CLOSED' } }));
+  await close;
+  assert.equal(events, 0);
+  delete globalThis.window; rememberRequestIdentity(null);
 });
 
 test('PB13-SHIFT-HTTP operations preserve endpoints, query params, bodies and CSRF tokens', async () => {
@@ -150,3 +169,39 @@ test('PB13-SHIFT-HTTP operations preserve endpoints, query params, bodies and CS
   assert.ok(calls.every((c) => c.method === 'GET' || c.headers?.['X-CSRF-Token'] === 'shift-csrf-token'));
 });
 
+
+test('ST-6.AC-1 POST expense sends number and false and returns server DTO', async () => {
+  globalThis.document = { cookie: '__Host-pos_csrf=token' };
+  const expense = { id: 'expense-1', workShiftId: 'shift/1', amount: 20000, reason: 'Mua đá', paidFromDrawer: false, createdBy: 'user-1', createdAt: '2026-11-13T00:00:00Z' };
+  const calls = [];
+  globalThis.fetch = async (url, options) => { calls.push({ url, ...options }); return Response.json({ data: expense }); };
+  assert.deepEqual(await service.addExpense('shift/1', 20000, 'Mua đá', false), expense);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, '/api/v1/work-shifts/shift%2F1/expenses');
+  assert.equal(calls[0].method, 'POST');
+  assert.deepEqual(JSON.parse(calls[0].body), { amount: 20000, reason: 'Mua đá', paidFromDrawer: false });
+  assert.equal(calls[0].headers['X-CSRF-Token'], 'token');
+});
+
+test('ST-6.AC-1 GET expenses encodes cursor, preserves metadata and defaults pagination', async () => {
+  const calls = [];
+  globalThis.fetch = async (url) => { calls.push(url); return Response.json({ data: [], meta: { limit: 7, nextCursor: 'next', total: 0 } }); };
+  assert.deepEqual(await service.getExpenses('shift/1', { limit: 7, cursor: 'a+/=' }), { data: [], meta: { limit: 7, nextCursor: 'next', total: 0 } });
+  await service.getExpenses('shift/1');
+  assert.equal(calls[0], '/api/v1/work-shifts/shift%2F1/expenses?limit=7&sort=-createdAt&cursor=a%2B%2F%3D');
+  assert.equal(calls[1], '/api/v1/work-shifts/shift%2F1/expenses?limit=20&sort=-createdAt');
+});
+
+test('ST-6.AC-1 POST preserves server and network errors without retry', async () => {
+  globalThis.document = { cookie: '__Host-pos_csrf=token' };
+  for (const [status, code, message] of [[422, 'VALIDATION_ERROR', 'Dữ liệu không hợp lệ'], [409, 'SHIFT_CLOSED', 'Ca đã đóng']]) {
+    let calls = 0;
+    globalThis.fetch = async () => { calls++; return Response.json({ error: { code, message } }, { status }); };
+    await assert.rejects(service.addExpense('shift-1', 20000, 'Mua đá', false), error => error.code === code && error.message === message);
+    assert.equal(calls, 1);
+  }
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; throw new Error('offline'); };
+  await assert.rejects(service.addExpense('shift-1', 20000, 'Mua đá', false), error => error.code === 'NETWORK_ERROR' && error.message.includes('Chưa xác nhận'));
+  assert.equal(calls, 1);
+});

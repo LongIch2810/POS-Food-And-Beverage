@@ -27,7 +27,7 @@
 - Migration: file `YYYYMMDDHHMMSS-Ten.ts` trong `POS_API/src/database/migrations/` (ví dụ `20261111000000-ManagerCancelOpen.ts`); chỉ thêm migration mới, không sửa migration đã chạy; không dùng `schema:sync`.
 - Test cùng module trong `tests/` (`*.test.ts`, `*.integration.test.ts`); `npm test` chạy `dist/**/*.test.js` tuần tự (`--test-concurrency=1`). Tên test mang mã tình huống (`ST-4.AC-1`, `PB-04`, `BR-xx`...) để nối với tiêu chí nghiệm thu.
 - `POS_UI/src/`: `app/` (`App.tsx`, `navigation.ts`, không dùng router riêng), `features/<màn>/` (auth, platform, settings, products, shifts, pos, invoices, inventory, reports), `services/*Service.ts` (gọi API), `http/client.ts` (fetch cùng origin; tự lấy cookie `__Host-pos_csrf` và gửi `X-CSRF-Token`; service truyền thêm header như `Idempotency-Key`), `auth/` (phiên), `context/`, `components/`, `types/`, `utils/`, `mock/` (dữ liệu mô phỏng cho phần chưa nối API). Test UI: `POS_UI/test/*.test.mjs`.
-- UI đã nối API thật: đăng nhập, quản trị nền tảng, cài đặt tổ chức, thực đơn, ca, bán hàng và thanh toán. Còn mô phỏng (`src/mock/`): màn Hóa đơn, Báo cáo và tab lịch sử biến động của Kho. Phần nào dùng mock hay API thật thì kiểm `README.md` và mã, không đoán.
+- UI đã nối API thật: đăng nhập, quản trị nền tảng, cài đặt tổ chức, thực đơn, ca, bán hàng, thanh toán và Hóa đơn. Còn mô phỏng (`src/mock/`): màn Báo cáo và tab lịch sử biến động của Kho. Phần nào dùng mock hay API thật thì kiểm `README.md` và mã, không đoán.
 
 ### Chạy local và cấu hình
 

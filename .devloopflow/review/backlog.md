@@ -1,7 +1,7 @@
 # Backlog lỗi nhẹ (Low, Very Low) chờ xử lý
 <!-- Do agent chính ghi vào .devloopflow/review/backlog.md khi user chọn "đưa vào backlog" ở bước 10 của run (hoặc khi review dùng rời và user muốn xử lý sau). Được commit nên chỉ ghi tóm tắt và trích đoạn ngắn không nhạy cảm, không secret. Chỉ thêm, không xoá mục cũ; đổi trạng thái khi xử lý và ghi thêm dòng lịch sử. Xử lý các mục bằng /devloopflow:fix-backlog. -->
 
-- Cập nhật lần cuối: 2026-11-13
+- Cập nhật lần cuối: 2026-11-14
 - Id `B-<n>` tăng dần trong toàn dự án, không dùng lại.
 
 ## Tổng hợp
@@ -57,6 +57,8 @@
 | B-48 | Low | 20261112-sprint09-drawer-cancel-invoices (R2-N1) | `POS_API/src/sales/sales.service.ts (cancelPaid) và payCash` | Chưa có test cho cặp `payCash` và `cancelPaid` chạy đồng thời (reviewer chưa kiểm chứng deadlock khóa ca `FOR UPDATE OF s,b` và `KEY SHARE` FK) | 2026-11-13 | đã sửa |
 | B-49 | Low | 20261112-sprint09-drawer-cancel-invoices (V1-N1) | `.devloopflow/verify/20261112-sprint09-drawer-cancel-invoices/report-1.md` | ST-5.AC-4/5 (hủy+đóng ca, hủy+chi, hai thứ tự) chỉ có chứng cứ từ `npm test`, chưa chạy HTTP thật bằng app chạy riêng | 2026-11-13 | đã sửa |
 | B-50 | Low | 20261112-sprint09-drawer-cancel-invoices (verify-ac lần 2, V2-N1) | `POS_API/src/sales/tests/payment.integration.test.ts:113,157,359,466,501,650,762,896,1258` | Test seed `started_at` bằng `now()` của PostgreSQL nhưng `closeShift` đặt `ended_at` bằng `new Date()` của Node; khi đồng hồ container DB đi trước host hơn ~190 ms, CHECK `chk_work_shifts_ended_at` ném `23514` ở `[R14-1]` và kéo theo 4 test sau (flaky) | 2026-11-13 | đã sửa |
+| B-51 | Low | 20261113-sprint09-ui (review vòng 1, R1-7) | `POS_UI/src/features/invoices/InvoicesScreen.tsx:70,80` | Hai catch bỏ toàn bộ lỗi server, thay bằng thông báo chung. Người dùng mất nguyên nhân và mã yêu cầu để tra soát. | 2026-11-13 | đã sửa |
+| B-52 | Low | Dùng rời, review riêng B-51 (R1-1) | `POS_UI/test/invoices-screen.test.mjs:117` | Test stale-list reject request đã resolve, chưa thực sự kiểm lỗi của request cũ đang chờ | 2026-11-14 | chờ xử lý |
 
 - Trạng thái: `chờ xử lý` | `đã sửa` | `bỏ` (finding sai, hoặc không còn áp dụng vì code đã đổi; ghi lý do trong lịch sử)
 
@@ -394,3 +396,26 @@
 - Ngày ghi: 2026-11-13
 - Trạng thái: đã sửa
 - Lịch sử trạng thái (chỉ thêm): 2026-11-13 — chờ xử lý — user: "đưa vào backlog fix luôn" sau verify-ac lần 2 task 20261112-sprint09-drawer-cancel-invoices; 2026-11-13 — đã sửa — fix-backlog B-50 (tdd, sonnet): 9 chỗ seed ca trong `payment.integration.test.ts` đổi `now()` → `now() - interval '1 minute'`; RED bằng đột biến `+5 seconds` (6 test đỏ, `23514`), GREEN 72/72 ×3 và `npm test` 204/204 (agent chính chạy lại: 204/204, file payment 72/72 ×2); file errors `.devloopflow/errors/20261113-payment-test-seed-db-clock-flaky.md`; chưa qua code-reviewer
+
+### B-51 — R1-7 [Low]
+- Task nguồn: 20261113-sprint09-ui
+- File:dòng: POS_UI/src/features/invoices/InvoicesScreen.tsx:70,80
+- Finding (nguyên văn): Hai catch bỏ toàn bộ lỗi server, thay bằng thông báo chung. Người dùng mất nguyên nhân và mã yêu cầu để tra soát.
+- Căn cứ và đề xuất sửa: API contract tổng của plan yêu cầu hiển thị tiếng Việt và requestId khi có; giữ message/requestId, có fallback khi lỗi không có thông tin.
+- Test tái hiện đề xuất: T4-list/T4-race nhận lỗi có message và requestId → cả hai hiển thị, vẫn tải lại được.
+- Phạm vi ảnh hưởng khi sửa: hai catch trong InvoiceList; caller POS_UI/src/app/App.tsx:100; chạy lại invoices-screen.test.mjs. Không đổi API hoặc module khác. Mức: Hẹp.
+- Ngày ghi: 2026-11-13
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-13 — chờ xử lý — review vòng 1 Task B.; 2026-11-13 — đã sửa — TDD `[B-51]` RED/GREEN; `InvoicesScreen.tsx`, `invoices-screen.test.mjs`; agent chính chạy focused 4/4, UI 143/143, build exit 0 và API độc lập 224/224 (`evidence/b51/primary-api.log`); API subagent timeout 300s. Hồ sơ `.devloopflow/errors/20261113-invoice-load-error-details-lost.md`; chưa qua code-reviewer.
+- Lịch sử trạng thái: 2026-11-14 — review riêng B-51 vòng 1 PASS; phát hiện khoảng trống test độc lập R1-1 [Low] được ghi B-52, không phát hiện lỗi production B-51.
+
+### B-52 — R1-1 [Low]
+- Task nguồn: dùng rời, review riêng B-51 khi chuẩn bị đóng Sprint 09.
+- File:dòng: `POS_UI/test/invoices-screen.test.mjs:117`.
+- Finding (nguyên văn reviewer): Case stale-list không tạo request pending mới. Vòng lặp trước kết thúc với trạng thái `OPEN`; dòng 117 tiếp tục chọn `OPEN`, nên query key không đổi. `staleList` ở dòng 118 là request đã resolve tại dòng 100; `reject()` ở dòng 120 không có tác dụng. Assertion dòng 121 xanh nhưng không kiểm việc bỏ lỗi từ request danh sách cũ.
+- Căn cứ và đề xuất sửa: `rules/testing.md`, mục “Test đáng tin”; plan ST-4.AC-2 yêu cầu bỏ lỗi của request cũ. Chọn trạng thái khác trạng thái hiện tại, ví dụ `PAID`; assert số request tăng một trước khi lưu `staleList`, rồi đổi `CANCELLED` và reject request pending vừa lưu. Reviewer xác minh bằng test instrument trong bộ nhớ; chưa thấy lỗi production.
+- Test tái hiện đề xuất: `[B-51] stale list error after changing filters` | input: request PAID pending, chuyển CANCELLED, PAID reject có message/requestId | kết quả mong đợi: lỗi cũ không xuất hiện, CANCELLED vẫn có thể tải thành công.
+- Phạm vi ảnh hưởng khi sửa: đổi `POS_UI/test/invoices-screen.test.mjs:117` trong test `[B-51]`; runner `POS_UI/package.json:11`, không có import/caller khác sau khi tìm kiếm. Chạy lại `node --experimental-strip-types --test test/invoices-screen.test.mjs`, sau đó `npm test`; không cần sửa production hoặc module khác. Mức: Hẹp.
+- Ngày ghi: 2026-11-14
+- Trạng thái: chờ xử lý
+- Lịch sử trạng thái: 2026-11-14 — chờ xử lý — review riêng B-51 vòng 1; Low, không chặn kết quả review.

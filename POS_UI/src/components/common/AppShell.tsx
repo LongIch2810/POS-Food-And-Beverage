@@ -49,7 +49,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
   const perms = session.permissions || [];
   const has = (p: string) => perms.includes(p as any);
   const isPlatformAdmin = user.role_code === 'PLATFORM_ADMIN';
-  const isDemo = !isPlatformAdmin && !['settings', 'products', 'shifts', 'inventory'].includes(currentTab);
+  const isDemo = !isPlatformAdmin && !['settings', 'products', 'shifts', 'invoices', 'inventory'].includes(currentTab);
   const canSwitchBranch = has('branch.access_all');
 
   const [activeShiftDuration, setActiveShiftDuration] = useState<string>('');

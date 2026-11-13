@@ -57,6 +57,13 @@ export function DataTable<T>({
               key={keyExtractor(row)}
               className={onRowClick ? 'is-clickable' : undefined}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
+              tabIndex={onRowClick ? 0 : undefined}
+              onKeyDown={onRowClick ? (event) => {
+                if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                  event.preventDefault();
+                  onRowClick(row);
+                }
+              } : undefined}
             >
               {columns.map((col) => (
                 <td key={col.key} className={alignClass(col.align)}>

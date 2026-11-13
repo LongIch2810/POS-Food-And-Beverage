@@ -22,7 +22,7 @@
 | M-6 | Quy trình | tdd, qa-evidence, subagent | Giao `tdd` cho việc nhiều bước có nguy cơ bị giới hạn phiên | Yêu cầu worker ghi log RED/GREEN và output test ngay từng bước vào `qa-evidence/`, không chỉ báo cáo cuối | 3 | có hiệu lực |
 | M-7 | Quy trình | verify-ac, sandbox, environment | Chuẩn bị chạy verify-ac cần app, container hoặc DB đang chạy | Xác nhận quyền khởi động môi trường trước vòng kiểm; khi bị chặn, dừng và báo user thay vì lặp lại lệnh bị chặn | 1 | có hiệu lực |
 | M-8 | Đã học được | config, secret, auth, test-fixture | Siết ngưỡng độ dài secret hoặc đổi cấu hình bắt buộc | Kiểm mọi fixture test đang dùng giá trị cũ trước khi siết; không đổi fixture nếu user chưa đồng ý | 1 | có hiệu lực |
-| M-9 | Quy trình | qa, acceptance, evidence, provenance | Chuẩn bị nghiệm thu có nhiều vế và thay đổi UI/API | Lập ma trận từng vế AC với artifact trước khi chạy và lưu hash mã được kiểm cùng bằng chứng | 1 | có hiệu lực |
+| M-9 | Quy trình | qa, acceptance, evidence, provenance | Chuẩn bị nghiệm thu có nhiều vế và thay đổi UI/API | Lập ma trận từng vế AC với artifact trước khi chạy và lưu hash mã được kiểm cùng bằng chứng | 1 | hết hiệu lực |
 | M-10 | Hay quên | permission, roles, integration-test | Thêm hoặc thay đổi quyền theo vai trò | Kiểm hành vi qua HTTP bằng vai trò thật, gồm ca được phép và các trường hợp thiếu điều kiện hoặc sai phạm vi | 1 | có hiệu lực |
 
 | M-11 | Hay quên | ui, state, query-key | UI đổi tab/filter/cursor và tái sử dụng state danh sách với các kiểu row khác nhau. | Generation guard ở promise callback chưa đủ; render đầu tiên sau đổi tab vẫn có thể nhận rows cũ trước useEffect. Gắn rows với query key và chỉ render bảng khi key khớp, hiện loading trong khoảng chuyển tiếp. Test phải thực thi callback cột, không chỉ stub bảng rồi kiểm props. | chưa ghi | có hiệu lực |
@@ -30,8 +30,7 @@
 | M-13 | Hay quên | ui, toast, session | Provider hiển thị toast hoặc trạng thái tạm sống xuyên logout/login hay đổi user/store. | Xóa thông báo cũ khi danh tính hoặc trạng thái xác thực đổi; kiểm bằng browser sau logout/login cửa hàng khác, kể cả toast lỗi không tự biến mất. | chưa ghi | có hiệu lực |
 | M-14 | Đã học được | db, transaction, locking | PostgreSQL READ COMMITTED, truy vấn JOIN quan hệ mutable cùng FOR UPDATE và phải chờ transaction khác sửa khóa ngoại. | Lấy khóa dòng gốc trong scope bằng statement riêng, rồi đọc lại quan hệ trong statement sau của cùng transaction; kiểm thử thứ tự chờ khóa thật bằng pg_locks/pg_blocking_pids. JOIN trước khi chờ có thể trả thiếu dòng sau khi khóa ngoại đổi, gây401/404 sai. | chưa ghi | có hiệu lực |
 | M-15 | Hay quên | auth, permission, uuid | Khi so actor với ID tài nguyên, đặc biệt chặn tự khóa/tự hạ quyền. | So với ID chuẩn đọc từ DB hoặc chuẩn hóa đồng nhất; không so UUID path thô bằng chuỗi JavaScript. PostgreSQL coi UUID viết hoa/thường là một ID, JavaScript so chuỗi thì khác. Thêm tình huống UUID viết hoa cho guard tự thao tác. | chưa ghi | có hiệu lực |
-| M-16 | Quy trình | qa, acceptance, evidence | Khi kiểm tra hoặc báo hoàn thành tiêu chí nghiệm thu. | Đối chiếu từng vế của spec/docs đã chốt với mã/UI cuối, tình huống kiểm tra và artifact gốc; mở lại ảnh, log, request/response và trạng thái DB khi cần để xác nhận đúng commit và kết quả. Không suy diễn từ test pass, ảnh đơn lẻ hay chứng cứ phiên bản cũ; không dựng chứng cứ từ trí nhớ. Thiếu hoặc mâu thuẫn thì ghi **chưa xác minh**, để trống tiêu chí và chạy lại để thu chứng cứ thật. | chưa ghi | có hiệu lực |
-| M-17 | Quy trình | spec, pos, product-owner | Khi phỏng vấn, tạo, sửa hoặc rà soát đặc tả chức năng hay endpoint POS, kể cả khi việc viết spec là một bước trong task triển khai. | Chủ động đọc và áp dụng `.agents/skills/create-pos-spec/SKILL.md` trước khi làm spec; đối chiếu tài liệu, trình bản nháp, hỏi các quyết định còn mở và chỉ ghi vào `specs/` sau khi đã chốt. Thông tin có sẵn không thay thế bước rà và chốt. | chưa ghi | có hiệu lực |
+| M-16 | Quy trình | qa, acceptance, evidence | Khi kiểm tra hoặc báo hoàn thành tiêu chí nghiệm thu. | Đối chiếu từng vế của spec/docs đã chốt với mã/UI cuối, tình huống kiểm tra và artifact gốc; mở lại ảnh, log, request/response và trạng thái DB khi cần để xác nhận đúng commit và kết quả. Không suy diễn từ test pass, ảnh đơn lẻ hay chứng cứ phiên bản cũ; không dựng chứng cứ từ trí nhớ. Thiếu hoặc mâu thuẫn thì ghi **chưa xác minh**, để trống tiêu chí và chạy lại để thu chứng cứ thật. | chưa ghi | hết hiệu lực |
 | M-18 | Hay quên | http, delete, no-content | API Guard validate Content-Type application/json và Frontend fetch client xử lý response status. | Request `DELETE` thông thường không có body; `JsonBodyGuard` phải bỏ qua kiểm tra Content-Type cho `DELETE` để không trả 400 sai. Phía client UI `request()` phải kiểm tra `response.status === 204` để trả về `undefined` thay vì parse JSON `response.json()` gây crash `UNKNOWN` error. | chưa ghi | có hiệu lực |
 | M-19 | Đã học được | auth, qa, uuid, seed | Tạo fixture / seed dữ liệu PostgreSQL cho user, store, session liên quan xác thực JWT. | `AccessGuard` và `AuthService.authenticateAccess` dùng regex kiểm tra claims UUID chuẩn RFC 4122 Variant 1 (`[89ab][0-9a-f]{3}` ở nhóm 4). Nếu tự viết UUID bằng tay có nhóm 4 bắt đầu bằng ký tự khác (như `0`, `4`), token JWT sẽ bị từ chối và văng 401 UNAUTHENTICATED ngay sau khi login 200. Khi seed, luôn dùng `gen_random_uuid()` của PostgreSQL hoặc hàm sinh UUID v4 chuẩn. | chưa ghi | có hiệu lực |
 | M-20 | Đã học được | db, postgres, test | Lấy khóa bi quan (pessimistic write) trong PostgreSQL và chạy bộ test tích hợp backend. | (1) PostgreSQL cấm `FOR UPDATE` trên nullable side của `LEFT JOIN`. Luôn tách thành câu lệnh khóa base entity (`innerJoin`) với `.setLock('pessimistic_write', undefined, ['alias'])`, rồi đọc quan hệ nullable ở câu lệnh tiếp theo trong cùng transaction. (2) Runner `node --test` mặc định chạy song song các file test; khi nhiều integration test cùng chạy trên một DB PostgreSQL có khóa dòng dài sẽ gây nghẽn `statement_timeout (57014)`. Cần chỉ định `--test-concurrency=1` để chạy tuần tự các suite kiểm thử cơ sở dữ liệu. | chưa ghi | có hiệu lực |
@@ -51,6 +50,10 @@
 | M-34 | Đã học được | env, docker, database, test | Chạy `npm test` hoặc migration cho `POS_API` trên máy Windows của dự án. | `DATABASE_URL` trong `POS_API/.env` có thể không dùng được (cổng 5432 là relay WSL, sai mật khẩu); dùng PostgreSQL Docker `pos_infra-postgres-1` ở `127.0.0.1:15432` với `POSTGRES_USER/PASSWORD/DB` từ `POS_INFRA/.env.local`, dựng URL trong lệnh, không in hay ghi bí mật. Sau khi Docker Desktop khởi động lại, container thoát mã 255: `docker start pos_infra-postgres-1`. | 1 | có hiệu lực |
 | M-35 | Quy trình | tdd, mutation, subagent | Giao `tdd` kiểm đột biến bằng script tự động trên file production. | Yêu cầu `timeout` cho mỗi lần chạy, khôi phục file bằng `cmp` với bản sao sau MỖI đột biến và xác nhận lại bằng `grep`; không dùng đột biến gây treo (ví dụ đưa `INSERT` ra ngoài transaction) và agent chính kiểm `git diff` file production sau khi `tdd` báo xong. | 1 | có hiệu lực |
 | M-36 | Ý của user | workflow, communication, approval | Trình user các câu hỏi làm rõ, đề xuất hoặc thuật ngữ kỹ thuật cần user duyệt. | Giải thích từng điểm bằng lời thường (đề xuất là gì, vì sao, hậu quả nếu chọn khác) trước khi xin duyệt; gọi tên thuật ngữ (flaky, 'chưa chắc', bước 10c) kèm nghĩa; không coi 'đồng ý hết' khi user nói chưa hiểu. | 1 | có hiệu lực |
+
+| M-37 | Ý của user | reuse, tdd, existing-behavior | Khi task đã có hành vi hoặc mã đáp ứng yêu cầu. | Tái sử dụng phần đã có; kiểm xác nhận hành vi hiện tại và báo kết quả thật. | 1 | có hiệu lực |
+| M-38 | Hay quên | backlog, ledger, records | Khi ghi hoặc cập nhật một finding trong backlog. | Cập nhật cả bảng Tổng hợp lẫn phần Chi tiết cùng trạng thái và kiểm dòng nằm trong bảng Markdown. | 1 | có hiệu lực |
+| M-39 | Hay quên | qa, acceptance, evidence, ui, tablet, accessibility | Khi chuẩn bị hoặc kiểm nghiệm thu, đặc biệt form và hộp thoại trên tablet. | Lập ma trận AC–chứng cứ và lưu hash mã; đối chiếu từng vế với mã/UI cuối và artifact gốc, ghi chưa xác minh khi thiếu; kiểm browser thật kích thước chạm, nhãn và tương phản theo DESIGN. | 1 | có hiệu lực |
 
 Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY.md` gốc không có bộ đếm số lần cùng bài học tái diễn. Đây không phải 0 lần và không phải số test/chứng cứ. Khi có lần tái diễn mới, ghi căn cứ và ngày rồi bắt đầu đếm các lần **sau chuyển đổi**; không suy ngược số lần lịch sử.
 
@@ -164,7 +167,7 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - số lần: 1
 - ghi lần đầu: 2026-11-12 (task 20261109-sprint08-payment)
 - cập nhật gần nhất: 2026-11-12
-- trạng thái: có hiệu lực
+- trạng thái: hết hiệu lực — đã gộp vào M-39 theo yêu cầu user, 2026-11-13
 
 ### M-10
 - loại: Hay quên
@@ -179,7 +182,8 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - trạng thái: có hiệu lực
 
 ## Lịch sử (chỉ thêm, không xoá)
-- 2026-11-13 — task 20261112-sprint09-drawer-cancel-invoices — thêm M-29 (số migration gắn cứng), M-30 (đổi thứ tự kiểm tra cần AC), M-31 (seed thời gian bằng đồng hồ DB), M-32 (`--test-name-pattern` subtest), M-33 (subagent không ghi report), M-34 (DATABASE_URL/Docker), M-35 (đột biến treo), M-36 (ý user: giải thích trước khi duyệt); ghi chú vào M-17 (skill create-pos-spec không tồn tại).
+- 2026-11-13 — theo yêu cầu user: gộp M-9, M-16 vào M-39; giữ hai mục cũ ở trạng thái hết hiệu lực.\n- 2026-11-13 — task 20261113-sprint09-ui — thêm M-37 (tái sử dụng), M-38 (nhất quán backlog), M-39 (kiểm tablet và trợ năng).
+- 2026-11-13 — task 20261112-sprint09-drawer-cancel-invoices — thêm M-29 (số migration gắn cứng), M-30 (đổi thứ tự kiểm tra cần AC), M-31 (seed thời gian bằng đồng hồ DB), M-32 (`--test-name-pattern` subtest), M-33 (subagent không ghi report), M-34 (DATABASE_URL/Docker), M-35 (đột biến treo), M-36 (ý user: giải thích trước khi duyệt).
 - 2026-11-12 — task 20261109-sprint08-payment — thêm M-9 (ma trận chứng cứ và hash), M-10 (test hành vi quyền qua HTTP).
 - 2026-11-09 — task 20261109-sprint08-payment — thêm M-2 (đối chiếu tài liệu provider), M-1 (phạm vi chi nhánh, lần đầu), M-3 (trạng thái chờ), M-5 (rà tài liệu sau PASS), M-6 (tdd bị ngắt), M-7 (verify-ac bị chặn).
 - 2026-11-10 — task 20261109-sprint08-payment — thêm M-4 (mã lỗi và spec), M-8 (secret và fixture); cập nhật M-1 (số lần 3), M-3 (số lần 2), M-5 (số lần 2), M-6 (số lần 3) theo backlog B-1..B-4 và sync-docs.
@@ -256,19 +260,7 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - số lần: chưa ghi trong nguồn lịch sử
 - ghi lần đầu: không ghi trong nguồn lịch sử
 - cập nhật gần nhất: 2026-11-12 (chuyển hồ sơ, không tái xác minh)
-- trạng thái: có hiệu lực
-
-### M-17
-- loại: Quy trình
-- tag: spec, pos, product-owner
-- khi nào áp dụng: Khi phỏng vấn, tạo, sửa hoặc rà soát đặc tả chức năng hay endpoint POS, kể cả khi việc viết spec là một bước trong task triển khai.
-- quy tắc: Chủ động đọc và áp dụng `.agents/skills/create-pos-spec/SKILL.md` trước khi làm spec; đối chiếu tài liệu, trình bản nháp, hỏi các quyết định còn mở và chỉ ghi vào `specs/` sau khi đã chốt. Thông tin có sẵn không thay thế bước rà và chốt.
-- vì sao: Bài học lịch sử nhập từ MEMORY.md gốc; không xác minh lại trong đợt chuyển hồ sơ.
-- bằng chứng: Người dùng nhắc kiểm tra việc dùng skill khi lập `specs/platform.md` ngày 2026-10-30; phần mô tả và quy trình của `.agents/skills/create-pos-spec/SKILL.md`.. Nguồn gốc: MEMORY.md mục Dùng skill khi làm đặc tả POS.
-- số lần: chưa ghi trong nguồn lịch sử
-- ghi lần đầu: không ghi trong nguồn lịch sử
-- cập nhật gần nhất: 2026-11-13 — ghi chú: khi chạy task 20261112-sprint09-drawer-cancel-invoices, `.agents/skills/create-pos-spec/SKILL.md` KHÔNG tồn tại trên đĩa (Glob `**/create-pos-spec/**` không có kết quả), nên không áp dụng được; viết spec theo skill `devloopflow:write-spec`. Cần user xác nhận skill này còn dùng hay đã bị xóa.
-- trạng thái: có hiệu lực
+- trạng thái: hết hiệu lực — đã gộp vào M-39 theo yêu cầu user, 2026-11-13
 
 ### M-18
 - loại: Hay quên
@@ -496,4 +488,41 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - số lần: 1
 - ghi lần đầu: 2026-11-13 (task 20261112-sprint09-drawer-cancel-invoices)
 - cập nhật gần nhất: 2026-11-13
+- trạng thái: có hiệu lực
+
+
+### M-37
+- loại: Ý của user
+- tag: reuse, tdd, existing-behavior
+- khi nào áp dụng: Khi task đã có hành vi hoặc mã đáp ứng yêu cầu.
+- quy tắc: Tái sử dụng phần đã có; kiểm xác nhận hành vi hiện tại và báo kết quả thật.
+- vì sao: User chọn kiểm xác nhận message đã có thay vì viết lại phần đã làm.
+- bằng chứng: User nói nguyên văn “có rồi thì tái sử dụng thôi”; task `.devloopflow/tasks/active/20261113-sprint09-ui.md`, lịch sử ST-2.
+- số lần: 1
+- ghi lần đầu: 2026-11-13 (task 20261113-sprint09-ui)
+- cập nhật gần nhất: 2026-11-13
+- trạng thái: có hiệu lực
+
+### M-38
+- loại: Hay quên
+- tag: backlog, ledger, records
+- khi nào áp dụng: Khi ghi hoặc cập nhật một finding trong backlog.
+- quy tắc: Cập nhật cả bảng Tổng hợp lẫn phần Chi tiết cùng trạng thái và kiểm dòng nằm trong bảng Markdown.
+- vì sao: B-51 ban đầu chỉ có phần chi tiết; dòng tổng hợp thêm sau lại cách bảng bởi dòng trống, khiến cách đếm theo bảng không nhất quán.
+- bằng chứng: `.devloopflow/review/backlog.md`, B-51; cuộc hội thoại task 20261113-sprint09-ui.
+- số lần: 1
+- ghi lần đầu: 2026-11-13 (task 20261113-sprint09-ui)
+- cập nhật gần nhất: 2026-11-13
+- trạng thái: có hiệu lực
+
+### M-39
+- loại: Hay quên
+- tag: qa, acceptance, evidence, ui, tablet, accessibility
+- khi nào áp dụng: Khi chuẩn bị hoặc kiểm nghiệm thu, đặc biệt form và hộp thoại trên tablet.
+- quy tắc: Lập ma trận AC–chứng cứ và lưu hash mã; đối chiếu từng vế spec/docs với mã/UI cuối, tình huống và artifact gốc (ảnh, log, request/response, DB khi cần); không suy từ test pass, ảnh đơn lẻ, chứng cứ cũ hay trí nhớ; thiếu hoặc mâu thuẫn thì ghi chưa xác minh và thu lại chứng cứ; kiểm browser thật kích thước chạm, nhãn liên kết và tương phản ở các viewport theo DESIGN.
+- vì sao: Nghiệm thu lần 1 phát hiện ba lỗi V1-1..3 dù test và build xanh; test trên browser sau sửa đo từng điều khiển và nhãn.
+- bằng chứng: M-9: `.devloopflow/verify/20261109-sprint08-payment/report-14.md`, `report-15.md`, vòng 17 và manifest `qa-evidence/20261111-194533-48ed476-s8-verify-ac-r17/run.md`; M-16: yêu cầu người dùng phiên 2026-10-29 và quy tắc bằng chứng QA trong `AGENTS.md`; M-39: `.devloopflow/verify/20261113-sprint09-ui/fails.md`, `report-1.md`, `report-2.md` và các hồ sơ lỗi `20261113-shift-close-touch-targets.md`, `20261113-shift-close-field-labels.md`, `20261113-force-close-field-contrast.md`.
+- số lần: 1
+- ghi lần đầu: 2026-11-13 (task 20261113-sprint09-ui)
+- cập nhật gần nhất: 2026-11-13 — gộp M-9 và M-16 theo yêu cầu user.
 - trạng thái: có hiệu lực

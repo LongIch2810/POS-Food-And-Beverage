@@ -1,46 +1,21 @@
-// Invoice Service Layer (API Ready)
-
-import { MockEngine } from '../../mock/mockEngine';
-import { mockStorage } from '../../mock/mockStorage';
-import { Invoice, InvoiceStatus } from '../../types/entities';
+﻿import { request } from '../../http/client.ts';
+import { salesService, type InvoiceDetail, type InvoiceSummary } from '../../services/salesService.ts';
 
 export interface InvoiceFilters {
-  status?: InvoiceStatus;
-  branchId?: string;
-  date?: string;
-  tableId?: string;
+  status?: 'OPEN' | 'PAID' | 'CANCELLED' | 'ALL';
+  branchId?: string; from?: string; to?: string; tableId?: string; cashierId?: string; cursor?: string; limit?: number;
 }
-
+export interface InvoiceListResponse {
+  data: InvoiceSummary[];
+  meta: { limit: number; nextCursor: string | null; total: number; filterOptions: { tables: { id: string; name: string }[]; cashiers: { id: string; name: string }[] } };
+}
 export const invoiceService = {
-  getInvoices(filters?: InvoiceFilters): Invoice[] {
-    const state = mockStorage.getState();
-    const effectiveBranch = filters?.branchId || MockEngine.getEffectiveBranchId();
-    let result = state.invoices;
-
-    if (effectiveBranch) {
-      result = result.filter((inv) => inv.branch_id === effectiveBranch);
-    }
-
-    if (filters?.status) {
-      result = result.filter((inv) => inv.status === filters.status);
-    }
-
-    if (filters?.date) {
-      result = result.filter((inv) => inv.created_at.startsWith(filters.date!));
-    }
-
-    if (filters?.tableId) {
-      result = result.filter((inv) => inv.dining_table_id === filters.tableId);
-    }
-
-    return result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  getInvoices(filters: InvoiceFilters = {}): Promise<InvoiceListResponse> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) if (value !== undefined) params.set(key, String(value));
+    const query = params.toString();
+    return request<InvoiceListResponse>(`invoices${query ? `?${query}` : ''}`, 'GET', undefined, true, true);
   },
-
-  getInvoiceById(invoiceId: string): Invoice | undefined {
-    return mockStorage.getState().invoices.find((inv) => inv.id === invoiceId);
-  },
-
-  cancelInvoice(invoiceId: string, reason: string): Promise<Invoice> {
-    return Promise.resolve(MockEngine.cancelInvoice(invoiceId, reason));
-  },
+  getInvoiceById: (invoiceId: string): Promise<InvoiceDetail> => salesService.get(invoiceId),
+  cancelInvoice: (invoiceId: string, reason: string): Promise<InvoiceDetail> => salesService.cancel(invoiceId, reason),
 };

@@ -7,7 +7,7 @@ POS và quản lý kho cho quán cà phê, trà sữa và quán ăn nhỏ. Sản
 | Thành phần | Đã có trong mã |
 | --- | --- |
 | `POS_API/` | Nền API NestJS/PostgreSQL, xác thực/phiên, quản trị nền tảng PB-03, tổ chức/nhân viên PB-04, thực đơn PB-05, ca làm PB-06, kho và khuyến mãi (Sprint 07), bán hàng và thanh toán (Sprint 08, kiểm trên local). |
-| `POS_UI/` | Giao diện React; đăng nhập, quản trị nền tảng, tổ chức, thực đơn và màn Ca làm đã nối API thật. Màn bán hàng POS (đơn, thanh toán tiền mặt, chuyển khoản QR/SePay) đã nối API thật từ Sprint 08 (kiểm trên local); màn Hóa đơn và Báo cáo còn dữ liệu mô phỏng; Kho còn mô phỏng ở tab lịch sử biến động. |
+| `POS_UI/` | Giao diện React; đăng nhập, quản trị nền tảng, tổ chức, thực đơn, ca làm, bán hàng, thanh toán và Hóa đơn đã nối API thật. Các luồng Sprint 09 đã kiểm trên local; màn Báo cáo còn dữ liệu mô phỏng, Kho còn mô phỏng tab lịch sử biến động. |
 | `POS_INFRA/` | Docker Compose để chạy PostgreSQL, API và UI tại máy local. |
 
 Báo cáo trong tài liệu là **phạm vi sản phẩm**, chưa phải chức năng backend đã triển khai. Luồng bán hàng và thanh toán đã triển khai ở Sprint 08 nhưng mới kiểm trên local, chưa có CI độc lập. Không dùng dữ liệu demo để vận hành cửa hàng thật.

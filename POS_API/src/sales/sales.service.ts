@@ -10,6 +10,7 @@ import { evaluatePromotion } from '../promotions/promotion-calculation';
 
 const MAX_MONEY = 1_000_000_000_000n;
 type Row = Record<string, any>;
+export type InvoiceReadScope = { storeId: string; branchId: string | null; cashierId: string | null };
 
 function money(value: string | number | bigint): number {
   const amount = BigInt(value);
@@ -31,6 +32,13 @@ function invoiceCode(): string {
 export class SalesService {
   constructor(private readonly db: DataSource) {}
 
+  readScope(user: UserSummary, requestedBranchId?: string): InvoiceReadScope {
+    const storeId = scope(user);
+    if (user.permissions.includes('branch.access_all')) return { storeId, branchId: requestedBranchId ?? null, cashierId: null };
+    if (!user.branchId) throw httpError(403, 'PERMISSION_DENIED', 'Tài khoản chưa được gán chi nhánh.');
+    return { storeId, branchId: user.branchId, cashierId: user.permissions.includes('invoice.read_branch') ? null : user.id };
+  }
+
   private async shift(manager: EntityManager, user: UserSummary): Promise<Row> {
     const rows = await manager.query(`SELECT s.id, s.branch_id, b.store_id, b.is_active FROM work_shifts s
       JOIN branches b ON b.id=s.branch_id WHERE s.user_id=$1 AND s.status='OPEN' AND s.shift_type='CASHIER' FOR UPDATE OF s,b`, [user.id]);
@@ -50,12 +58,19 @@ export class SalesService {
 
   private async detail(manager: EntityManager, row: Row) {
     const pricing = row.status === 'OPEN' ? await this.evaluateInvoicePricing(manager, row.id) : null;
+    const [context] = await manager.query(`SELECT s.status AS shift_status, s.user_id AS cashier_id,
+      u.full_name AS cashier_name, t.name AS table_name, p.method AS payment_method
+      FROM work_shifts s JOIN users u ON u.id=s.user_id
+      LEFT JOIN dining_tables t ON t.id=$2 LEFT JOIN payments p ON p.invoice_id=$3 WHERE s.id=$1`,
+      [row.work_shift_id, row.table_id, row.id]);
     const promotions: Row[] = await manager.query('SELECT code,discount_amount FROM invoice_promotion_codes WHERE invoice_id=$1',[row.id]);
     const items: Row[] = await manager.query(`SELECT * FROM invoice_items WHERE invoice_id=$1 ORDER BY created_at,id`, [row.id]);
     const toppings: Row[] = items.length ? await manager.query(`SELECT t.* FROM invoice_item_toppings t
       JOIN invoice_items i ON i.id=t.invoice_item_id WHERE i.invoice_id=$1 ORDER BY t.created_at,t.id`, [row.id]) : [];
     return {
       id: row.id, invoiceCode: row.invoice_code, branchId: row.branch_id, workShiftId: row.work_shift_id,
+      workShiftStatus: context.shift_status, cashierId: context.cashier_id, cashierName: context.cashier_name,
+      tableName: context.table_name, paymentMethod: context.payment_method,
       tableId: row.table_id, orderType: row.order_type, status: row.status,
       subtotal: money(pricing?.subtotal ?? row.subtotal), discountAmount: money(pricing?.discountAmount ?? row.discount_amount), totalAmount: money(pricing?.totalAmount ?? row.total_amount),
       promotionCode: promotions[0] ? {code:promotions[0].code, applicable:pricing?.promotionApplicable ?? true} : null,
@@ -75,50 +90,101 @@ export class SalesService {
 
   async get(user: UserSummary, id: string) {
     const row = await this.invoice(this.db.manager, user, id);
+    const cashierId = this.readScope(user).cashierId;
+    if (cashierId) {
+      const [shift] = await this.db.query('SELECT user_id FROM work_shifts WHERE id=$1', [row.work_shift_id]);
+      if (shift?.user_id !== cashierId) throw httpError(404, 'NOT_FOUND', 'Không tìm thấy hóa đơn.');
+    }
     return this.detail(this.db.manager, row);
   }
 
   async list(user: UserSummary, query: Record<string, unknown>) {
-    const allowed = ['status', 'limit', 'cursor', 'branchId'];
-    if (Object.keys(query).some(key => !allowed.includes(key)) || (query.status !== undefined && query.status !== 'OPEN'))
+    const allowed = ['status', 'limit', 'cursor', 'branchId', 'cashierId', 'tableId', 'from', 'to', 'sort'];
+    if (Object.keys(query).some(key => !allowed.includes(key)) || (query.status !== undefined && !['OPEN', 'PAID', 'CANCELLED', 'ALL'].includes(query.status as string))
+      || (query.sort !== undefined && query.sort !== '-createdAt')
+      || [query.cashierId, query.tableId].some(id => id !== undefined && (typeof id !== 'string' || !uuidPattern.test(id))))
       throw httpError(422, 'VALIDATION_ERROR', 'Bộ lọc hóa đơn không hợp lệ.');
     const rawLimit = query.limit ?? '20';
     if (typeof rawLimit !== 'string' || !/^[1-9]\d{0,2}$/.test(rawLimit)) throw httpError(422, 'VALIDATION_ERROR', 'Giới hạn danh sách không hợp lệ.');
     const limit = Math.min(Number(rawLimit), 100);
-    const storeId = scope(user);
     const allBranches = user.permissions.includes('branch.access_all');
-    const branchId = allBranches ? query.branchId : user.branchId;
+    if (query.branchId !== undefined && (typeof query.branchId !== 'string' || !uuidPattern.test(query.branchId)))
+      throw httpError(422, 'VALIDATION_ERROR', 'Chi nhánh không hợp lệ.');
+    const branchId = allBranches ? (typeof query.branchId === 'string' ? query.branchId.toLowerCase() : undefined) : user.branchId;
     if (!allBranches && !branchId) throw httpError(403, 'PERMISSION_DENIED', 'Tài khoản chưa được gán chi nhánh.');
     if (branchId !== undefined && (typeof branchId !== 'string' || !uuidPattern.test(branchId)))
       throw httpError(422, 'VALIDATION_ERROR', 'Chi nhánh không hợp lệ.');
-    const cursorScope = JSON.stringify([storeId, branchId ?? null, 'OPEN']);
+    const { storeId, cashierId } = this.readScope(user, branchId ?? undefined);
+    const parseDate = (value: unknown): string | null => {
+      if (value === undefined) return null;
+      if (typeof value !== 'string') throw httpError(422, 'VALIDATION_ERROR', 'Bộ lọc hóa đơn không hợp lệ.');
+      const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?Z$/.exec(value);
+      const date = new Date(value);
+      if (!match || !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 19) !== match[1])
+        throw httpError(422, 'VALIDATION_ERROR', 'Bộ lọc hóa đơn không hợp lệ.');
+      return `${match[1]}.${(match[2] ?? '').replace(/0+$/, '').padEnd(6, '0')}Z`;
+    };
+    const from = parseDate(query.from), to = parseDate(query.to);
+    if (from && to && from.slice(0, -1).padEnd(Math.max(from.length, to.length), '0') >= to.slice(0, -1).padEnd(Math.max(from.length, to.length), '0')) throw httpError(422, 'VALIDATION_ERROR', 'Bộ lọc hóa đơn không hợp lệ.');
+    const sqlDate = (value: string | null): string | null => {
+      if (!value) return null;
+      const [whole, fraction] = value.slice(0, -1).split('.');
+      const micros = Number(fraction.slice(0, 6)) + (/[1-9]/.test(fraction.slice(6)) ? 1 : 0);
+      if (micros === 1_000_000) return `${new Date(Date.parse(`${whole}Z`) + 1000).toISOString().slice(0, 19)}.000000Z`;
+      return `${whole}.${String(micros).padStart(6, '0')}Z`;
+    };
+    const tableId = typeof query.tableId === 'string' ? query.tableId.toLowerCase() : null;
+    const status = query.status ?? 'OPEN';
+    const cashierFilter = typeof query.cashierId === 'string' ? query.cashierId.toLowerCase() : null;
+    const cursorScope = JSON.stringify([1, user.id, storeId, branchId ?? null, cashierId, status, from, to, tableId, cashierFilter, '-createdAt']);
     let after: { createdAt: string; id: string } | null = null;
     if (query.cursor !== undefined) {
       if (typeof query.cursor !== 'string' || !/^[A-Za-z0-9_-]{1,1024}$/.test(query.cursor))
         throw httpError(422, 'VALIDATION_ERROR', 'Cursor không hợp lệ.');
       try {
         const parsed = JSON.parse(Buffer.from(query.cursor, 'base64url').toString('utf8'));
-        if (parsed.scope !== cursorScope || typeof parsed.createdAt !== 'string' || !Number.isFinite(Date.parse(parsed.createdAt))
+        if (parsed.scope !== cursorScope || typeof parsed.createdAt !== 'string' || parseDate(parsed.createdAt) !== parsed.createdAt
           || typeof parsed.id !== 'string' || !uuidPattern.test(parsed.id)) throw new Error();
         after = parsed;
       } catch { throw httpError(422, 'VALIDATION_ERROR', 'Cursor không hợp lệ.'); }
     }
-    const params: unknown[] = [storeId, branchId ?? null, after?.createdAt ?? null, after?.id ?? null, limit + 1];
-    const where = `JOIN branches b ON b.id=i.branch_id WHERE b.store_id=$1 AND i.status='OPEN'
-      AND ($2::uuid IS NULL OR i.branch_id=$2) AND ($3::timestamptz IS NULL OR (i.created_at,i.id)<($3::timestamptz,$4::uuid))`;
-    const rows: Row[] = await this.db.query(`SELECT i.*, (SELECT COALESCE(SUM(quantity),0)::int FROM invoice_items WHERE invoice_id=i.id) AS item_count,
+    const params: unknown[] = [storeId, branchId ?? null, after?.createdAt ?? null, after?.id ?? null, limit + 1, cashierId, status, cashierFilter, tableId, sqlDate(from), sqlDate(to)];
+    const where = `JOIN branches b ON b.id=i.branch_id WHERE b.store_id=$1 AND ($7::text='ALL' OR i.status=$7)
+      AND ($9::uuid IS NULL OR i.table_id=$9) AND ($10::timestamptz IS NULL OR i.created_at >= $10)
+      AND ($11::timestamptz IS NULL OR i.created_at < $11)
+      AND ($8::uuid IS NULL OR EXISTS (SELECT 1 FROM work_shifts s WHERE s.id=i.work_shift_id AND s.user_id=$8))
+      AND ($2::uuid IS NULL OR i.branch_id=$2) AND ($3::timestamptz IS NULL OR (i.created_at,i.id)<($3::timestamptz,$4::uuid))
+      AND ($6::uuid IS NULL OR EXISTS (SELECT 1 FROM work_shifts s WHERE s.id=i.work_shift_id AND s.user_id=$6))`;
+    const rows: Row[] = await this.db.query(`SELECT i.*, s.status AS shift_status, s.user_id AS cashier_id, u.full_name AS cashier_name,
+      t.name AS table_name, p.method AS payment_method, (SELECT COALESCE(SUM(quantity),0)::int FROM invoice_items WHERE invoice_id=i.id) AS item_count,
       to_char(i.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_created_at
-      FROM invoices i ${where} ORDER BY i.created_at DESC,i.id DESC LIMIT $5`, params);
+      FROM invoices i JOIN work_shifts s ON s.id=i.work_shift_id JOIN users u ON u.id=s.user_id
+      LEFT JOIN dining_tables t ON t.id=i.table_id LEFT JOIN payments p ON p.invoice_id=i.id
+      ${where} ORDER BY i.created_at DESC,i.id DESC LIMIT $5`, params);
     const count: Row[] = await this.db.query(`SELECT COUNT(*)::int AS total FROM invoices i JOIN branches b ON b.id=i.branch_id
-      WHERE b.store_id=$1 AND i.status='OPEN' AND ($2::uuid IS NULL OR i.branch_id=$2)`, params.slice(0, 2));
+      WHERE b.store_id=$1 AND ($4::text='ALL' OR i.status=$4) AND ($2::uuid IS NULL OR i.branch_id=$2)
+      AND ($6::uuid IS NULL OR i.table_id=$6) AND ($7::timestamptz IS NULL OR i.created_at >= $7)
+      AND ($8::timestamptz IS NULL OR i.created_at < $8)
+      AND ($5::uuid IS NULL OR EXISTS (SELECT 1 FROM work_shifts s WHERE s.id=i.work_shift_id AND s.user_id=$5))
+      AND ($3::uuid IS NULL OR EXISTS (SELECT 1 FROM work_shifts s WHERE s.id=i.work_shift_id AND s.user_id=$3))`, [storeId, branchId ?? null, cashierId, status, cashierFilter, tableId, sqlDate(from), sqlDate(to)]);
+    const optionParams = [storeId, branchId ?? null, cashierId];
+    const tables: Row[] = await this.db.query(`SELECT DISTINCT t.id,t.name FROM dining_tables t JOIN invoices i ON i.table_id=t.id
+      JOIN branches b ON b.id=i.branch_id JOIN work_shifts s ON s.id=i.work_shift_id
+      WHERE b.store_id=$1 AND ($2::uuid IS NULL OR i.branch_id=$2) AND ($3::uuid IS NULL OR s.user_id=$3) ORDER BY t.name,t.id`, optionParams);
+    const cashiers: Row[] = await this.db.query(`SELECT DISTINCT u.id,u.full_name AS name FROM users u JOIN work_shifts s ON s.user_id=u.id
+      JOIN invoices i ON i.work_shift_id=s.id JOIN branches b ON b.id=i.branch_id
+      WHERE b.store_id=$1 AND ($2::uuid IS NULL OR i.branch_id=$2) AND ($3::uuid IS NULL OR s.user_id=$3) ORDER BY u.full_name,u.id`, optionParams);
     const selected = rows.slice(0, limit);
     const last = selected.at(-1);
     return {
       data: selected.map(row => ({ id: row.id, invoiceCode: row.invoice_code, branchId: row.branch_id,
         tableId: row.table_id, orderType: row.order_type, status: row.status, totalAmount: money(row.total_amount),
-        itemCount: row.item_count, createdAt: row.created_at.toISOString() })),
+        itemCount: row.item_count, createdAt: row.created_at.toISOString(), workShiftId: row.work_shift_id,
+        workShiftStatus: row.shift_status, cashierId: row.cashier_id, cashierName: row.cashier_name,
+        tableName: row.table_name, paymentMethod: row.payment_method })),
       meta: { limit, nextCursor: rows.length > limit && last ? Buffer.from(JSON.stringify({ scope: cursorScope,
-        createdAt: last.cursor_created_at, id: last.id })).toString('base64url') : null, total: count[0].total },
+        createdAt: last.cursor_created_at, id: last.id })).toString('base64url') : null, total: count[0].total,
+        filterOptions: { tables, cashiers } },
     };
   }
 

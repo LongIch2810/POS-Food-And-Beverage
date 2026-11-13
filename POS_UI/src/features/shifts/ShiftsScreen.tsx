@@ -1,6 +1,6 @@
 // POS-F&B Shifts Management Screen per DESIGN.md §5.5, BR-15, BR-18, BR-19, BR-20, BR-58..60, BR-88
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { WorkShiftDto, shiftService } from '../../services/shiftService';
@@ -13,6 +13,8 @@ import { organizationService, OrganizationBranch } from '../../services/organiza
 import { BlindCountCloseShiftModal } from './BlindCountCloseShiftModal';
 import { ForceCloseShiftModal } from './ForceCloseShiftModal';
 import { OpenShiftGate } from './OpenShiftGate';
+import { ShiftDetailDrawer } from './ShiftDetailDrawer';
+import { getRequestIdentity } from '../../auth/session-events';
 import { Clock, LogOut, UserCheck, ShieldAlert, LogIn, RefreshCw } from 'lucide-react';
 
 export interface ShiftsScreenProps {
@@ -23,6 +25,10 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = () => {
   const { session } = useAuth();
   const { showToast } = useToast();
 
+  const identityKey = `${getRequestIdentity().epoch}:${session.user.id}:${[...session.permissions].sort().join(',')}`;
+  const loadGeneration = useRef(0);
+  const [dataKey, setDataKey] = useState('');
+  const [detail, setDetail] = useState<{ key: string; id: string } | null>(null);
   const [shiftsHistory, setShiftsHistory] = useState<WorkShiftDto[]>([]);
   const [currentShift, setCurrentShift] = useState<WorkShiftDto | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -38,63 +44,78 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = () => {
   const allBranches = session.permissions.includes('branch.access_all');
 
   useEffect(() => {
+    setDetail(null); setForceCloseTargetShift(null); setIsCloseModalOpen(false);
+    setShowCashierGate(false); setIsStaffChecking(false); setBranches([]); setStaffBranchId(''); setBranchesError('');
+  }, [identityKey]);
+
+  useEffect(() => {
     if (!allBranches) return;
     let active = true;
     void organizationService.getBranchChoices().then(rows => { if (active) setBranches(rows.filter(row => row.isActive)); })
       .catch(err => { if (active) setBranchesError(err instanceof Error ? err.message : 'Không thể tải chi nhánh.'); });
     return () => { active = false; };
-  }, [allBranches, session.user.id]);
+  }, [allBranches, identityKey]);
 
   const loadData = useCallback(async () => {
+    const epoch = getRequestIdentity().epoch;
+    const generation = ++loadGeneration.current;
     try {
       setIsLoading(true);
       const [curr, history] = await Promise.all([
         shiftService.getCurrentShift(),
         shiftService.getShifts({ limit: 50 }),
       ]);
+      if (epoch !== getRequestIdentity().epoch || generation !== loadGeneration.current) return;
+      setDataKey(identityKey);
       setCurrentShift(curr);
       setShiftsHistory(history.data);
     } catch (err: any) {
-      showToast({ type: 'error', message: err?.message || 'Không thể tải dữ liệu ca làm việc' });
+      if (epoch === getRequestIdentity().epoch && generation === loadGeneration.current) showToast({ type: 'error', message: err?.message || 'Không thể tải dữ liệu ca làm việc' });
     } finally {
-      setIsLoading(false);
+      if (epoch === getRequestIdentity().epoch && generation === loadGeneration.current) setIsLoading(false);
     }
-  }, [showToast]);
+  }, [showToast, identityKey]);
 
   useEffect(() => {
     loadData();
+    return () => { loadGeneration.current++; };
   }, [loadData]);
 
-  const hasOpenShift = !!currentShift && currentShift.status === 'OPEN';
-  const isCashierShift = hasOpenShift && currentShift.shiftType === 'CASHIER';
-  const isStaffShift = hasOpenShift && currentShift.shiftType === 'STAFF';
+  const visibleCurrentShift = dataKey === identityKey ? currentShift : null;
+  const hasOpenShift = !!visibleCurrentShift && visibleCurrentShift.status === 'OPEN';
+  const isCashierShift = hasOpenShift && visibleCurrentShift!.shiftType === 'CASHIER';
+  const isStaffShift = hasOpenShift && visibleCurrentShift!.shiftType === 'STAFF';
 
   // Check-in ca nhân viên
   const handleCheckInStaff = async () => {
+    const epoch = getRequestIdentity().epoch;
     setIsStaffChecking(true);
     try {
       await shiftService.checkInStaffShift(allBranches ? staffBranchId : undefined);
+      if (epoch !== getRequestIdentity().epoch) return;
       showToast({ type: 'success', message: 'Đã check-in bắt đầu ca làm việc nhân viên' });
       await loadData();
     } catch (err: any) {
-      showToast({ type: 'error', message: err?.message || 'Không thể check-in' });
+      if (epoch === getRequestIdentity().epoch) showToast({ type: 'error', message: err?.message || 'Không thể check-in' });
     } finally {
-      setIsStaffChecking(false);
+      if (epoch === getRequestIdentity().epoch) setIsStaffChecking(false);
     }
   };
 
   // Check-out ca nhân viên
   const handleCheckOutStaff = async () => {
     if (!currentShift) return;
+    const epoch = getRequestIdentity().epoch;
     setIsStaffChecking(true);
     try {
       await shiftService.checkOutStaffShift(currentShift.id);
+      if (epoch !== getRequestIdentity().epoch) return;
       showToast({ type: 'success', message: 'Đã check-out kết thúc ca làm việc nhân viên' });
       await loadData();
     } catch (err: any) {
-      showToast({ type: 'error', message: err?.message || 'Không thể check-out' });
+      if (epoch === getRequestIdentity().epoch) showToast({ type: 'error', message: err?.message || 'Không thể check-out' });
     } finally {
-      setIsStaffChecking(false);
+      if (epoch === getRequestIdentity().epoch) setIsStaffChecking(false);
     }
   };
 
@@ -198,8 +219,9 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = () => {
       header: 'Thao tác',
       align: 'right',
       render: (shift) => {
-        if (shift.status === 'OPEN' && canForceClose && shift.id !== currentShift?.id) {
-          return (
+        return <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          {session.permissions.includes('shift.read') && <Button variant="secondary" onClick={() => setDetail({ key: identityKey, id: shift.id })}>Chi tiết</Button>}
+          {shift.status === 'OPEN' && canForceClose && shift.id !== visibleCurrentShift?.id && (
             <Button
               variant="danger"
               size="sm"
@@ -208,14 +230,13 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = () => {
             >
               Đóng cưỡng chế
             </Button>
-          );
-        }
-        return <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>-</span>;
+          )}
+        </div>;
       },
     },
   ];
 
-  if (showCashierGate) return <OpenShiftGate branchId={session.user.branch_id ?? ''}
+  if (showCashierGate && dataKey === identityKey) return <OpenShiftGate branchId={session.user.branch_id ?? ''}
     branchName={session.branch_name || 'Chi nhánh'} onShiftOpened={() => {
       setShowCashierGate(false);
       void loadData();
@@ -280,6 +301,8 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = () => {
           )}
 
           {isCashierShift && (
+            <>
+            {session.permissions.includes('shift.read') && <Button variant="secondary" onClick={() => setDetail({ key: identityKey, id: currentShift!.id })}>Chi tiết ca</Button>}
             <Button
               variant="primary"
               size="md"
@@ -288,6 +311,7 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = () => {
             >
               Đóng ca (Đếm mù)
             </Button>
+            </>
           )}
 
           {isStaffShift && (
@@ -344,7 +368,7 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = () => {
             <div>
               <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Tiền đầu ca (Chỉ đọc)</div>
               <div className="money" style={{ fontSize: 18, fontWeight: 700 }}>
-                {formatVND(currentShift.reconciliation?.openingCash ?? 0)}
+                {currentShift.reconciliation ? formatVND(currentShift.reconciliation.openingCash) : '-'}
               </div>
             </div>
             <div>
@@ -419,15 +443,17 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = () => {
         </h2>
         <DataTable
           columns={columns}
-          data={shiftsHistory}
+          data={dataKey === identityKey ? shiftsHistory : []}
           keyExtractor={(item) => item.id}
           emptyMessage={isLoading ? 'Đang tải dữ liệu...' : 'Chưa có dữ liệu ca làm việc nào'}
         />
       </div>
 
+      {detail?.key === identityKey && <ShiftDetailDrawer key={`${identityKey}:${detail.id}`} isOpen shiftId={detail.id} onClose={() => setDetail(null)} />}
       {/* Modal Đóng ca đếm mù */}
       {isCashierShift && currentShift && (
         <BlindCountCloseShiftModal
+          key={`${identityKey}:${currentShift.id}:${isCloseModalOpen}`}
           isOpen={isCloseModalOpen}
           onClose={() => setIsCloseModalOpen(false)}
           shift={currentShift}
@@ -436,8 +462,9 @@ export const ShiftsScreen: React.FC<ShiftsScreenProps> = () => {
       )}
 
       {/* Modal Đóng ca cưỡng chế (Quản lý) */}
-      {forceCloseTargetShift && (
+      {forceCloseTargetShift && dataKey === identityKey && (
         <ForceCloseShiftModal
+          key={`${identityKey}:${forceCloseTargetShift.id}`}
           isOpen={!!forceCloseTargetShift}
           onClose={() => setForceCloseTargetShift(null)}
           shift={forceCloseTargetShift}

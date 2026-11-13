@@ -13,6 +13,14 @@ export interface InvoiceDetail {
   subtotal: number; discountAmount: number; totalAmount: number; note: string | null;
   cancelReason: string | null; cancelledAt: string | null; createdAt: string; updatedAt: string;
   items: InvoiceItem[];
+  paymentMethod: 'CASH' | 'TRANSFER' | null; workShiftStatus: 'OPEN' | 'CLOSED';
+  cashierId: string; cashierName: string; tableName: string | null;
+}
+export interface InvoiceSummary {
+  id: string; invoiceCode: string; branchId: string; workShiftId: string; tableId: string | null;
+  orderType: 'DINE_IN' | 'TAKEAWAY'; status: 'OPEN' | 'PAID' | 'CANCELLED'; totalAmount: number;
+  itemCount: number; createdAt: string; workShiftStatus: 'OPEN' | 'CLOSED'; cashierId: string;
+  cashierName: string; tableName: string | null; paymentMethod: 'CASH' | 'TRANSFER' | null;
 }
 export interface OpenInvoice {
   id: string; invoiceCode: string; branchId: string; tableId: string | null;
