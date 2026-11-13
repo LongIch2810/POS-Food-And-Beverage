@@ -95,3 +95,6 @@
 [ui, shifts, accessibility] V1-3 Viền trường đóng cưỡng chế không đủ tương phản → 20261113-force-close-field-contrast.md
 
 [ui, invoices, error-handling] B-51 mất message/requestId khi tải hóa đơn lỗi → 20261113-invoice-load-error-details-lost.md
+[ui, tooltip, touch, keyboard] Hủy chạm làm mất thao tác hợp lệ kế tiếp → 20261114-icon-touch-cancel-blocks-next-action.md
+[ui, invoices, test, race] B-52 test lỗi danh sách cũ dùng request đã hoàn tất → 20261114-backlog-stale-list-test-settled-request.md
+[ui, test, fixture, encoding] B-53 chữ tiếng Việt trong fixture test bị hỏng → 20261114-backlog-icon-test-vietnamese-encoding.md

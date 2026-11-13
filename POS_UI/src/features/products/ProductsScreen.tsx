@@ -9,6 +9,7 @@ import {
 } from '../../services/menuService';
 import { formatVND } from '../../utils/formatters';
 import { Button } from '../../components/ui/Button';
+import { IconButton } from '../../components/ui/IconButton';
 import { Badge } from '../../components/ui/Badge';
 import { Dialog } from '../../components/ui/Dialog';
 import { Field } from '../../components/ui/Field';
@@ -929,7 +930,7 @@ export const ProductsScreen: React.FC = () => {
                     </div>
 
                     {/* Image buttons */}
-                    <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                       <Button
                         variant="text"
                         size="sm"
@@ -950,33 +951,14 @@ export const ProductsScreen: React.FC = () => {
                         </Button>
                       )}
                       <div style={{ flex: 1 }} />
-                      <Button
-                        variant="text"
-                        size="sm"
-                        style={{ height: 26, padding: '0 6px' }}
-                        onClick={() => handleOpenEditProduct(product)}
-                        title="Sửa thông tin"
-                      >
-                        <Edit2 size={13} />
-                      </Button>
-                      <Button
-                        variant="text"
-                        size="sm"
-                        style={{ height: 26, padding: '0 6px', color: product.isActive ? 'var(--color-text-muted)' : 'var(--color-danger)' }}
-                        onClick={() => handleToggleProductActive(product)}
-                        title={product.isActive ? 'Ngưng bán' : 'Mở bán lại'}
-                      >
-                        <Power size={13} />
-                      </Button>
-                      <Button
-                        variant="text"
-                        size="sm"
-                        style={{ height: 26, padding: '0 6px', color: 'var(--color-danger)' }}
-                        onClick={() => handleDeleteProduct(product)}
-                        title="Xóa món"
-                      >
-                        <Trash2 size={13} />
-                      </Button>
+                      <div className="menu-product-actions">
+                        <IconButton label="Sửa thông tin" icon={<Edit2 />} onClick={() => handleOpenEditProduct(product)} />
+                        <IconButton label={product.isActive ? 'Ngưng bán' : 'Mở bán lại'} icon={<Power />}
+                          style={{ color: product.isActive ? 'var(--color-text-muted)' : 'var(--color-danger)' }}
+                          onClick={() => handleToggleProductActive(product)} />
+                        <IconButton label="Xóa món" icon={<Trash2 />} style={{ color: 'var(--color-danger)' }}
+                          onClick={() => handleDeleteProduct(product)} />
+                      </div>
                     </div>
                   </div>
 
@@ -1005,48 +987,27 @@ export const ProductsScreen: React.FC = () => {
                       product.sizes.map((s) => (
                         <div
                           key={s.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            fontSize: 13,
-                            padding: '3px 0',
-                          }}
+                          className="menu-size-actions"
+                          style={{ fontSize: 13, padding: '3px 0' }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div className="menu-size-actions">
                             <span style={{ fontWeight: 600 }}>Kích cỡ {s.sizeName}:</span>
                             <span className="money" style={{ color: 'var(--color-brand-600)', fontWeight: 700 }}>
                               {formatVND(BigInt(s.price))}
                             </span>
-                            <button
-                              type="button"
+                            <IconButton
                               onClick={() => handleOpenPriceModal(product.name, s.sizeName, s.id, s.price)}
-                              title="Đổi giá"
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                color: 'var(--color-text-muted)',
-                                cursor: 'pointer',
-                                padding: 2,
-                                display: 'inline-flex',
-                              }}
-                            >
-                              <Edit2 size={12} />
-                            </button>
+                              label="Đổi giá" icon={<Edit2 />}
+                              style={{ color: 'var(--color-text-muted)' }} />
                             {session.permissions.includes('inventory.view') && <Button variant="text" size="sm"
                               onClick={() => setRecipeTarget({ productName: product.name, sizeName: s.sizeName, productSizeId: s.id })}>
                               Công thức</Button>}
                           </div>
 
-                          <Button
-                            variant="text"
-                            size="sm"
-                            style={{ height: 24, padding: '0 4px', color: 'var(--color-text-muted)' }}
+                          <IconButton
+                            style={{ color: 'var(--color-text-muted)' }}
                             onClick={() => handleDeleteProductSize(s.id)}
-                            title="Gỡ size này"
-                          >
-                            <Trash2 size={12} />
-                          </Button>
+                            label="Gỡ size này" icon={<Trash2 />} />
                         </div>
                       ))
                     )}

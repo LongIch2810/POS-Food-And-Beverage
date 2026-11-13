@@ -1,7 +1,7 @@
 # .devloopflow/devloopflow.md
 <!-- Sinh bởi /devloopflow:init. Cấu hình RIÊNG cho quy trình devloopflow của dự án này. Mọi fact có path nguồn; không ghi secret. -->
 
-- Cập nhật lần cuối: 2026-11-13
+- Cập nhật lần cuối: 2026-11-14
 
 ## 1. Liên kết với tài liệu chung
 - Giới thiệu chung: `AGENTS.md`, `CLAUDE.md` (bản sao nội dung của `AGENTS.md`, tạo 2026-11-09), `README.md`.
@@ -29,6 +29,8 @@
 - Coverage: không có script hoặc ngưỡng coverage trong manifest/CI.
 - Migration / seed: trong `POS_API/`, `npm run migration:run` chạy TypeScript build rồi TypeORM migration theo `DATABASE_URL`; chỉ chạy với DB local/test đã xác nhận. Không dùng `schema:sync`; migration không tự chạy khi API khởi động. Nguồn: `POS_API/package.json`, `POS_API/README.md`, `docs/architecture/ARCHITECTURE.md`. Đã chạy trên sandbox local ngày 2026-11-11: output ghi migration `ManagerCancelOpen20261111000000` thành công và `COMMIT`; không có metadata exit code riêng. Bằng chứng local: `.devloopflow/verify/20261111-194533-48ed476-s8-verify-ac-r17/evidence/r17b-migration.command.json`, `r17b-migration.stdout.txt`.
 - Lệnh an toàn đã chạy trong lần init: `node --version` → `v22.22.2`; `npm --version` → `10.9.7`; `npm run` trong từng package để liệt kê script (exit 0). Không chạy build, test, migration hoặc khởi động dịch vụ.
+
+- Test browser icon/tooltip chạy riêng ngoài `npm test`: từ `POS_UI/`, `node --test test/icon-actions.browser.mjs`; cần Chrome hoặc Chromium. Đã kiểm local 2026-11-14: 22/22 pass (task 20261114-icon-tooltip-ui, evidence/verify-r1/icon-tests.log).
 
 ## 3. Cách kiểm AC thật (cho `ac-verifier`)
 - Chạy app local bằng Docker Compose theo lệnh ở mục 2; kiểm tra health tại `http://localhost:3000/api/v1/health`; mở UI tại `http://localhost:5173`. Chỉ dùng sandbox/local.
@@ -108,3 +110,4 @@
 - 2026-11-13 — Mục 2 (sync-docs lần 8, task 20261112-sprint09-drawer-cancel-invoices): số test API 199/199 → 204/204 sau vòng review và fix-backlog (bằng chứng: `.devloopflow/verify/20261112-sprint09-drawer-cancel-invoices/report-3.md`, `npm test` xanh 3 lần).
 
 - 2026-11-13 — Mục 2: cập nhật kết quả test API 224/224, UI 143/143 và thêm lệnh kiểm Chrome chạy riêng — task 20261113-sprint09-ui (sync-docs).\n
+- 2026-11-14 — Mục 2: bổ sung lệnh kiểm browser icon/tooltip và kết quả local — task 20261114-icon-tooltip-ui (sync-docs).

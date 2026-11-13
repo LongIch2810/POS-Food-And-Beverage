@@ -258,3 +258,13 @@
 .btn-sm { min-height: 40px; padding: 0 14px; font-size: 14px; }
 .badge-sm { height: 24px; padding: 0 8px; font-size: 12px; }
 .badge > svg { flex-shrink: 0; }
+.menu-product-actions, .menu-size-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.menu-product-actions > .icon-action-wrap, .menu-size-actions > .icon-action-wrap {
+  flex: none;
+}

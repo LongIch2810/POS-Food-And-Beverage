@@ -1,7 +1,7 @@
 # MEMORY: kinh nghiệm của dự án này
 <!-- Bộ nhớ của dự án cho AGENT đọc. Do skill reflect và remember ghi. Cấu trúc cố định: bảng "Chỉ mục" (agent quét trước) + khối "Chi tiết" cho từng mục (mở khi cần). Mỗi mục có MỘT dòng ở Chỉ mục và MỘT khối ở Chi tiết, hai chỗ phải khớp nhau. Chỉ ghi điều có bằng chứng (task id, path:dòng, id finding, hoặc lời user nguyên văn). Không secret, token, mật khẩu, PII. Chỉ thêm hoặc cập nhật, không xoá; mục sai đổi sang `hết hiệu lực` kèm lý do và ngày. Lỗi đã sửa có nguyên nhân gốc thì ghi ở .devloopflow/errors/, ở đây chỉ dẫn link. File này được commit. -->
 
-- Cập nhật lần cuối: 2026-11-13
+- Cập nhật lần cuối: 2026-11-14
 - Id `M-<n>` tăng dần trong toàn dự án, không dùng lại.
 
 ## Cách đọc (dành cho agent)
@@ -54,6 +54,7 @@
 | M-37 | Ý của user | reuse, tdd, existing-behavior | Khi task đã có hành vi hoặc mã đáp ứng yêu cầu. | Tái sử dụng phần đã có; kiểm xác nhận hành vi hiện tại và báo kết quả thật. | 1 | có hiệu lực |
 | M-38 | Hay quên | backlog, ledger, records | Khi ghi hoặc cập nhật một finding trong backlog. | Cập nhật cả bảng Tổng hợp lẫn phần Chi tiết cùng trạng thái và kiểm dòng nằm trong bảng Markdown. | 1 | có hiệu lực |
 | M-39 | Hay quên | qa, acceptance, evidence, ui, tablet, accessibility | Khi chuẩn bị hoặc kiểm nghiệm thu, đặc biệt form và hộp thoại trên tablet. | Lập ma trận AC–chứng cứ và lưu hash mã; đối chiếu từng vế với mã/UI cuối và artifact gốc, ghi chưa xác minh khi thiếu; kiểm browser thật kích thước chạm, nhãn và tương phản theo DESIGN. | 1 | có hiệu lực |
+| M-40 | Hay quên | ui, touch, keyboard, pointercancel | Khi xử lý cử chỉ chạm và chặn click tổng hợp. | Kiểm thao tác chuột, Enter và Space đầu tiên sau pointercancel, cùng việc hủy không kích hoạt action. | 1 | có hiệu lực |
 
 Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY.md` gốc không có bộ đếm số lần cùng bài học tái diễn. Đây không phải 0 lần và không phải số test/chứng cứ. Khi có lần tái diễn mới, ghi căn cứ và ngày rồi bắt đầu đếm các lần **sau chuyển đổi**; không suy ngược số lần lịch sử.
 
@@ -182,6 +183,7 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - trạng thái: có hiệu lực
 
 ## Lịch sử (chỉ thêm, không xoá)
+- 2026-11-14 — task 20261114-icon-tooltip-ui — thêm M-40 về thao tác sau pointercancel.
 - 2026-11-13 — theo yêu cầu user: gộp M-9, M-16 vào M-39; giữ hai mục cũ ở trạng thái hết hiệu lực.\n- 2026-11-13 — task 20261113-sprint09-ui — thêm M-37 (tái sử dụng), M-38 (nhất quán backlog), M-39 (kiểm tablet và trợ năng).
 - 2026-11-13 — task 20261112-sprint09-drawer-cancel-invoices — thêm M-29 (số migration gắn cứng), M-30 (đổi thứ tự kiểm tra cần AC), M-31 (seed thời gian bằng đồng hồ DB), M-32 (`--test-name-pattern` subtest), M-33 (subagent không ghi report), M-34 (DATABASE_URL/Docker), M-35 (đột biến treo), M-36 (ý user: giải thích trước khi duyệt).
 - 2026-11-12 — task 20261109-sprint08-payment — thêm M-9 (ma trận chứng cứ và hash), M-10 (test hành vi quyền qua HTTP).
@@ -513,6 +515,18 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - số lần: 1
 - ghi lần đầu: 2026-11-13 (task 20261113-sprint09-ui)
 - cập nhật gần nhất: 2026-11-13
+- trạng thái: có hiệu lực
+
+### M-40
+- loại: Hay quên
+- tag: ui, touch, keyboard, pointercancel
+- khi nào áp dụng: Khi xử lý cử chỉ chạm và chặn click tổng hợp.
+- quy tắc: Kiểm thao tác chuột, Enter và Space đầu tiên sau pointercancel, cùng việc hủy không kích hoạt action.
+- vì sao: Cờ chặn click sau hủy cảm ứng từng nuốt thao tác hợp lệ kế tiếp; test hủy riêng không phát hiện lỗi.
+- bằng chứng: `.devloopflow/errors/20261114-icon-touch-cancel-blocks-next-action.md`, review R1-1 task `20261114-icon-tooltip-ui`.
+- số lần: 1
+- ghi lần đầu: 2026-11-14 (task 20261114-icon-tooltip-ui)
+- cập nhật gần nhất: 2026-11-14
 - trạng thái: có hiệu lực
 
 ### M-39

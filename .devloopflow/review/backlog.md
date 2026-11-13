@@ -58,7 +58,8 @@
 | B-49 | Low | 20261112-sprint09-drawer-cancel-invoices (V1-N1) | `.devloopflow/verify/20261112-sprint09-drawer-cancel-invoices/report-1.md` | ST-5.AC-4/5 (hủy+đóng ca, hủy+chi, hai thứ tự) chỉ có chứng cứ từ `npm test`, chưa chạy HTTP thật bằng app chạy riêng | 2026-11-13 | đã sửa |
 | B-50 | Low | 20261112-sprint09-drawer-cancel-invoices (verify-ac lần 2, V2-N1) | `POS_API/src/sales/tests/payment.integration.test.ts:113,157,359,466,501,650,762,896,1258` | Test seed `started_at` bằng `now()` của PostgreSQL nhưng `closeShift` đặt `ended_at` bằng `new Date()` của Node; khi đồng hồ container DB đi trước host hơn ~190 ms, CHECK `chk_work_shifts_ended_at` ném `23514` ở `[R14-1]` và kéo theo 4 test sau (flaky) | 2026-11-13 | đã sửa |
 | B-51 | Low | 20261113-sprint09-ui (review vòng 1, R1-7) | `POS_UI/src/features/invoices/InvoicesScreen.tsx:70,80` | Hai catch bỏ toàn bộ lỗi server, thay bằng thông báo chung. Người dùng mất nguyên nhân và mã yêu cầu để tra soát. | 2026-11-13 | đã sửa |
-| B-52 | Low | Dùng rời, review riêng B-51 (R1-1) | `POS_UI/test/invoices-screen.test.mjs:117` | Test stale-list reject request đã resolve, chưa thực sự kiểm lỗi của request cũ đang chờ | 2026-11-14 | chờ xử lý |
+| B-52 | Low | Dùng rời, review riêng B-51 (R1-1) | `POS_UI/test/invoices-screen.test.mjs:117` | Test stale-list reject request đã resolve, chưa thực sự kiểm lỗi của request cũ đang chờ | 2026-11-14 | đã sửa |
+| B-53 | Very Low | 20261114-icon-tooltip-ui (review vòng 2, R2-1) | `POS_UI/test/icon-actions.browser.mjs:31` | Chuỗi tiếng Việt trong fixture và expected bị thay thành dấu `?` | 2026-11-14 | đã sửa |
 
 - Trạng thái: `chờ xử lý` | `đã sửa` | `bỏ` (finding sai, hoặc không còn áp dụng vì code đã đổi; ghi lý do trong lịch sử)
 
@@ -417,5 +418,18 @@
 - Test tái hiện đề xuất: `[B-51] stale list error after changing filters` | input: request PAID pending, chuyển CANCELLED, PAID reject có message/requestId | kết quả mong đợi: lỗi cũ không xuất hiện, CANCELLED vẫn có thể tải thành công.
 - Phạm vi ảnh hưởng khi sửa: đổi `POS_UI/test/invoices-screen.test.mjs:117` trong test `[B-51]`; runner `POS_UI/package.json:11`, không có import/caller khác sau khi tìm kiếm. Chạy lại `node --experimental-strip-types --test test/invoices-screen.test.mjs`, sau đó `npm test`; không cần sửa production hoặc module khác. Mức: Hẹp.
 - Ngày ghi: 2026-11-14
-- Trạng thái: chờ xử lý
+- Trạng thái: đã sửa
 - Lịch sử trạng thái: 2026-11-14 — chờ xử lý — review riêng B-51 vòng 1; Low, không chặn kết quả review.
+- Lịch sử trạng thái: 2026-11-14 — đã sửa — `POS_UI/test/invoices-screen.test.mjs` tạo PAID pending rồi chuyển CANCELLED, xác nhận dữ liệu mới; test 4/4, đột biến lỗi cũ bị bắt; UI 143/143, typecheck/build exit 0. Hồ sơ `errors/20261114-backlog-stale-list-test-settled-request.md`; chưa review riêng.
+
+### B-53 — R2-1 [Very Low]
+- Task nguồn: 20261114-icon-tooltip-ui, review vòng 2.
+- File:dòng: `POS_UI/test/icon-actions.browser.mjs:31-34,144-167`.
+- Finding nguyên văn: chuỗi tiếng Việt trong fixture bổ sung đã bị hỏng thành dấu `?`. `mountTraversal` dùng `Tr??c`, `Kh?ng kh? d?ng`; `mountButtons` dùng `L?u`, `X?a`, `Kh?ng c? quy?n`. Các assert tại dòng 144–167 cũng dùng cùng chuỗi hỏng nên test vẫn xanh. Không ảnh hưởng nhãn production, nhưng làm fixture và thông báo kiểm tra khó đọc.
+- Căn cứ và đề xuất sửa: `rules/testing.md`, mục “Test đáng tin”; quy tắc UI tiếng Việt tại `AGENTS.md`. Đổi fixture và expected tương ứng về Unicode tiếng Việt đúng.
+- Test tái hiện đề xuất: giữ `[R1-2]` và `[R1-3]`, dùng nhãn `Trước`, `Không khả dụng`, `Sau`, `Lưu`, `Xóa`, `Không có quyền`; expected tên/mô tả/lý do đúng nguyên văn, số callback giữ như hiện tại.
+- Phạm vi ảnh hưởng khi sửa: `POS_UI/test/icon-actions.browser.mjs:31-34,144-167`; `mountTraversal` gọi tại dòng 138, `mountButtons` tại dòng 157, không thấy caller khác; chạy `node --test test/icon-actions.browser.mjs`. Không lan module, không sửa production. Mức: Hẹp.
+- Ngày ghi: 2026-11-14
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-14 — chờ xử lý — review vòng 2, Very Low.
+- Lịch sử trạng thái: 2026-11-14 — đã sửa — khôi phục Unicode fixture và expected trong `POS_UI/test/icon-actions.browser.mjs`; browser 22/22 trước/sau, UI 143/143, typecheck/build exit 0. Hồ sơ `errors/20261114-backlog-icon-test-vietnamese-encoding.md`; chưa review riêng.
