@@ -65,14 +65,14 @@ store (cửa hàng) ── branch (chi nhánh) ── dining_table (bàn)
 - Ca làm: vào ca, tan ca, mở và đóng ca thu ngân, chi phí trong ca.
 - Đối soát tiền mặt khi đóng ca, đếm mù.
 - Kho: nguyên liệu, công thức theo size và topping, tồn kho theo chi nhánh, tự trừ kho khi thanh toán, sổ kho.
-- Báo cáo doanh thu theo ngày, tách tiền mặt và chuyển khoản.
+- Báo cáo doanh thu theo ngày, tách tiền mặt và chuyển khoản; món bán chạy (top 10 theo size, từ đơn `PAID`) theo quyết định Product Owner ngày 14/11/2026, chi tiết ở `.devloopflow/specs/20261114-sprint10-reports.md`.
 
 ### Giai đoạn 2
 
 - Nhập hàng, kiểm kê, ghi hao hụt, cảnh báo sắp hết hàng.
 - Hoàn tiền một phần, hủy đơn của ca đã đóng.
 - Nhật ký thao tác (`audit_logs`), báo cáo bất thường.
-- Báo cáo tuần và tháng, món bán chạy, giờ cao điểm, lợi nhuận gộp.
+- Báo cáo tuần và tháng, giờ cao điểm, lợi nhuận gộp.
 - Giá và trạng thái bán riêng từng chi nhánh.
 - Tách bill, gộp bill, chuyển bàn nâng cao.
 - Gói dịch vụ và thời hạn sử dụng của cửa hàng, lời mời qua email.

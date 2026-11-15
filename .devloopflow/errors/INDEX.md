@@ -98,3 +98,26 @@
 [ui, tooltip, touch, keyboard] Hủy chạm làm mất thao tác hợp lệ kế tiếp → 20261114-icon-touch-cancel-blocks-next-action.md
 [ui, invoices, test, race] B-52 test lỗi danh sách cũ dùng request đã hoàn tất → 20261114-backlog-stale-list-test-settled-request.md
 [ui, test, fixture, encoding] B-53 chữ tiếng Việt trong fixture test bị hỏng → 20261114-backlog-icon-test-vietnamese-encoding.md
+[ui, reports, react, strictmode] R1-1 ref mounted kẹt false dưới StrictMode làm nút Tải thêm ca vô tác dụng → 20261114-react-strictmode-mounted-ref-stuck-false.md
+[ui, css, reports, accessibility] R1-2 ô ngày cao 44px do input:not() thắng cùng specificity, test nối CSS sai thứ tự → 20261114-css-cascade-input-min-height-44-beats-48.md
+[api, reports, test, sql] R1-3 thiếu test date trước khoảng biểu đồ, đột biến LEAST không bị bắt → 20261114-reports-date-before-chart-range-untested.md
+[ui, reports, http-client, test] V1-1 message mặc định của client dùng chung che fallback riêng của màn → 20261114-ui-shared-client-default-message-masks-screen-fallback.md
+[api, reports, test, scope, sql] B-54 B-57 thiếu test ca khác chi nhánh và paid_at hóa đơn lệch paid_at payment → 20261114-reports-cross-branch-shift-and-payment-paid-at-untested.md
+[ui, api, reports, permissions] B-55 UI hạ mức báo cáo khi thiếu branch.access_all, server trả 403 → 20261114-ui-report-scope-downgrades-when-access-all-missing.md
+[api, reports, permissions, validation] B-56 validation query chạy trước kiểm quyền (422 thay vì 403) → 20261114-api-validation-before-permission-check.md
+[ui, reports, test] B-58 nút Tải thêm ca không disabled khi chờ → 20261114-ui-load-more-button-not-disabled-while-pending.md
+[ui, css, accessibility, design-tokens] --color-border-control đo 2,72:1 trên nền trang, dưới ngưỡng 3:1 của DESIGN.md → 20261114-ui-border-control-contrast-below-3-on-page-bg.md
+[ui, permission, reports, nav] B-59 tab Báo cáo hiện cho người có report.view_all thiếu branch.access_all → 20261114-ui-report-tab-shown-without-access-all.md
+[settings, ui, state] R1-1 Back khi editor/confirmation mở không đóng chúng, thao tác chạy trên tab khác → 20261115-settings-back-leaves-editor-open.md
+[test, ui, router, timing] B-60/B-67 Browser test chờ URL nhưng chưa chờ tab render → 20261115-browser-router-fixed-wait.md
+[ui, products, accessibility] B-61 Tab Thực đơn thiếu trạng thái truy cập → 20261115-products-tabs-missing-aria-current.md
+[ui, inventory, state] B-62 Danh mục nguyên liệu tải lại khi đổi chi nhánh → 20261115-inventory-catalog-reloads-on-branch-change.md
+[ui, navigation, permission] B-63 Rail và route dùng điều kiện quyền khác nhau → 20261115-rail-and-routes-disagree-on-permissions.md
+[ui, pos, async, navigation] B-64 Mở bàn dùng callback điều hướng cũ → 20261115-pos-open-table-stale-navigation-callback.md
+[ui, inventory, state] B-65 Dialog kho cũ còn mở sau khi đổi tab → 20261116-inventory-dialog-persists-after-tab-change.md
+
+[ui, reports, date, locale] V1-1 ngày Báo cáo theo locale thay vì dd/MM/yyyy → 20261116-reports-native-date-locale.md
+
+[ui, products, router, state] B-66/V1-2 dialog Thực đơn còn mở sau Back → 20261116-products-dialog-persists-after-tab-change.md
+
+[ui, reports, date] O-1 nhãn ngày Báo cáo thiếu năm, trái dd/MM/yyyy → 20261116-reports-short-date-label.md
