@@ -11,7 +11,8 @@ import { inventoryService, Ingredient, Stock, Movement } from './inventoryServic
 import { formatDateTimeVN } from '../../utils/formatters';
 import { RefreshCw, XCircle } from 'lucide-react';
 
-type Tab = 'stocks' | 'movements' | 'catalog';
+import type { InventoryTab } from '../../app/routes';
+type InventoryProps = { tab?: InventoryTab; onTabChange?: (tab: InventoryTab) => void };
 // Nhãn loại bút toán kho theo từ vựng DESIGN.md §9.2
 const movementKinds: Record<string, { label: string; variant: 'success' | 'danger' | 'warning' | 'info' | 'neutral' }> = {
   IMPORT: { label: 'Nhập kho', variant: 'success' }, SALE: { label: 'Xuất bán', variant: 'info' },
@@ -20,14 +21,14 @@ const movementKinds: Record<string, { label: string; variant: 'success' | 'dange
 };
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'Không tải được dữ liệu kho. Vui lòng thử lại.';
 
-export const InventoryScreen: React.FC = () => {
+export const InventoryScreen: React.FC<InventoryProps> = ({ tab, onTabChange } = {}) => {
   const { session } = useAuth();
   const identity = JSON.stringify([session.user.id,session.user.store_id,session.user.branch_id,
     session.user.role_code,session.user.must_change_password,[...session.permissions].sort()]);
-  return <InventoryContent key={identity} />;
+  return <InventoryContent key={identity} tab={tab} onTabChange={onTabChange} />;
 };
 
-const InventoryContent: React.FC = () => {
+const InventoryContent: React.FC<InventoryProps> = props => {
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const { session } = useAuth();
@@ -36,12 +37,11 @@ const InventoryContent: React.FC = () => {
   const allBranches = session.permissions.includes('branch.access_all');
   const [branchId, setBranchId] = useState(session.user.branch_id ?? '');
   const [branches, setBranches] = useState<OrganizationBranch[]>([]);
-  const [tab, setTab] = useState<Tab>('stocks');
-  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
-  const [stocks, setStocks] = useState<Stock[]>([]);
-  const [movements, setMovements] = useState<Movement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [ownTab, setOwnTab] = useState<InventoryTab>('stocks');
+  const tab = props.tab ?? ownTab;
+  const selectTab = (next: InventoryTab) => { setOwnTab(next); props.onTabChange?.(next); };
+  const [result, setResult] = useState<{ key: string; rows?: unknown[]; error?: string } | null>(null);
+  const [branchError, setBranchError] = useState('');
   const [revision, setRevision] = useState(0);
   const [editing, setEditing] = useState<Ingredient | null | undefined>();
   const [name, setName] = useState('');
@@ -49,25 +49,29 @@ const InventoryContent: React.FC = () => {
   const [minEditor, setMinEditor] = useState<Stock | null>(null);
   const [minStock, setMinStock] = useState('0');
   const [busy, setBusy] = useState(false);
+  useEffect(() => { setEditing(undefined); setMinEditor(null); }, [tab]);
+  // Chỉ nhận dòng thuộc đúng tab, chi nhánh và lần tải hiện hành (M-11)
+  const viewKey = JSON.stringify([tab, allBranches && tab !== 'catalog' ? branchId : '', revision]);
+  const loading = result?.key !== viewKey;
+  const error = !loading ? result?.error ?? '' : '';
+  const rows = !loading && !result?.error ? result?.rows ?? [] : [];
 
   useEffect(() => {
     if (!allBranches) return;
     let live = true;
-    organizationService.getBranchChoices().then(rows => { if (live) setBranches(rows); })
-      .catch(err => { if (live) setError(errorText(err)); });
+    organizationService.getBranchChoices().then(rows => { if (live) setBranches([...rows].sort((a, b) => a.name.localeCompare(b.name, 'vi'))); })
+      .catch(err => { if (live) setBranchError(errorText(err)); });
     return () => { live = false; };
   }, [allBranches]);
 
   useEffect(() => {
     let live = true;
-    setLoading(true); setError('');
-    Promise.all([inventoryService.ingredients(), inventoryService.stocks(allBranches ? branchId || undefined : undefined),
-      inventoryService.movements(allBranches ? branchId || undefined : undefined)])
-      .then(([items, stockRows, movementRows]) => { if (live) { setIngredients(items); setStocks(stockRows); setMovements(movementRows); } })
-      .catch(err => { if (live) { setError(errorText(err)); setIngredients([]); setStocks([]); setMovements([]); } })
-      .finally(() => { if (live) setLoading(false); });
+    const scope = allBranches ? branchId || undefined : undefined;
+    const load: Promise<unknown[]> = tab === 'stocks' ? inventoryService.stocks(scope) : tab === 'movements' ? inventoryService.movements(scope) : inventoryService.ingredients();
+    load.then(data => { if (live) setResult({ key: viewKey, rows: data }); })
+      .catch(err => { if (live) setResult({ key: viewKey, error: errorText(err) }); });
     return () => { live = false; };
-  }, [allBranches, branchId, revision]);
+  }, [viewKey]);
 
   const refresh = () => setRevision(value => value + 1);
   const saveIngredient = async (event: React.FormEvent) => {
@@ -117,11 +121,12 @@ const InventoryContent: React.FC = () => {
   const movementColumns: Column<Movement>[] = [
     { key: 'time', header: 'Thời gian', render: row => formatDateTimeVN(row.createdAt) },
     { key: 'ingredient', header: 'Nguyên liệu', render: row => row.ingredientName },
+    ...(allBranches && !branchId ? [{ key: 'branch', header: 'Chi nhánh', render: (row: Movement) => row.branchName }] : []),
     { key: 'type', header: 'Loại', render: row => { const kind = movementKinds[row.type];
       return kind ? <Badge variant={kind.variant} size="sm">{kind.label}</Badge> : row.type; } },
-    { key: 'quantity', header: 'Thay đổi', align: 'right', render: row => `${row.quantity} ${row.unit}` },
+    { key: 'quantity', header: 'Thay đổi', align: 'right', render: row => `${Number(row.quantity) > 0 ? '+' : ''}${row.quantity} ${row.unit}` },
     { key: 'balance', header: 'Tồn sau', align: 'right', render: row => `${row.balanceAfter} ${row.unit}` },
-    { key: 'note', header: 'Ghi chú', render: row => row.note || row.invoiceId || '—' },
+    { key: 'note', header: 'Ghi chú', render: row => row.note || row.invoiceCode || '—' },
   ];
 
   return <div style={{ flex: 1, padding: 'clamp(14px, 2.5vw, 24px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -133,7 +138,7 @@ const InventoryContent: React.FC = () => {
     <div className="page-bar">
       <nav aria-label="Mục kho" className="page-tabs">
         {([['stocks','Tồn kho'],['movements','Sổ kho'],['catalog','Nguyên liệu']] as const).map(([key,title]) =>
-          <button key={key} type="button" className="tab" aria-current={tab === key ? 'true' : undefined} onClick={() => setTab(key)}>{title}</button>)}
+          <button key={key} type="button" className="tab" aria-current={tab === key ? 'true' : undefined} onClick={() => selectTab(key)}>{title}</button>)}
       </nav>
       <div className="page-bar-end">
         {allBranches && <label className="field page-inline-field">Chi nhánh
@@ -143,13 +148,14 @@ const InventoryContent: React.FC = () => {
         <button type="button" className="btn btn-secondary" onClick={refresh}><RefreshCw size={18} />Tải lại</button>
       </div>
     </div>
+    {branchError && <div role="alert" className="notice notice-danger"><XCircle size={18} /><span>{branchError}</span></div>}
     {error && <div role="alert" className="notice notice-danger"><XCircle size={18} /><span>{error}</span>
-      <button type="button" className="btn btn-text" style={{ marginLeft: 'auto', minHeight: 36 }} onClick={refresh}>Thử lại</button></div>}
+      <button type="button" className="btn btn-text" style={{ marginLeft: 'auto' }} onClick={refresh}>Thử lại</button></div>}
     {loading ? <div role="status"><span className="sr-only">Đang tải dữ liệu kho…</span>
       <div className="page-skeleton" aria-hidden="true"><span className="skeleton" /><span className="skeleton" /><span className="skeleton" /></div></div> : !error && (tab === 'stocks'
-      ? <DataTable columns={stockColumns} data={stocks} keyExtractor={row => `${row.branchId}:${row.ingredientId}`} emptyMessage="Chưa có nguyên liệu trong kho" />
-      : tab === 'movements' ? <DataTable columns={movementColumns} data={movements} keyExtractor={row => row.id} emptyMessage="Chưa có bút toán kho" />
-      : <DataTable columns={ingredientColumns} data={ingredients} keyExtractor={row => row.id} emptyMessage="Chưa có nguyên liệu" />)}
+      ? <DataTable columns={stockColumns} data={rows as Stock[]} keyExtractor={row => `${row.branchId}:${row.ingredientId}`} emptyMessage="Chưa có nguyên liệu trong kho" />
+      : tab === 'movements' ? <DataTable columns={movementColumns} data={rows as Movement[]} keyExtractor={row => row.id} emptyMessage="Chưa có bút toán kho" />
+      : <DataTable columns={ingredientColumns} data={rows as Ingredient[]} keyExtractor={row => row.id} emptyMessage="Chưa có nguyên liệu" />)}
     <Dialog isOpen={editing !== undefined} onClose={() => setEditing(undefined)} title={editing ? 'Sửa nguyên liệu' : 'Thêm nguyên liệu'} maxWidth={420}>
       <form onSubmit={saveIngredient} style={{ display: 'grid', gap: 16 }}>
         <Field label="Tên nguyên liệu" value={name} onChange={event => setName(event.target.value)} required />

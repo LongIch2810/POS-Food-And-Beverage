@@ -6,7 +6,7 @@ import { MockEngine } from '../../mock/mockEngine';
 import { shiftService, WorkShiftDto } from '../../services/shiftService';
 import { formatDuration } from '../../utils/formatters';
 import { Badge } from '../ui/Badge';
-import { canOpenSettings } from '../../app/navigation';
+import { accessibleTabs } from '../../app/navigation';
 import {
   ShoppingBag,
   LayoutGrid,
@@ -49,7 +49,7 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
   const perms = session.permissions || [];
   const has = (p: string) => perms.includes(p as any);
   const isPlatformAdmin = user.role_code === 'PLATFORM_ADMIN';
-  const isDemo = !isPlatformAdmin && !['settings', 'products', 'shifts', 'invoices', 'inventory'].includes(currentTab);
+  const isDemo = !isPlatformAdmin && !['settings', 'products', 'shifts', 'invoices', 'inventory', 'reports'].includes(currentTab);
   const canSwitchBranch = has('branch.access_all');
 
   const [activeShiftDuration, setActiveShiftDuration] = useState<string>('');
@@ -106,28 +106,29 @@ export const AppShell: React.FC<AppShellProps> = ({ currentTab, onSelectTab, chi
   const hasOpenShift = currentShift?.status === 'OPEN';
 
   // Danh sách Navigation Items theo quyền động (BR-05)
-  const allNavItems: { id: NavTab; label: string; icon: React.ReactNode; visible: boolean }[] = [
+  const allNavItems: { id: NavTab; label: string; icon: React.ReactNode }[] = [
     // Quản trị nền tảng
-    { id: 'platform_stores', label: 'Cửa hàng', icon: <Building2 size={24} />, visible: isPlatformAdmin && has('store.read') },
-    { id: 'platform_owners', label: 'Chủ quán', icon: <UserCheck size={24} />, visible: isPlatformAdmin && has('user.read_owner') },
+    { id: 'platform_stores', label: 'Cửa hàng', icon: <Building2 size={24} /> },
+    { id: 'platform_owners', label: 'Chủ quán', icon: <UserCheck size={24} /> },
 
     // Nghiệp vụ bán hàng & vận hành cửa hàng
-    { id: 'pos', label: 'Bán hàng', icon: <ShoppingBag size={24} />, visible: !isPlatformAdmin && has('pos.sell') },
-    { id: 'tables', label: 'Sơ đồ bàn', icon: <LayoutGrid size={24} />, visible: !isPlatformAdmin && (has('pos.sell') || has('table.manage')) },
-    { id: 'invoices', label: 'Hóa đơn', icon: <Receipt size={24} />, visible: !isPlatformAdmin && (has('pos.sell') || has('invoice.cancel_open') || has('invoice.cancel_paid')) },
-    { id: 'shifts', label: 'Ca làm', icon: <Clock size={24} />, visible: !isPlatformAdmin && (has('shift.read') || has('shift.open') || has('shift.close') || has('shift.force_close')) },
-    { id: 'inventory', label: 'Kho hàng', icon: <Boxes size={24} />, visible: !isPlatformAdmin && has('inventory.view') },
-    { id: 'reports', label: 'Báo cáo', icon: <BarChart3 size={24} />, visible: !isPlatformAdmin && (has('report.view_branch') || has('report.view_all')) },
-    { id: 'products', label: 'Thực đơn', icon: <UtensilsCrossed size={24} />, visible: !isPlatformAdmin && (has('menu.manage') || has('product.manage')) },
-    { id: 'settings', label: 'Cài đặt', icon: <Settings size={24} />, visible: !isPlatformAdmin && canOpenSettings(perms) },
+    { id: 'pos', label: 'Bán hàng', icon: <ShoppingBag size={24} /> },
+    { id: 'tables', label: 'Sơ đồ bàn', icon: <LayoutGrid size={24} /> },
+    { id: 'invoices', label: 'Hóa đơn', icon: <Receipt size={24} /> },
+    { id: 'shifts', label: 'Ca làm', icon: <Clock size={24} /> },
+    { id: 'inventory', label: 'Kho hàng', icon: <Boxes size={24} /> },
+    { id: 'reports', label: 'Báo cáo', icon: <BarChart3 size={24} /> },
+    { id: 'products', label: 'Thực đơn', icon: <UtensilsCrossed size={24} /> },
+    { id: 'settings', label: 'Cài đặt', icon: <Settings size={24} /> },
   ];
 
-  const navItems = allNavItems.filter((item) => item.visible);
+  const availableTabs = accessibleTabs(session);
+  const navItems = allNavItems.filter(item => availableTabs.includes(item.id));
 
   // Ca đang mở lấy từ API nên tên chi nhánh của ca là tên thật; dữ liệu mẫu chỉ là phương án dự phòng.
   const currentBranchName = currentShift?.branchName || (isDemo
     ? accessibleBranches.find((b) => b.id === selectedBranchId)?.name || session.branch_name || 'Chi nhánh'
-    : session.branch_name || 'Tất cả chi nhánh');
+    : session.branch_name || (canSwitchBranch ? 'Tất cả chi nhánh' : 'Chi nhánh'));
 
   return (
     <div className="shell">

@@ -30,8 +30,9 @@ import {
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { RecipeModal } from './RecipeModal';
+import type { ProductsTab } from '../../app/routes';
 
-export const ProductsScreen: React.FC = () => {
+export const ProductsScreen: React.FC<{ tab?: ProductsTab; onTabChange?: (tab: ProductsTab) => void }> = ({ tab, onTabChange }) => {
   const { session } = useAuth();
   const { showToast } = useToast();
   const canManageMenu =
@@ -40,7 +41,9 @@ export const ProductsScreen: React.FC = () => {
     session?.user?.role_code === 'OWNER' ||
     session?.user?.role_code === 'MANAGER';
 
-  const [activeMainTab, setActiveMainTab] = useState<'products' | 'toppings' | 'categories' | 'sizes' | 'promotions'>('products');
+  const [ownTab, setOwnTab] = useState<ProductsTab>('products');
+  const activeMainTab = tab ?? ownTab;
+  const setActiveMainTab = (next: ProductsTab) => { setOwnTab(next); onTabChange?.(next); };
 
   // Real data state
   const [categories, setCategories] = useState<MenuCategory[]>([]);
@@ -96,6 +99,17 @@ export const ProductsScreen: React.FC = () => {
   const [mappingTopping, setMappingTopping] = useState<MenuTopping | null>(null);
   const [recipeTarget, setRecipeTarget] = useState<{ productName?: string; sizeName?: string; productSizeId?: string;
     toppingName?: string; toppingId?: string } | null>(null);
+
+  useEffect(() => {
+    setCategoryModalOpen(false);
+    setSizeModalOpen(false);
+    setProductModalOpen(false);
+    setAddSizeModalOpen(false);
+    setPriceModalOpen(false);
+    setToppingModalOpen(false);
+    setMappingTopping(null);
+    setRecipeTarget(null);
+  }, [activeMainTab]);
 
   // Load data from real API
   const loadData = useCallback(async () => {
@@ -731,6 +745,7 @@ export const ProductsScreen: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveMainTab('products')}
+          aria-current={activeMainTab === 'products' ? 'true' : undefined}
           style={{
             height: 40,
             padding: '0 16px',
@@ -752,6 +767,7 @@ export const ProductsScreen: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveMainTab('toppings')}
+          aria-current={activeMainTab === 'toppings' ? 'true' : undefined}
           style={{
             height: 40,
             padding: '0 16px',
@@ -773,6 +789,7 @@ export const ProductsScreen: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveMainTab('categories')}
+          aria-current={activeMainTab === 'categories' ? 'true' : undefined}
           style={{
             height: 40,
             padding: '0 16px',
@@ -794,6 +811,7 @@ export const ProductsScreen: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveMainTab('sizes')}
+          aria-current={activeMainTab === 'sizes' ? 'true' : undefined}
           style={{
             height: 40,
             padding: '0 16px',

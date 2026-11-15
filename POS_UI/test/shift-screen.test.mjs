@@ -79,6 +79,7 @@ function mount(file, exportName, props, dependencies) {
   }
   async function flush() { for (let i = 0; i < 20; i++) { render(); await Promise.resolve(); } render(); }
   return { flush, find, text, root: () => tree,
+    async setProps(next) { props = next; dirty = true; await flush(); },
     async click(label) {
       const button = find('Button', nodeProps => text(nodeProps.children).includes(label));
       assert.ok(button, `button exists: ${label}`);
@@ -198,4 +199,70 @@ test('BR-58 result remains visible until cashier finishes the reconciliation dia
   await screen.click('Hoàn tất & Đóng');
   assert.equal(closed, 1);
   assert.equal(refreshed, 1);
+});
+
+function livePos(props, { tables = [], orders = [], get = async () => ({ id: 'inv-1', invoiceCode: 'HD1', branchId, tableId: 'table-1', orderType: 'DINE_IN', status: 'OPEN', totalAmount: 0, items: [] }) } = {}) {
+  const session = { user: { id: 'cashier', branch_id: branchId }, permissions: ['pos.sell', 'invoice.read'] };
+  return mount('pos/LivePosScreen.tsx', 'LivePosScreen', props, {
+    '/AuthContext': { useAuth: () => ({ session, isOffline: false }) },
+    '/shiftService': { shiftService: { getCurrentShift: async () => ({ id: 'shift', branchId, shiftType: 'CASHIER', status: 'OPEN' }) } },
+    '/menuService': { menuService: { getAllCategories: async () => [], getAllProducts: async () => [], getAllToppings: async () => [] } },
+    '/organizationService': { organizationService: { getTables: async () => ({ data: tables, meta: { nextCursor: null } }) } },
+    '/salesService': { salesService: { listOpen: async () => ({ data: orders, meta: { nextCursor: null } }),
+      get,
+      getPendingTransferAttempt: async () => null } },
+    '/formatters': { formatVND: String },
+  });
+}
+const tabButton = (screen, label) => screen.find('button', props => screen.text(props.children) === label);
+
+test('test_ST7_AC1_livepos_tab_dieu_khien', async () => {
+  const changes = [];
+  const screen = livePos({ activeTab: 'orders', onTabChange: tab => changes.push(tab) });
+  await screen.flush();
+  assert.equal(tabButton(screen, 'Đơn đang mở').props['aria-current'], 'true');
+  assert.equal(tabButton(screen, 'Sơ đồ bàn').props['aria-current'], undefined);
+  tabButton(screen, 'Sơ đồ bàn').props.onClick();
+  await screen.flush();
+  assert.deepEqual(changes, ['tables']);
+});
+
+test('test_ST7_AC2_livepos_mo_ban_bao_menu', async () => {
+  const changes = [];
+  const screen = livePos({ activeTab: 'tables', onTabChange: tab => changes.push(tab) },
+    { tables: [{ id: 'table-1', name: 'Bàn 1', isActive: true }], orders: [{ id: 'inv-1', tableId: 'table-1', totalAmount: 0, invoiceCode: 'HD1' }] });
+  await screen.flush();
+  await screen.find('button', props => screen.text(props.children).includes('Bàn 1')).props.onClick();
+  await screen.flush();
+  assert.deepEqual(changes, ['menu']);
+});
+
+test('test_ST7_AC3_livepos_tu_quan', async () => {
+  const screen = livePos({});
+  await screen.flush();
+  assert.equal(tabButton(screen, 'Thực đơn').props['aria-current'], 'true');
+  tabButton(screen, 'Sơ đồ bàn').props.onClick();
+  await screen.flush();
+  assert.equal(tabButton(screen, 'Sơ đồ bàn').props['aria-current'], 'true');
+  assert.equal(tabButton(screen, 'Thực đơn').props['aria-current'], undefined);
+});
+
+test('[B-64] mở bàn đang chờ dùng callback điều hướng mới nhất khi đổi tab', async () => {
+  let resolveDetail; let reads = 0;
+  const pending = new Promise(resolve => { resolveDetail = resolve; });
+  const changes = [];
+  const screen = livePos({ activeTab: 'tables', onTabChange: tab => changes.push(['old', tab]) }, {
+    tables: [{ id: 'table-1', name: 'Bàn 1', isActive: true }],
+    orders: [{ id: 'inv-1', tableId: 'table-1', totalAmount: 0, invoiceCode: 'HD1' }],
+    get: id => { assert.equal(id, 'inv-1'); reads++; return pending; },
+  });
+  await screen.flush();
+  screen.find('button', props => screen.text(props.children).includes('Bàn 1')).props.onClick();
+  await screen.flush();
+  assert.equal(reads, 1, 'request chi tiết thực sự đang chờ');
+  assert.deepEqual(changes, [], 'chưa điều hướng trước phản hồi');
+  await screen.setProps({ activeTab: 'orders', onTabChange: tab => changes.push(['current', tab]) });
+  resolveDetail({ id: 'inv-1', invoiceCode: 'HD1', branchId, tableId: 'table-1', orderType: 'DINE_IN', status: 'OPEN', totalAmount: 0, items: [] });
+  await screen.flush();
+  assert.deepEqual(changes, [['current', 'menu']]);
 });

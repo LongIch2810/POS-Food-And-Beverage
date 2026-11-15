@@ -95,6 +95,7 @@ test('[R1-1] OWNER assigned to branch may select another branch and open its pay
   const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true}}).outputText;
   const slots=[];let index=0,dirty=true,effects=[],tree;
   const React={createElement:(type,props,...children)=>({type,props:{...props,children}}),useState(initial){const k=index++;if(!slots[k])slots[k]={value:typeof initial==='function'?initial():initial};return [slots[k].value,next=>{const v=typeof next==='function'?next(slots[k].value):next;if(!Object.is(v,slots[k].value)){slots[k].value=v;dirty=true;}}];},useEffect(effect,deps){const k=index++,old=slots[k];if(!old||deps.some((v,i)=>!Object.is(v,old.deps[i])))effects.push(()=>{old?.cleanup?.();slots[k]={deps,cleanup:effect()};});}};
+  React.useRef = initial => { const key = index++; return slots[key] ??= { current: initial }; };
   const invoice={id:'i2',branchId:'b2',invoiceCode:'HD00000002',status:'OPEN',orderType:'TAKEAWAY',totalAmount:50000,items:[]};
   const session={user:{id:'owner',branch_id:'b1',store_id:'store'},permissions:['branch.access_all','pos.sell','transfer.confirm_manual']},exports={};let listed=[];
   vm.runInNewContext(compiled,{exports,Error,window:{prompt:()=>null},require:name=>{
@@ -124,6 +125,7 @@ test('ST8 live POS exposes payment for selected order and permits manager to ins
   const React={createElement:(type,props,...children)=>({type,props:{...props,children}}),
     useState(initial){const key=index++;if(!slots[key])slots[key]={value:typeof initial==='function'?initial():initial};return [slots[key].value,next=>{const value=typeof next==='function'?next(slots[key].value):next;if(!Object.is(value,slots[key].value)){slots[key].value=value;dirty=true;}}];},
     useEffect(effect,deps){const key=index++,previous=slots[key];if(!previous||deps.some((v,i)=>!Object.is(v,previous.deps[i])))effects.push(()=>{previous?.cleanup?.();slots[key]={deps,cleanup:effect()};});}};
+  React.useRef = initial => { const key = index++; return slots[key] ??= { current: initial }; };
   const invoice={id:'i1',branchId:'b1',workShiftId:'s1',invoiceCode:'HD00000001',status:'OPEN',orderType:'TAKEAWAY',totalAmount:50000,items:[]};
   const exports={},session={user:{id:'manager',branch_id:'b1',store_id:'store'},permissions:['pos.sell','transfer.confirm_manual','transfer.exception_read']};let currentShift=null;
   vm.runInNewContext(compiled,{exports,Error,window:{prompt:()=>null},require:name=>{
@@ -291,6 +293,7 @@ async function mountPos({initialInvoiceId='i1',status='OPEN',pending=null,tables
   const React={createElement:(type,props,...children)=>({type,props:{...props,children}}),
     useState(initial){const k=index++;if(!slots[k])slots[k]={value:typeof initial==='function'?initial():initial};return [slots[k].value,next=>{const v=typeof next==='function'?next(slots[k].value):next;if(!Object.is(v,slots[k].value)){slots[k].value=v;dirty=true;}}];},
     useEffect(effect,deps){const k=index++,old=slots[k];if(!old||deps.some((v,i)=>!Object.is(v,old.deps[i])))effects.push(()=>{old?.cleanup?.();slots[k]={deps,cleanup:effect()};});}};
+  React.useRef = initial => { const key = index++; return slots[key] ??= { current: initial }; };
   const state={detail:{id:'i1',branchId:'b1',workShiftId:'s1',invoiceCode:'HD00000001',status,orderType:'TAKEAWAY',totalAmount:0,items:[]},pending,orders:[{id:'i1',invoiceCode:'HD00000001',orderType:'TAKEAWAY',totalAmount:0}],tables:[],listCalls:0};
   if(tables)state.tables=tables;if(orders)state.orders=orders;if(details)state.details=details;if(created)state.created=created;
   const calls=[],exports={};

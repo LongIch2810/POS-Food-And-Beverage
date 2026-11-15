@@ -1,6 +1,9 @@
 import { AuthError, restoreSession } from '../auth/client.ts';
 import { getRequestIdentity, notifySessionChange, requestIdentityKey } from '../auth/session-events.ts';
 
+// Message mặc định khi body lỗi thiếu message; màn muốn fallback riêng nhận ra qua hằng này.
+export const GENERIC_ERROR_MESSAGE = 'Có lỗi xảy ra. Vui lòng thử lại.';
+
 export async function request<T>(path: string, method = 'GET', body?: object | FormData, retry = true, list = false, extraHeaders: Record<string,string> = {}): Promise<T> {
   const context = getRequestIdentity();
   const changedSession = () => new AuthError('SESSION_CHANGED', 'Tài khoản hoặc phạm vi đã thay đổi. Hãy mở lại chức năng trước khi thao tác.');
@@ -21,7 +24,11 @@ export async function request<T>(path: string, method = 'GET', body?: object | F
       credentials: 'same-origin',
       ...(body ? { body: isFormData ? body : JSON.stringify(body) } : {}),
     });
-  } catch { throw new AuthError('NETWORK_ERROR', 'Chưa xác nhận được kết quả. Kiểm tra kết nối và tải lại danh sách trước khi thử lại.'); }
+  } catch {
+    throw new AuthError('NETWORK_ERROR', method === 'GET'
+      ? 'Không tải được dữ liệu. Kiểm tra kết nối mạng rồi thử lại.'
+      : 'Chưa xác nhận được kết quả. Kiểm tra kết nối và tải lại danh sách trước khi thử lại.');
+  }
   if (response.status === 401 && retry) {
     try {
       const user = await restoreSession();
@@ -42,7 +49,7 @@ export async function request<T>(path: string, method = 'GET', body?: object | F
   let json;
   try { json = await response.json(); } catch { throw new AuthError('UNKNOWN', 'Chưa đọc được kết quả. Tải lại danh sách trước khi thử lại.'); }
   if (!response.ok) {
-    const error = new AuthError(json.error?.code ?? 'UNKNOWN', json.error?.message ?? 'Có lỗi xảy ra. Vui lòng thử lại.', {
+    const error = new AuthError(json.error?.code ?? 'UNKNOWN', json.error?.message ?? GENERIC_ERROR_MESSAGE, {
       status: response.status, requestId: json.error?.requestId ?? response.headers.get('X-Request-Id') ?? undefined,
       details: Array.isArray(json.error?.details) ? json.error.details : [],
     });

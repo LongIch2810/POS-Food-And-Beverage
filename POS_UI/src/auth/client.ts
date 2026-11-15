@@ -2,7 +2,7 @@ import { rememberRequestIdentity } from './session-events.ts';
 
 export interface AuthUser {
   id: string; username: string; fullName: string; role: string;
-  storeId: string | null; branchId: string | null; permissions: string[]; mustChangePassword: boolean;
+  storeId: string | null; branchId: string | null; branchName?: string | null; permissions: string[]; mustChangePassword: boolean;
 }
 
 export class AuthError extends Error {
