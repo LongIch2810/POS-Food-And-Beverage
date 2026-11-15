@@ -4,7 +4,7 @@
 
 **Sprint 09:** [Sprint 09](../sprints/sprint-09/SPRINT.md) đã đóng ngày 14/11/2026 với QA local 6/6 AC cho PB-10 chi từ két/đối soát, PB-11 hủy đơn `PAID` và lát cắt PB-13 UI Ca/Hóa đơn. Mã đã tích hợp vào `master`; trạng thái CI hiện tại xem [README](../README.md). PB-12 và PB-14 chưa thuộc Sprint 09.
 
-**Sprint 10:** Product Owner chọn [Sprint 10](../sprints/sprint-10/SPRINT.md): PB-12 báo cáo doanh thu + lát cắt PB-13 UI Báo cáo, thêm biểu đồ doanh thu theo ngày và món bán chạy; bổ sung PB-15 nhập dữ liệu quán hàng loạt bằng Excel/CSV, báo và bỏ qua dòng trùng; kiểm tra và hoàn thiện tab Sổ kho theo dữ liệu API thật. Bắt đầu 14/11; ngày kết thúc chưa chốt. Chưa có spec/plan triển khai hoặc QA Sprint 10; tab Sổ kho hiện đã gọi API theo source. PB-14 ở ngoài phạm vi sprint này.
+**Sprint 10:** Product Owner chọn [Sprint 10](../sprints/sprint-10/SPRINT.md): PB-12 báo cáo doanh thu + lát cắt PB-13 UI Báo cáo, thêm biểu đồ doanh thu theo ngày và món bán chạy; kiểm tra và hoàn thiện tab Sổ kho theo dữ liệu API thật. Bắt đầu 14/11; ngày kết thúc chưa chốt. Đã có spec, plan và kiểm AC local cho Báo cáo (`.devloopflow/specs/20261114-sprint10-reports.md`) và Sổ kho (`.devloopflow/specs/20261115-sprint10-stock-ledger.md`); task Sổ kho còn mở sau B-65, chờ QA cấp sprint. PB-14 ở ngoài phạm vi sprint này. PB-15 nhập dữ liệu hàng loạt đã hủy ngày 15/11, không thuộc sprint.
 
 **SePay:** Dự án cá nhân phục vụ học tập; chủ dự án quyết định chỉ sử dụng và nghiệm thu SePay Test mode, không triển khai hoặc yêu cầu kiểm SePay Live. Quyết định này không tự thay đổi phạm vi hạ tầng PB-14.
 
@@ -31,7 +31,7 @@ Nguồn phạm vi: [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md) mục 5; quy tắc
 | PB-12 | Người có quyền xem doanh thu ngày theo giờ Việt Nam, tách tiền mặt/chuyển khoản và giới hạn dữ liệu theo ca/chi nhánh/store. | PB-09, PB-11; spec báo cáo |
 | PB-13 | UI demo được nối API theo từng lát cắt đã hoàn thành; không dùng mock như nguồn thật cho luồng đó. POS phù hợp tablet ngang, tiếng Việt và VND. | Đi cùng PB-02 đến PB-12 |
 | PB-14 | Web/API/DB vận hành cùng origin trên một VPS qua Docker Compose, migration riêng, sao lưu DB hằng ngày ra ngoài VPS và kiểm tra khôi phục. | Các lát cắt cần triển khai; chốt lựa chọn infra còn mở |
-| PB-15 | Chủ quán nhập dữ liệu thiết lập ban đầu hàng loạt từ Excel hoặc CSV: chi nhánh, danh mục món, món/size/giá, bàn, nguyên liệu kèm đơn vị tính, topping, công thức món/size và công thức topping; báo và bỏ qua dòng trùng, bảo đảm quyền và phạm vi store/branch. Trang import không nhận số lượng tồn để cập nhật kho; nguyên liệu mới có tồn ban đầu 0, không ghi biến động kho; tài khoản tạo thủ công. Nhập hàng và phiếu nhập thuộc Giai đoạn 2. | PB-04, PB-05, PB-08; cần refinement và spec nhập dữ liệu |
+| PB-15 | **Đã hủy 15/11/2026 theo quyết định chủ dự án:** nhập dữ liệu thiết lập hàng loạt từ Excel/CSV bị loại khỏi Sprint 10, không còn spec/plan/task và không tích hợp mã. Mở lại khi có yêu cầu mới. | — |
 
 Mỗi PB được tách thành item nhỏ khi refinement. Các mục Giai đoạn 2 và Tùy chọn trong product overview nằm ngoài backlog MVP này.
 

@@ -199,7 +199,7 @@ Quyết định PB-04 ngày 30/10/2026: OWNER chỉ sửa quỹ ban đầu của
 | BR-63 | Doanh thu theo ngày gom theo `paid_at` ở **múi giờ Việt Nam (UTC+7)**, không gom theo UTC.             | MVP |
 | BR-64 | Báo cáo luôn tách tiền mặt và chuyển khoản. Tổng doanh thu = tiền mặt + chuyển khoản.                  | MVP |
 | BR-65 | `CASHIER` chỉ xem báo cáo ca của chính mình. `MANAGER` xem chi nhánh mình. `OWNER` xem toàn cửa hàng.  | MVP |
-| BR-66 | Lợi nhuận gộp, món bán chạy, giờ cao điểm, báo cáo tuần và tháng.                                      | GĐ2 |
+| BR-66 | Lợi nhuận gộp, giờ cao điểm, báo cáo tuần và tháng.                                                    | GĐ2 |
 | BR-77 | Báo cáo có hai mức: theo từng chi nhánh, và tổng hợp toàn cửa hàng (chỉ người có `branch.access_all`). | MVP |
 
 ## 14. Nhật ký thao tác

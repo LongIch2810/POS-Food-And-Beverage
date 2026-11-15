@@ -1,7 +1,7 @@
 # MEMORY: kinh nghiệm của dự án này
 <!-- Bộ nhớ của dự án cho AGENT đọc. Do skill reflect và remember ghi. Cấu trúc cố định: bảng "Chỉ mục" (agent quét trước) + khối "Chi tiết" cho từng mục (mở khi cần). Mỗi mục có MỘT dòng ở Chỉ mục và MỘT khối ở Chi tiết, hai chỗ phải khớp nhau. Chỉ ghi điều có bằng chứng (task id, path:dòng, id finding, hoặc lời user nguyên văn). Không secret, token, mật khẩu, PII. Chỉ thêm hoặc cập nhật, không xoá; mục sai đổi sang `hết hiệu lực` kèm lý do và ngày. Lỗi đã sửa có nguyên nhân gốc thì ghi ở .devloopflow/errors/, ở đây chỉ dẫn link. File này được commit. -->
 
-- Cập nhật lần cuối: 2026-11-14
+- Cập nhật lần cuối: 2026-11-15
 - Id `M-<n>` tăng dần trong toàn dự án, không dùng lại.
 
 ## Cách đọc (dành cho agent)
@@ -46,15 +46,22 @@
 | M-30 | Hay quên | plan, sales, error-order, test | Plan ghi một thay đổi hợp đồng lỗi hoặc thứ tự các kiểm tra (scope/quyền/trạng thái) của hàm có sẵn, ví dụ mục 'Ảnh hưởng tới code hiện có'. | Thêm AC và test HTTP riêng cho chính thay đổi đó với người gọi thiếu điều kiện (không có ca, `branch_id` NULL, ngoài phạm vi), rồi kiểm bằng đột biến 'đảo thứ tự' để có test đỏ; không chỉ ghi chú trong plan. | 1 | có hiệu lực |
 | M-31 | Hay quên | test, flaky, clock, shifts | Viết test seed mốc thời gian (`started_at`, `created_at`) bằng đồng hồ DB `now()` rồi gọi API ghi mốc sau bằng đồng hồ Node (`new Date()`), đặc biệt khi PostgreSQL chạy trong Docker. | Seed mốc lùi (`now() - interval '1 minute'`) hoặc dùng cùng một đồng hồ; không dựa vào hai đồng hồ khớp nhau. Đồng hồ container Postgres lệch host tới ±1 s và có thể đổi sau khi Docker Desktop khởi động lại. | 1 | có hiệu lực |
 | M-32 | Đã học được | test, node-test, command | Chạy một case của `node --test` bằng `--test-name-pattern` khi test nằm lồng trong subtest (ví dụ `[R14-1]` trong `payment.integration.test.js`). | Dùng pattern theo tên test CHA; pattern khớp subtest không chạy được test cha nên lệnh báo `pass 1` mà thực tế không chạy gì. Xác nhận số test đã chạy trong output trước khi coi là xanh. | 1 | có hiệu lực |
-| M-33 | Quy trình | verify-ac, subagent, report | Giao `ac-verifier` (hoặc subagent khác) ghi `report-<n>.md`, `fails.md` dưới `.devloopflow/verify/<id>/`. | Dặn subagent trả toàn bộ nội dung report ở cuối câu trả lời (Write bị từ chối trong ngữ cảnh subagent: 'Subagents should return findings as text'); agent chính tự mở bằng chứng thô (đếm `# pass`, `pass:false`, `cleanup.txt`) rồi mới chép vào file, và ghi rõ điều đó trong report. | 1 | có hiệu lực |
+| M-33 | Quy trình | verify-ac, subagent, report | Giao `ac-verifier` (hoặc subagent khác) ghi `report-<n>.md`, `fails.md` dưới `.devloopflow/verify/<id>/`. | Dặn subagent trả toàn bộ nội dung report ở cuối câu trả lời (Write bị từ chối trong ngữ cảnh subagent: 'Subagents should return findings as text'); agent chính tự mở bằng chứng thô (đếm `# pass`, `pass:false`, `cleanup.txt`) rồi mới chép vào file, và ghi rõ điều đó trong report. | 2 | có hiệu lực |
 | M-34 | Đã học được | env, docker, database, test | Chạy `npm test` hoặc migration cho `POS_API` trên máy Windows của dự án. | `DATABASE_URL` trong `POS_API/.env` có thể không dùng được (cổng 5432 là relay WSL, sai mật khẩu); dùng PostgreSQL Docker `pos_infra-postgres-1` ở `127.0.0.1:15432` với `POSTGRES_USER/PASSWORD/DB` từ `POS_INFRA/.env.local`, dựng URL trong lệnh, không in hay ghi bí mật. Sau khi Docker Desktop khởi động lại, container thoát mã 255: `docker start pos_infra-postgres-1`. | 1 | có hiệu lực |
 | M-35 | Quy trình | tdd, mutation, subagent | Giao `tdd` kiểm đột biến bằng script tự động trên file production. | Yêu cầu `timeout` cho mỗi lần chạy, khôi phục file bằng `cmp` với bản sao sau MỖI đột biến và xác nhận lại bằng `grep`; không dùng đột biến gây treo (ví dụ đưa `INSERT` ra ngoài transaction) và agent chính kiểm `git diff` file production sau khi `tdd` báo xong. | 1 | có hiệu lực |
-| M-36 | Ý của user | workflow, communication, approval | Trình user các câu hỏi làm rõ, đề xuất hoặc thuật ngữ kỹ thuật cần user duyệt. | Giải thích từng điểm bằng lời thường (đề xuất là gì, vì sao, hậu quả nếu chọn khác) trước khi xin duyệt; gọi tên thuật ngữ (flaky, 'chưa chắc', bước 10c) kèm nghĩa; không coi 'đồng ý hết' khi user nói chưa hiểu. | 1 | có hiệu lực |
+| M-36 | Ý của user | workflow, communication, approval | Trình user các câu hỏi làm rõ, đề xuất hoặc thuật ngữ kỹ thuật cần user duyệt. | Giải thích từng điểm bằng lời thường (đề xuất là gì, vì sao, hậu quả nếu chọn khác) trước khi xin duyệt; gọi tên thuật ngữ (flaky, 'chưa chắc', bước 10c) kèm nghĩa; không coi 'đồng ý hết' khi user nói chưa hiểu. | 2 | có hiệu lực |
 
 | M-37 | Ý của user | reuse, tdd, existing-behavior | Khi task đã có hành vi hoặc mã đáp ứng yêu cầu. | Tái sử dụng phần đã có; kiểm xác nhận hành vi hiện tại và báo kết quả thật. | 1 | có hiệu lực |
-| M-38 | Hay quên | backlog, ledger, records | Khi ghi hoặc cập nhật một finding trong backlog. | Cập nhật cả bảng Tổng hợp lẫn phần Chi tiết cùng trạng thái và kiểm dòng nằm trong bảng Markdown. | 1 | có hiệu lực |
+| M-38 | Hay quên | backlog, ledger, records | Khi ghi hoặc cập nhật một finding trong backlog. | Cập nhật cả bảng Tổng hợp lẫn phần Chi tiết cùng trạng thái và kiểm dòng nằm trong bảng Markdown. | 2 | có hiệu lực |
 | M-39 | Hay quên | qa, acceptance, evidence, ui, tablet, accessibility | Khi chuẩn bị hoặc kiểm nghiệm thu, đặc biệt form và hộp thoại trên tablet. | Lập ma trận AC–chứng cứ và lưu hash mã; đối chiếu từng vế với mã/UI cuối và artifact gốc, ghi chưa xác minh khi thiếu; kiểm browser thật kích thước chạm, nhãn và tương phản theo DESIGN. | 1 | có hiệu lực |
 | M-40 | Hay quên | ui, touch, keyboard, pointercancel | Khi xử lý cử chỉ chạm và chặn click tổng hợp. | Kiểm thao tác chuột, Enter và Space đầu tiên sau pointercancel, cùng việc hủy không kích hoạt action. | 1 | có hiệu lực |
+| M-41 | Hay quên | ui, api, permission, reports, nav | UI quyết hiện màn, hiện tab hoặc chọn phạm vi/mức từ danh sách quyền trong khi API cũng tự quyết phạm vi. | Dùng cùng điều kiện quyền ở UI và API (gồm quyền đi kèm như `branch.access_all`); grep mọi nơi suy quyền (`navigation.ts`, `App.tsx`, `AppShell.tsx`, màn) và viết test bảng tổ hợp quyền biên ở cả hai phía. Xem [[M-10]]. | 2 | có hiệu lực |
+| M-42 | Hay quên | ui, http-client, error-message, test | Màn có thông báo lỗi dự phòng (fallback) khi API trả lỗi thiếu `message`. | Viết test đi qua HTTP client thật (`fetch` giả) với body lỗi thiếu `message`, không giả service; không đổi message mặc định của client dùng chung, export hằng để màn nhận ra. | 1 | có hiệu lực |
+| M-43 | Hay quên | ui, css, design-tokens, accessibility | Đặt hoặc kiểm màu token viền/điều khiển theo tỷ lệ tương phản của DESIGN.md. | Đo tương phản token trên mọi nền thực tế (`--color-bg`, `--color-surface`) bằng test đọc `POS_UI/src/index.css`; không tin ghi chú 'trên trắng'; khi mã lệch DESIGN.md thì user đã chọn sửa mã cho đúng DESIGN.md. | 1 | có hiệu lực |
+| M-44 | Đã học được | tooling, bash, sed, python, records | Sửa file hồ sơ nhiều dòng bằng `sed -i` theo số dòng, hoặc chạy script qua heredoc trong Bash trên Windows. | Trước `sed -i "${ln}a..."` kiểm `[ -n "$ln" ]` và `grep -nF` ra đúng một dòng (biến rỗng chèn sau MỌI dòng); ghi nhiều dòng bằng Write rồi `sed '<n>r <file>'`; không để heredoc `python -` không có script (treo). Xem [[M-24]]. | 1 | có hiệu lực |
+| M-45 | Ý của user | reports, permission, branch.access_all, owner | Thêm hoặc đổi quyền, màn hoặc API xem báo cáo mức cửa hàng. | Chỉ OWNER xem toàn cửa hàng và bắt buộc có cả `report.view_all` và `branch.access_all`; thiếu một trong hai thì không hạ mức (UI chặn, API 403). | 1 | có hiệu lực |
+| M-46 | Ý của user | agents, skills, caveman, ponytail, graphify, token | Bắt đầu conversation, viết hoặc sửa code, khoanh vùng code, hoặc giao việc cho subagent. | Gọi skill `caveman:caveman` và `ponytail:ponytail` bằng công cụ Skill (hook chỉ nhắc), dùng `graphify query` trước khi grep/đọc source, đưa quy tắc Ponytail và Graphify vào prompt subagent; nói thật việc đã hoặc chưa gọi skill. | 1 | có hiệu lực |
+| M-47 | Hay quên | qa, fixture, branch, acceptance | AC E2E dùng tên hiển thị của chi nhánh hoặc dữ liệu thử cố định. | Đối chiếu mã, ID và tên hiển thị của fixture với từng giá trị trong AC trước khi chạy browser, rồi kiểm lại bằng SQL. | 1 | có hiệu lực |
 
 Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY.md` gốc không có bộ đếm số lần cùng bài học tái diễn. Đây không phải 0 lần và không phải số test/chứng cứ. Khi có lần tái diễn mới, ghi căn cứ và ngày rồi bắt đầu đếm các lần **sau chuyển đổi**; không suy ngược số lần lịch sử.
 
@@ -182,7 +189,93 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - cập nhật gần nhất: 2026-11-12
 - trạng thái: có hiệu lực
 
+### M-41
+- loại: Hay quên
+- tag: ui, api, permission, reports, nav
+- khi nào áp dụng: UI quyết hiện màn, hiện tab hoặc chọn phạm vi/mức từ danh sách quyền trong khi API cũng tự quyết phạm vi.
+- quy tắc: Dùng cùng điều kiện quyền ở UI và API (gồm quyền đi kèm như `branch.access_all`); grep mọi nơi suy quyền (`navigation.ts`, `App.tsx`, `AppShell.tsx`, màn) và viết test bảng tổ hợp quyền biên ở cả hai phía. Liên quan [[M-10]].
+- vì sao: Người có `report.view_all` thiếu `branch.access_all` bị UI hạ mức còn server trả 403, màn hiện lỗi và 'Thử lại' mãi; sửa màn xong thì tab Báo cáo ở ba file khác vẫn hiện.
+- bằng chứng: task 20261114-sprint10-reports: `.devloopflow/errors/20261114-ui-report-scope-downgrades-when-access-all-missing.md` (B-55); backlog B-59 (`navigation.ts:20`, `App.tsx:115`, `AppShell.tsx:120`); `report-4.md` ST-3.AC-1. Task 20261115-sprint10-stock-ledger: backlog B-63; `.devloopflow/errors/20261115-rail-and-routes-disagree-on-permissions.md`.
+- số lần: 2
+- ghi lần đầu: 2026-11-14 (task 20261114-sprint10-reports)
+- cập nhật gần nhất: 2026-11-15
+- trạng thái: có hiệu lực
+
+### M-42
+- loại: Hay quên
+- tag: ui, http-client, error-message, test
+- khi nào áp dụng: Màn có thông báo lỗi dự phòng (fallback) khi API trả lỗi thiếu `message`.
+- quy tắc: Viết test đi qua HTTP client thật (`fetch` giả) với body lỗi thiếu `message`, không giả service; không đổi message mặc định của client dùng chung, export hằng để màn nhận ra.
+- vì sao: `POS_UI/src/http/client.ts` luôn gán message mặc định nên fallback của màn Báo cáo không bao giờ chạy; test dự án xanh vì giả `reportService`. Đổi message ở client sẽ đổi chữ ở 6 màn khác.
+- bằng chứng: task 20261114-sprint10-reports: V1-1 trong `.devloopflow/verify/20261114-sprint10-reports/fails.md`; `.devloopflow/errors/20261114-ui-shared-client-default-message-masks-screen-fallback.md`.
+- số lần: 1
+- ghi lần đầu: 2026-11-14 (task 20261114-sprint10-reports)
+- cập nhật gần nhất: 2026-11-14
+- trạng thái: có hiệu lực
+
+### M-43
+- loại: Hay quên
+- tag: ui, css, design-tokens, accessibility
+- khi nào áp dụng: Đặt hoặc kiểm màu token viền/điều khiển theo tỷ lệ tương phản của DESIGN.md.
+- quy tắc: Đo tương phản token trên mọi nền thực tế (`--color-bg`, `--color-surface`) bằng test đọc `POS_UI/src/index.css`; không tin ghi chú 'trên trắng'; khi mã lệch DESIGN.md thì user đã chọn sửa mã cho đúng DESIGN.md.
+- vì sao: `--color-border-control` `#8a979d` đạt 3,0:1 trên trắng nhưng chỉ 2,72:1 trên nền trang `#f2f4f5`, dưới ngưỡng 3:1 của `DESIGN.md:649`; đổi thành `#818d93` (3,088:1). Bảng token `DESIGN.md:77` chưa cập nhật (chờ user).
+- bằng chứng: task 20261114-sprint10-reports: `.devloopflow/errors/20261114-ui-border-control-contrast-below-3-on-page-bg.md`; `POS_UI/test/design-contrast.test.mjs` `[C-1]`; lời user "2.đổi giống DESIGN.md" (2026-11-14). Liên quan `.devloopflow/errors/20261114-css-cascade-input-min-height-44-beats-48.md`.
+- số lần: 1
+- ghi lần đầu: 2026-11-14 (task 20261114-sprint10-reports)
+- cập nhật gần nhất: 2026-11-14
+- trạng thái: có hiệu lực
+
+### M-44
+- loại: Đã học được
+- tag: tooling, bash, sed, python, records
+- khi nào áp dụng: Sửa file hồ sơ nhiều dòng bằng `sed -i` theo số dòng, hoặc chạy script qua heredoc trong Bash trên Windows.
+- quy tắc: Trước `sed -i "${ln}a..."` kiểm `[ -n "$ln" ]` và `grep -nF` ra đúng một dòng (biến rỗng chèn sau MỌI dòng); ghi nhiều dòng bằng Write rồi `sed '<n>r <file>'`; không để heredoc `python -` không có script (treo). Liên quan [[M-24]].
+- vì sao: Một lệnh `sed` với biến dòng rỗng đã chèn 139 dòng thừa vào task file (278 dòng thay vì 139); `sed a\` nhiều dòng chỉ chèn dòng đầu; heredoc `python -` rỗng treo và phải dừng bằng TaskStop (hai lần trong task).
+- bằng chứng: task 20261114-sprint10-reports: `.devloopflow/tasks/active/20261114-sprint10-reports.md` (đã khôi phục bằng cách xóa các dòng chèn thừa, kiểm `wc -l` 278 rồi 139); hai lần dừng heredoc bằng TaskStop trong phiên.
+- số lần: 1
+- ghi lần đầu: 2026-11-14 (task 20261114-sprint10-reports)
+- cập nhật gần nhất: 2026-11-14
+- trạng thái: có hiệu lực
+
+### M-45
+- loại: Ý của user
+- tag: reports, permission, branch.access_all, owner
+- khi nào áp dụng: Thêm hoặc đổi quyền, màn hoặc API xem báo cáo mức cửa hàng.
+- quy tắc: Chỉ OWNER xem toàn cửa hàng và bắt buộc có cả `report.view_all` và `branch.access_all`; thiếu một trong hai thì không hạ mức (UI chặn, API 403).
+- vì sao: Quyết định của user cho B-55.
+- bằng chứng: lời user "chỉ có chủ mới được xem tất cả owner thì phải bắt buộc 2 quyền" (2026-11-14, task 20261114-sprint10-reports); backlog B-55.
+- số lần: 1
+- ghi lần đầu: 2026-11-14 (task 20261114-sprint10-reports)
+- cập nhật gần nhất: 2026-11-14
+- trạng thái: có hiệu lực
+
+### M-46
+- loại: Ý của user
+- tag: agents, skills, caveman, ponytail, graphify, token
+- khi nào áp dụng: Bắt đầu conversation, viết hoặc sửa code, khoanh vùng code, hoặc giao việc cho subagent.
+- quy tắc: Gọi skill `caveman:caveman` và `ponytail:ponytail` bằng công cụ Skill (hook chỉ nhắc), dùng `graphify query` trước khi grep/đọc source, đưa quy tắc Ponytail và Graphify vào prompt subagent; nói thật việc đã hoặc chưa gọi skill.
+- vì sao: Trong task này hook chỉ nạp chế độ, agent chính không gọi Skill và không đưa Ponytail vào prompt `tdd`/`ac-verifier` (agent chính tự báo khi được hỏi).
+- bằng chứng: lời user "trong khi làm task có sử dụng các plugin ponytail caveman kh" và "Hãy sửa cả AGENTS.md và CLAUDE.md về sử dụng 2 plugin đó giúp tiết kiệm token và sử dụng graphify" (2026-11-14, task 20261114-sprint10-reports); `CLAUDE.md` và `AGENTS.md` dòng 84-91 đã sửa cùng ngày.
+- số lần: 1
+- ghi lần đầu: 2026-11-14 (task 20261114-sprint10-reports)
+- cập nhật gần nhất: 2026-11-14
+- trạng thái: có hiệu lực
+
+### M-47
+- loại: Hay quên
+- tag: qa, fixture, branch, acceptance
+- khi nào áp dụng: AC E2E dùng tên hiển thị của chi nhánh hoặc dữ liệu thử cố định.
+- quy tắc: Đối chiếu mã, ID và tên hiển thị của fixture với từng giá trị trong AC trước khi chạy browser, rồi kiểm lại bằng SQL.
+- vì sao: AC E2E-1/6/11 dự kiến tên ZA1/ZA2/ZA3 nhưng fixture hiện có tên ZZ Chi nhanh B1/B2/B3 rong, khiến ba AC FAIL vòng 1 dù UI/API trả đúng tên DB.
+- bằng chứng: task 20261115-sprint10-stock-ledger; `.devloopflow/verify/20261115-sprint10-stock-ledger/fails.md` V1-1; `report-1.md` và `report-2.md`.
+- số lần: 1
+- ghi lần đầu: 2026-11-15 (task 20261115-sprint10-stock-ledger)
+- cập nhật gần nhất: 2026-11-15
+- trạng thái: có hiệu lực
+
 ## Lịch sử (chỉ thêm, không xoá)
+- 2026-11-15 — task 20261115-sprint10-stock-ledger — thêm M-47 (đối chiếu fixture với AC); cập nhật M-38 (số lần 2), M-41 (số lần 2).
+- 2026-11-14 — task 20261114-sprint10-reports — thêm M-41 (UI và API cùng điều kiện quyền), M-42 (test fallback lỗi qua HTTP client thật), M-43 (tương phản token trên nền thực tế), M-44 (sed biến rỗng, heredoc python treo), M-45 (Ý của user: mức cửa hàng cần 2 quyền), M-46 (Ý của user: gọi skill thật, dùng graphify); cập nhật M-33 (số lần 2), M-36 (số lần 2).
 - 2026-11-14 — task 20261114-icon-tooltip-ui — thêm M-40 về thao tác sau pointercancel.
 - 2026-11-13 — theo yêu cầu user: gộp M-9, M-16 vào M-39; giữ hai mục cũ ở trạng thái hết hiệu lực.\n- 2026-11-13 — task 20261113-sprint09-ui — thêm M-37 (tái sử dụng), M-38 (nhất quán backlog), M-39 (kiểm tablet và trợ năng).
 - 2026-11-13 — task 20261112-sprint09-drawer-cancel-invoices — thêm M-29 (số migration gắn cứng), M-30 (đổi thứ tự kiểm tra cần AC), M-31 (seed thời gian bằng đồng hồ DB), M-32 (`--test-name-pattern` subtest), M-33 (subagent không ghi report), M-34 (DATABASE_URL/Docker), M-35 (đột biến treo), M-36 (ý user: giải thích trước khi duyệt).
@@ -450,10 +543,10 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - khi nào áp dụng: Giao `ac-verifier` (hoặc subagent khác) ghi `report-<n>.md`, `fails.md` dưới `.devloopflow/verify/<id>/`.
 - quy tắc: Dặn subagent trả toàn bộ nội dung report ở cuối câu trả lời (Write bị từ chối trong ngữ cảnh subagent: 'Subagents should return findings as text'); agent chính tự mở bằng chứng thô (đếm `# pass`, `pass:false`, `cleanup.txt`) rồi mới chép vào file, và ghi rõ điều đó trong report.
 - vì sao: Cả 3 lần verify-ac của task, subagent không ghi được `report-*.md`/`fails.md`; không lách bằng Bash.
-- bằng chứng: Task 20261112-sprint09-drawer-cancel-invoices: report-1.md, report-2.md, report-3.md (mục 'Kiểm lại của agent chính').
-- số lần: 1
+- bằng chứng: Task 20261112-sprint09-drawer-cancel-invoices: report-1.md, report-2.md, report-3.md (mục 'Kiểm lại của agent chính'). Lặp lại ở task 20261114-sprint10-reports: `ac-verifier` lần 2, 3, 4 đều không ghi được `report-<n>.md` (Write bị từ chối: 'Subagents should return findings as text'); agent chính chép từ câu trả lời của subagent.
+- số lần: 2
 - ghi lần đầu: 2026-11-13 (task 20261112-sprint09-drawer-cancel-invoices)
-- cập nhật gần nhất: 2026-11-13
+- cập nhật gần nhất: 2026-11-14 (task 20261114-sprint10-reports)
 - trạng thái: có hiệu lực
 
 ### M-34
@@ -486,10 +579,10 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - khi nào áp dụng: Trình user các câu hỏi làm rõ, đề xuất hoặc thuật ngữ kỹ thuật cần user duyệt.
 - quy tắc: Giải thích từng điểm bằng lời thường (đề xuất là gì, vì sao, hậu quả nếu chọn khác) trước khi xin duyệt; gọi tên thuật ngữ (flaky, 'chưa chắc', bước 10c) kèm nghĩa; không coi 'đồng ý hết' khi user nói chưa hiểu.
 - vì sao: User nhiều lần dừng để hỏi nghĩa trước khi quyết.
-- bằng chứng: Lời user nguyên văn, task 20261112-sprint09-drawer-cancel-invoices: "cần chốt lại 9 điều trước khi viết spec đã t cần mày giải thích" (2026-11-13); "còn 4 điều đó cần giải thích"; "chưa chắc là sao"; "bị flaky là sao"; "bước 10c là gì thế".
-- số lần: 1
+- bằng chứng: Lời user nguyên văn, task 20261112-sprint09-drawer-cancel-invoices: "cần chốt lại 9 điều trước khi viết spec đã t cần mày giải thích" (2026-11-13); "còn 4 điều đó cần giải thích"; "chưa chắc là sao"; "bị flaky là sao"; "bước 10c là gì thế". Lặp lại ở task 20261114-sprint10-reports: user nói "chưa hiểu lắm", "vẫn chưa hiểu lắm", "branch.access_all là sao", "bước 10c là bước gì" (2026-11-14); phải giải thích lại bằng ví dụ và nghĩa của thuật ngữ trước khi user quyết B-55.
+- số lần: 2
 - ghi lần đầu: 2026-11-13 (task 20261112-sprint09-drawer-cancel-invoices)
-- cập nhật gần nhất: 2026-11-13
+- cập nhật gần nhất: 2026-11-14 (task 20261114-sprint10-reports)
 - trạng thái: có hiệu lực
 
 
@@ -511,10 +604,10 @@ Ghi chú M-11..M-21: “chưa ghi” ở cột **Số lần** nghĩa là `MEMORY
 - khi nào áp dụng: Khi ghi hoặc cập nhật một finding trong backlog.
 - quy tắc: Cập nhật cả bảng Tổng hợp lẫn phần Chi tiết cùng trạng thái và kiểm dòng nằm trong bảng Markdown.
 - vì sao: B-51 ban đầu chỉ có phần chi tiết; dòng tổng hợp thêm sau lại cách bảng bởi dòng trống, khiến cách đếm theo bảng không nhất quán.
-- bằng chứng: `.devloopflow/review/backlog.md`, B-51; cuộc hội thoại task 20261113-sprint09-ui.
-- số lần: 1
+- bằng chứng: `.devloopflow/review/backlog.md`, B-51; cuộc hội thoại task 20261113-sprint09-ui. Task 20261115-sprint10-stock-ledger: B-60..B-64 ban đầu chỉ có phần Chi tiết, không có dòng Tổng hợp nên `open-issues backlog` đếm 0; dòng Tổng hợp được bổ sung sau khi fix.
+- số lần: 2
 - ghi lần đầu: 2026-11-13 (task 20261113-sprint09-ui)
-- cập nhật gần nhất: 2026-11-13
+- cập nhật gần nhất: 2026-11-15
 - trạng thái: có hiệu lực
 
 ### M-40

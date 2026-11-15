@@ -40,6 +40,7 @@ export class UserSummaryDto {
   @ApiProperty({ type: String, nullable: true, format: 'uuid' }) branchId!: string | null;
   @ApiProperty({ type: [String] }) permissions!: string[];
   @ApiProperty() mustChangePassword!: boolean;
+  @ApiProperty({ type: String, nullable: true }) branchName!: string | null;
 }
 
 export class UserDataDto {

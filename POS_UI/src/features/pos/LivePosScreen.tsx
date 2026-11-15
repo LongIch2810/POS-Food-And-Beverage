@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { menuService, MenuCategory, MenuProduct, MenuTopping } from '../../services/menuService';
 import { organizationService, OrganizationBranch, OrganizationTable } from '../../services/organizationService';
@@ -8,10 +8,10 @@ import { OpenShiftGate } from '../shifts/OpenShiftGate';
 import { formatVND } from '../../utils/formatters';
 import { LivePaymentDialog } from './LivePaymentDialog';
 import { Dialog } from '../../components/ui/Dialog';
+import type { PosTab } from '../../app/routes';
 import { AlertTriangle, Armchair, Ban, CircleCheck, ClipboardList, Clock, CreditCard, Info, LayoutGrid, Minus, Plus, RefreshCw,
   ShoppingBag, Trash2, UtensilsCrossed, WifiOff, XCircle } from 'lucide-react';
 
-type Tab = 'menu' | 'tables' | 'orders';
 type Choice = { product: MenuProduct; sizeId: string; quantity: number; toppingIds: string[]; allowedToppings: MenuTopping[] };
 
 // Nhãn trạng thái hóa đơn theo DESIGN.md §6.4 (luôn có biểu tượng và chữ)
@@ -27,10 +27,14 @@ const elapsed = (iso?: string) => {
   return minutes < 60 ? `${minutes} phút` : `${Math.floor(minutes / 60)} giờ ${minutes % 60} phút`;
 };
 
-export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInvoiceId?: string | null;
-  onSwitchToPos?: () => void; onSwitchToTables?: () => void }> = ({ activeMode = 'pos', initialInvoiceId, onSwitchToPos }) => {
+export const LivePosScreen: React.FC<{ activeTab?: PosTab; onTabChange?: (tab: PosTab) => void; initialInvoiceId?: string | null }> =
+  ({ activeTab, onTabChange, initialInvoiceId }) => {
   const { session, isOffline } = useAuth();
-  const [tab, setTab] = useState<Tab>(activeMode === 'tables' ? 'tables' : 'menu');
+  const [ownTab, setOwnTab] = useState<PosTab>('menu');
+  const tab = activeTab ?? ownTab;
+  const onTabChangeRef = useRef(onTabChange);
+  onTabChangeRef.current = onTabChange;
+  const selectTab = (next: PosTab) => { setOwnTab(next); onTabChangeRef.current?.(next); };
   const [branchId, setBranchId] = useState(session.user.branch_id ?? '');
   const [branches, setBranches] = useState<OrganizationBranch[]>([]);
   const [shift, setShift] = useState<WorkShiftDto | null | undefined>();
@@ -73,7 +77,6 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
     return ()=>{live=false;};
   },[selected?.id,selected?.status,paymentIdentity,pendingRevision]);
 
-  useEffect(() => { setTab(activeMode === 'tables' ? 'tables' : 'menu'); }, [activeMode]);
   useEffect(() => { setBranchId(session.user.branch_id ?? ''); setSelected(null); setNotice(''); }, [session.user.id, session.user.branch_id, session.user.store_id]);
   useEffect(() => {
     let live = true;
@@ -152,7 +155,7 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
       setLoading(true);
       try {
         const detail = await salesService.get(current.id);
-        if (detail.status === 'OPEN') { setSelected(detail); setNotice(''); setTab('menu'); onSwitchToPos?.(); return; }
+        if (detail.status === 'OPEN') { setSelected(detail); setNotice(''); selectTab('menu'); return; }
         await refreshOrders();
       } catch (e) { setError(e instanceof Error ? e.message : 'Không tải được đơn.'); return; }
       finally { setLoading(false); }
@@ -216,7 +219,7 @@ export const LivePosScreen: React.FC<{ activeMode?: 'pos' | 'tables'; initialInv
       <div className="pos-bar">
         <div className="pos-tabs">
           {(['menu', 'tables', 'orders'] as const).map(value => <button key={value} type="button" className="tab"
-            aria-current={tab === value ? 'true' : undefined} onClick={() => setTab(value)}>
+            aria-current={tab === value ? 'true' : undefined} onClick={() => selectTab(value)}>
             {value === 'menu' ? <UtensilsCrossed size={20} /> : value === 'tables' ? <LayoutGrid size={20} /> : <ClipboardList size={20} />}
             {value === 'menu' ? 'Thực đơn' : value === 'tables' ? 'Sơ đồ bàn' : 'Đơn đang mở'}</button>)}
         </div>

@@ -34,8 +34,9 @@ type UserSummary = {
   mustChangePassword: boolean;
 };
 
-type SessionResponse = { data: { expiresIn: 1800; user: UserSummary } }; // login, refresh
-type MeResponse = { data: { user: UserSummary } };
+type SessionUser = UserSummary & { branchName: string | null };
+type SessionResponse = { data: { expiresIn: 1800; user: SessionUser } }; // login, refresh
+type MeResponse = { data: { user: SessionUser } };
 type CsrfResponse = { data: Record<string, never> }; // data = {}
 type NoContentResponse = undefined; // logout, change-password: HTTP 204, không có body
 type ErrorResponse = {
@@ -55,7 +56,7 @@ type ErrorResponse = {
 | Route | Đầu vào | Thành công | Lỗi chính |
 | --- | --- | --- | --- |
 | `POST /login` | JSON `username`, `password` (chuỗi bắt buộc) | `200`, đặt ba cookie; `data.expiresIn=1800`, `data.user` là danh tính hiện hành và `mustChangePassword` | `401 UNAUTHENTICATED` chung cho tài khoản không tồn tại, sai mật khẩu, khóa user/store; `429 TOO_MANY_REQUESTS` |
-| `GET /me` | Access cookie | `200`, `data.user` gồm `id`, `username`, `fullName`, `role`, `storeId`, `branchId`, `permissions`, `mustChangePassword` | `401 UNAUTHENTICATED` nếu phiên đã bị thu hồi (kể cả sau khóa store), hoặc `TOKEN_EXPIRED`; `403 ACCOUNT_DISABLED`/`STORE_SUSPENDED` nếu phiên còn hiệu lực |
+| `GET /me` | Access cookie | `200`, `data.user` gồm `id`, `username`, `fullName`, `role`, `storeId`, `branchId`, `branchName`, `permissions`, `mustChangePassword` | `401 UNAUTHENTICATED` nếu phiên đã bị thu hồi (kể cả sau khóa store), hoặc `TOKEN_EXPIRED`; `403 ACCOUNT_DISABLED`/`STORE_SUSPENDED` nếu phiên còn hiệu lực |
 | `GET /csrf` | Refresh cookie hợp lệ | `200`, phát lại CSRF cookie, `data` rỗng; không xoay refresh | `401 UNAUTHENTICATED` |
 | `POST /refresh` | Refresh cookie, Origin, CSRF | `200`, xoay refresh và đặt lại access/refresh cookie; `data.expiresIn=1800`, `data.user` | `401 UNAUTHENTICATED`; `429 TOO_MANY_REQUESTS` |
 | `POST /logout` | Origin; refresh cookie và CSRF nếu còn phiên hợp lệ | `204`, thu hồi phiên hiện tại và xóa ba cookie; thiếu/hết hạn refresh vẫn `204` và xóa cookie | `403 CSRF_INVALID` khi phiên còn hiệu lực mà CSRF sai |
@@ -78,10 +79,10 @@ Login giới hạn 5 lần **thất bại** trong 15 phút trượt theo usernam
 - **Mô tả:** Xác minh tài khoản đã được cấp và tạo phiên trình duyệt mới.
 - **Quyền, phạm vi, BR:** công khai, không lấy store/branch từ request; BR-01–04, BR-78, BR-82, BR-97.
 - **Request:** JSON object chỉ có `username` và `password`, đều là chuỗi không rỗng; username trim/lower bằng PostgreSQL trước khi tra. `Origin` bắt buộc. Không nhận giá trị token từ body/header.
-- **Response:** `200 {"data":{"expiresIn":1800,"user":<UserSummary>}}` và ba `Set-Cookie`. `UserSummary` là object trong `/me` bên dưới.
+- **Response:** `200 {"data":{"expiresIn":1800,"user":<SessionUser>}}` và ba `Set-Cookie`. `SessionUser` là object trong `/me` bên dưới.
 - **Lỗi:** `400 BAD_REQUEST` cho JSON hỏng/sai Content-Type; `422 VALIDATION_ERROR` cho field thiếu/sai kiểu/lạ; `403 CSRF_INVALID` cho Origin; `401 UNAUTHENTICATED` cùng thông báo cho user không tồn tại, sai mật khẩu, user khóa, store tạm khóa; `429 TOO_MANY_REQUESTS` khi giới hạn thất bại đã đạt.
 - **Xử lý:** kiểm tra giới hạn thất bại theo username/IP trước khi xác minh; dùng phép so hash mật khẩu ngay cả khi user không tồn tại để tránh khác biệt thời gian lớn. Tạo session và refresh hash, cập nhật `last_login_at` trong transaction; chỉ đặt cookie sau commit. Không tăng bộ đếm khi đăng nhập thành công.
-- **Ví dụ:** `POST {"username":" admin ","password":"<secret>"}` → `200 {"data":{"expiresIn":1800,"user":{"id":"<uuid>","username":"admin","fullName":"Quản trị","role":"PLATFORM_ADMIN","storeId":null,"branchId":null,"permissions":[],"mustChangePassword":true}}}`.
+- **Ví dụ:** `POST {"username":" admin ","password":"<secret>"}` → `200 {"data":{"expiresIn":1800,"user":{"id":"<uuid>","username":"admin","fullName":"Quản trị","role":"PLATFORM_ADMIN","storeId":null,"branchId":null,"branchName":null,"permissions":[],"mustChangePassword":true}}}`.
 - **Kiểm thử:** BR-01/02/03/04/78/82/97, lỗi chung, 5 lần thất bại theo từng khóa, request đồng thời, không lộ token/hash.
 
 ### GET /api/v1/auth/me
@@ -89,10 +90,10 @@ Login giới hạn 5 lần **thất bại** trong 15 phút trượt theo usernam
 - **Mô tả:** Trả danh tính, vai trò, quyền và phạm vi hiện hành.
 - **Quyền, phạm vi, BR:** access cookie hợp lệ; phạm vi từ DB, không từ claim snapshot; BR-02/03/05/79/80/81/84.
 - **Request:** không có body/query; cookie access.
-- **Response:** `200 {"data":{"user":<UserSummary>}}`, trong đó `UserSummary` chỉ gồm `id`, `username`, `fullName`, `role` (mã vai trò), `storeId`, `branchId`, `permissions` (mảng mã quyền), `mustChangePassword`.
+- **Response:** `200 {"data":{"user":<SessionUser>}}`, trong đó `SessionUser` gồm `id`, `username`, `fullName`, `role` (mã vai trò), `storeId`, `branchId`, `branchName`, `permissions` (mảng mã quyền), `mustChangePassword`. `branchName` là tên chi nhánh hiện hành hoặc `null` nếu không có chi nhánh.
 - **Lỗi:** `401 UNAUTHENTICATED` nếu thiếu/sai token hoặc phiên mất (bao gồm cookie cũ sau khóa store); `401 TOKEN_EXPIRED` nếu JWT hết hạn; `403 ACCOUNT_DISABLED`/`STORE_SUSPENDED` theo trạng thái hiện hành nếu phiên còn hiệu lực.
 - **Xử lý:** đối chiếu session còn refresh hiện hành, nạp user/store/role/permissions cùng request; không ghi DB.
-- **Ví dụ:** `GET` với access cookie → `200 {"data":{"user":{"id":"<uuid>","username":"admin","fullName":"Quản trị","role":"PLATFORM_ADMIN","storeId":null,"branchId":null,"permissions":[],"mustChangePassword":true}}}`.
+- **Ví dụ:** `GET` với access cookie → `200 {"data":{"user":{"id":"<uuid>","username":"admin","fullName":"Quản trị","role":"PLATFORM_ADMIN","storeId":null,"branchId":null,"branchName":null,"permissions":[],"mustChangePassword":true}}}`.
 - **Kiểm thử:** BR-02/03/05/79/80/81/84, đổi role/quyền giữa hai request, phiên thu hồi và token hết hạn.
 
 ### GET /api/v1/auth/csrf

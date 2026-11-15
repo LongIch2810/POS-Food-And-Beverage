@@ -1,6 +1,7 @@
 // POS-F&B Root Application Component
 
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { ToastProvider } from '../context/ToastContext';
 import { AppShell, NavTab } from '../components/common/AppShell';
@@ -16,7 +17,9 @@ import { InventoryScreen } from '../features/inventory/InventoryScreen';
 import { DailyReportScreen } from '../features/reports/DailyReportScreen';
 import { SettingsScreen } from '../features/settings/SettingsScreen';
 import { PlatformAdminScreen } from '../features/platform/PlatformAdminScreen';
-import { accessibleTabs, canOpenSettings } from './navigation';
+import { accessibleTabs, canOpenProducts, canOpenSettings } from './navigation';
+import { LOGIN_PATH, pathFor, resolveRoute } from './routes';
+import type { InventoryTab, PosTab, ProductsTab, SettingsTab, SubTab } from './routes';
 
 const AccessDenied: React.FC<{ message?: string }> = ({ message }) => (
   <div style={{ flex: 1, padding: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -33,36 +36,47 @@ const AccessDenied: React.FC<{ message?: string }> = ({ message }) => (
 
 const MainRouter: React.FC = () => {
   const { session, isAuthenticated, loading, error } = useAuth();
+  const location = useLocation();
 
   if (loading) return <div role="status">Đang kiểm tra phiên đăng nhập...</div>;
 
+  // Không giữ địa chỉ cũ để quay lại sau đăng nhập: vào tab đầu tiên được phép.
   if (!isAuthenticated) {
-    return <LoginScreen />;
+    return location.pathname === LOGIN_PATH ? <LoginScreen /> : <Navigate to={LOGIN_PATH} replace />;
   }
 
   if (session.user.must_change_password) return <ForcePasswordModal />;
 
-  return <AuthenticatedRouter error={error} />;
+  // key theo người dùng: đổi tài khoản thì bỏ state của người trước (targetInvoiceId).
+  return <AuthenticatedRouter key={session.user.id} error={error} />;
 };
 
 const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
   const { session } = useAuth();
   const availableTabs = accessibleTabs(session);
 
-  // Quản trị nền tảng chỉ vào tab platform
-  const [currentTab, setCurrentTab] = useState<NavTab>(
-    availableTabs[0] ?? 'settings'
-  );
+  const location = useLocation();
+  const navigate = useNavigate();
+  const owner = session.user.id;
+  // history.state.owner: mục lịch sử của người khác (Back sau khi đổi tài khoản) không được dựng lại màn của họ.
+  const stateOwner = (location.state as { owner?: string } | null)?.owner;
+  const route = resolveRoute(stateOwner !== undefined && stateOwner !== owner ? '/' : location.pathname, session);
+  const currentTab = route.tab;
   const [targetInvoiceId, setTargetInvoiceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (route.path !== location.pathname || stateOwner !== owner) navigate(route.path, { replace: true, state: { owner } });
+  }, [route.path, location.pathname, stateOwner, owner]);
+
+  const go = (tab: NavTab, subTab: SubTab | null = null) => {
+    const path = pathFor(tab, subTab, session);
+    if (path !== location.pathname) navigate(path, { state: { owner } });
+  };
 
   const handleNavigateToInvoice = (invoiceId: string) => {
     setTargetInvoiceId(invoiceId);
-    setCurrentTab('pos');
+    go('pos', 'menu');
   };
-
-  useEffect(() => {
-    if (!availableTabs.includes(currentTab)) setCurrentTab(availableTabs[0] ?? 'settings');
-  }, [JSON.stringify(availableTabs), currentTab]);
 
   const perms = session?.permissions || [];
   const identityKey = JSON.stringify([session.user.id,session.user.store_id,session.user.branch_id,
@@ -76,10 +90,9 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
         return (
           <LivePosScreen
             key={`${session.user.id}:${session.user.branch_id}:${session.permissions.join(',')}`}
-            activeMode="pos"
+            activeTab={route.sub as PosTab}
+            onTabChange={posTab => go(posTab === 'tables' ? 'tables' : 'pos', posTab)}
             initialInvoiceId={targetInvoiceId}
-            onSwitchToTables={() => setCurrentTab('tables')}
-            onSwitchToPos={() => setCurrentTab('pos')}
           />
         );
       case 'tables':
@@ -87,10 +100,9 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
         return (
           <LivePosScreen
             key={`${session.user.id}:${session.user.branch_id}:${session.permissions.join(',')}`}
-            activeMode="tables"
+            activeTab={route.sub as PosTab}
+            onTabChange={posTab => go(posTab === 'tables' ? 'tables' : 'pos', posTab)}
             initialInvoiceId={targetInvoiceId}
-            onSwitchToTables={() => setCurrentTab('tables')}
-            onSwitchToPos={() => setCurrentTab('pos')}
           />
         );
       case 'invoices':
@@ -104,49 +116,29 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
         }
         return <ShiftsScreen onNavigateToInvoice={handleNavigateToInvoice} />;
       case 'products':
-        if (!has('menu.read') && !has('menu.manage') && !has('product.manage')) {
-          return <AccessDenied message="Yêu cầu quyền xem hoặc quản lý thực đơn (menu.read hoặc menu.manage)." />;
+        if (!canOpenProducts(perms)) {
+          return <AccessDenied message="Yêu cầu quyền quản lý thực đơn (menu.manage hoặc product.manage)." />;
         }
-        return <ProductsScreen key={identityKey} />;
+        return <ProductsScreen key={identityKey} tab={route.sub as ProductsTab} onTabChange={next => go('products', next)} />;
       case 'inventory':
         if (!has('inventory.view')) return <AccessDenied message="Yêu cầu quyền xem kho hàng (inventory.view)." />;
-        return <InventoryScreen key={identityKey} />;
+        return <InventoryScreen key={identityKey} tab={route.sub as InventoryTab} onTabChange={next => go('inventory', next)} />;
       case 'reports':
-        if (!has('report.view_branch') && !has('report.view_all')) {
-          return <AccessDenied message="Yêu cầu quyền xem báo cáo doanh thu (report.view_branch hoặc report.view_all)." />;
+        if (!availableTabs.includes('reports')) {
+          return <AccessDenied message="Yêu cầu quyền xem báo cáo doanh thu (report.view_shift, report.view_branch, hoặc report.view_all kèm branch.access_all)." />;
         }
-        return <DailyReportScreen />;
+        return <DailyReportScreen key={identityKey} />;
       case 'settings':
         if (session.user.role_code === 'PLATFORM_ADMIN' || !canOpenSettings(perms)) {
           return <AccessDenied message="Bạn chưa có quyền quản lý chi nhánh, bàn hoặc tài khoản." />;
         }
-        return <SettingsScreen />;
+        return <SettingsScreen tab={route.sub as SettingsTab} onTabChange={next => go('settings', next)} />;
       case 'platform_stores':
-        return (
-          <PlatformAdminScreen
-            activeTab="stores"
-            onTabChange={(tab) => {
-              if (tab === 'stores') setCurrentTab('platform_stores');
-              else if (tab === 'owners') setCurrentTab('platform_owners');
-            }}
-          />
-        );
       case 'platform_owners':
         return (
           <PlatformAdminScreen
-            activeTab="owners"
-            onTabChange={(tab) => {
-              if (tab === 'stores') setCurrentTab('platform_stores');
-              else if (tab === 'owners') setCurrentTab('platform_owners');
-            }}
-          />
-        );
-      default:
-        return (
-          <LivePosScreen
-            activeMode="pos"
-            onSwitchToTables={() => setCurrentTab('tables')}
-            onSwitchToPos={() => setCurrentTab('pos')}
+            activeTab={currentTab === 'platform_stores' ? 'stores' : 'owners'}
+            onTabChange={(tab) => go(tab === 'stores' ? 'platform_stores' : 'platform_owners')}
           />
         );
     }
@@ -154,14 +146,14 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {currentTab !== 'pos' && currentTab !== 'tables' && currentTab !== 'settings' && currentTab !== 'products' && currentTab !== 'shifts' && currentTab !== 'invoices' && currentTab !== 'inventory' && !currentTab.startsWith('platform_') && (
+      {currentTab !== 'pos' && currentTab !== 'tables' && currentTab !== 'settings' && currentTab !== 'products' && currentTab !== 'shifts' && currentTab !== 'invoices' && currentTab !== 'inventory' && currentTab !== 'reports' && !currentTab.startsWith('platform_') && (
         <div role="status" style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning)', padding: '8px 16px', textAlign: 'center' }}>
           Màn hình này dùng dữ liệu mẫu, chưa kết nối API.
         </div>
       )}
       {error && <div role="alert">{error}</div>}
 
-      <AppShell currentTab={currentTab} onSelectTab={setCurrentTab}>
+      <AppShell currentTab={currentTab} onSelectTab={tab => go(tab)}>
         {renderContent()}
       </AppShell>
     </div>
@@ -170,11 +162,13 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
 
 export const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <MainRouter />
-      </ToastProvider>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <ToastProvider>
+          <MainRouter />
+        </ToastProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 };
 

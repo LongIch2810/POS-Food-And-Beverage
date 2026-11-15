@@ -491,3 +491,19 @@
   overflow-wrap: anywhere;
 }
 .icon-action-wrap { display: inline-flex; flex-shrink: 0; }
+
+/* Báo cáo doanh thu ngày (DESIGN.md §5.6): chạm >=48px, chart cột có trục và giá trị luôn hiện, 31 ngày cuộn trong khung chart */
+.report-filters { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px 16px; }
+.report-field { flex: 0 1 260px; min-width: 160px; }
+.report-field-error { color: var(--color-danger); font-size: 13px; line-height: 18px; }
+.report-chart-wrap { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; touch-action: pan-x pan-y; }
+.report-chart-wrap:focus-visible { outline: 3px solid var(--color-info); outline-offset: 2px; }
+.report-chart-axis { position: sticky; left: 0; z-index: 1; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; min-width: 76px; height: 160px; margin-top: 24px; padding-right: 8px; background: var(--color-surface); color: var(--color-text-muted); font-size: 12px; line-height: 16px; text-align: right; font-variant-numeric: tabular-nums; }
+.report-chart { display: flex; flex: 1; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.report-bar { display: flex; flex: 1 0 72px; flex-direction: column; align-items: center; gap: 4px; min-width: 72px; }
+.report-bar-value { height: 20px; font-size: 12px; line-height: 20px; color: var(--color-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.report-bar-track { display: flex; align-items: flex-end; justify-content: center; width: 100%; height: 160px; border-bottom: 1px solid var(--color-border-control); }
+.report-bar-fill { display: block; width: 60%; min-height: 2px; border-radius: 4px 4px 0 0; background: var(--color-brand-600); }
+.report-bar time { font-size: 12px; line-height: 16px; white-space: nowrap; color: var(--color-text-muted); }
+/* Specificity (0,5,1) thắng input:not(x):not(y):not(z):not(w) (0,4,1, 44px) ở index.css dù components.css được @import trước */
+.page .report-filters .report-field input.input[type='text'], .page .report-filters .report-field select.select { min-height: 48px; }

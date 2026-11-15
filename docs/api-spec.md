@@ -488,7 +488,7 @@ Chỉ liệt kê **nhóm route** và người dùng chính. Danh sách endpoint,
 | Chuyển khoản QR | `/store-bank-account`, `/invoices/{id}/transfer-attempts`, `/transfer-attempts/{id}/confirm-manual`, `/transfer-attempts/{id}/cancel`, `/bank-transfer-exceptions`, `/payments/sepay/webhook` (webhook không dùng cookie/CSRF, xác thực bằng HMAC) | `OWNER` (tài khoản nhận), `CASHIER`/`MANAGER`/`OWNER` (QR), `MANAGER`/`OWNER` (xác nhận thủ công, ngoại lệ), SePay (webhook) | `.devloopflow/specs/invoices.md` |
 | Ca làm và đối soát | `/work-shifts`, `/work-shifts/{id}/expenses`                                 | Mọi vai trò theo phạm vi                       | `.devloopflow/specs/shifts.md`             |
 | Kho và công thức   | `/ingredients`, `/ingredient-stocks`, `/stock-movements`, công thức theo món | `OWNER`, `MANAGER`                             | `.devloopflow/specs/inventory.md`       |
-| Báo cáo            | `/reports`                                                                   | Theo vai trò (BR-65)                           | `.devloopflow/specs/legacy-reports.md`           |
+| Báo cáo            | `/reports/revenue`                                                             | Theo vai trò (BR-65)                           | `.devloopflow/specs/20261114-sprint10-reports.md`           |
 
 
 - Kiểm tra trạng thái từng file spec ở cột cuối và spec thiết kế tương ứng trong `.devloopflow/specs/` nếu có; `.devloopflow/specs/auth.md` đã chốt cho PB-02 theo hồ sơ cũ.

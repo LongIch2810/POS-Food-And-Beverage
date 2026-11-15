@@ -250,12 +250,13 @@ export class InventoryService {
     if (page.cursor) { params.push(page.cursor.key,page.cursor.id); where += ` AND (m.created_at,m.id)<($${params.length-1}::timestamptz,$${params.length}::uuid)`; }
     params.push(page.limit+1);
     const rows = await this.db.query(`SELECT m.*,to_char(m.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time,
-      i.name AS ingredient_name,i.unit FROM stock_movements m
+      b.name AS branch_name,inv.invoice_code,i.name AS ingredient_name,i.unit FROM stock_movements m
       JOIN branches b ON b.id=m.branch_id JOIN ingredients i ON i.id=m.ingredient_id
+      LEFT JOIN invoices inv ON inv.id=m.invoice_id AND inv.branch_id=m.branch_id
       WHERE ${where} ORDER BY m.created_at DESC,m.id DESC LIMIT $${params.length}`,params);
-    return this.finish(rows,count,page,row => row.cursor_time,row => ({ id:row.id,branchId:row.branch_id,
+    return this.finish(rows,count,page,row => row.cursor_time,row => ({ id:row.id,branchId:row.branch_id,branchName:row.branch_name,
       ingredientId:row.ingredient_id,ingredientName:row.ingredient_name,unit:row.unit,type:row.type,
-      quantity:row.quantity,balanceAfter:row.balance_after,invoiceId:row.invoice_id,note:row.note,
+      quantity:row.quantity,balanceAfter:row.balance_after,invoiceId:row.invoice_id,invoiceCode:row.invoice_code ?? null,note:row.note,
       createdAt:new Date(row.created_at).toISOString() }));
   }
 }

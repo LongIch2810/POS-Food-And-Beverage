@@ -1,7 +1,7 @@
 # .devloopflow/devloopflow.md
 <!-- Sinh bởi /devloopflow:init. Cấu hình RIÊNG cho quy trình devloopflow của dự án này. Mọi fact có path nguồn; không ghi secret. -->
 
-- Cập nhật lần cuối: 2026-11-14
+- Cập nhật lần cuối: 2026-11-16
 
 ## 1. Liên kết với tài liệu chung
 - Giới thiệu chung: `AGENTS.md`, `CLAUDE.md` (bản sao nội dung của `AGENTS.md`, tạo 2026-11-09), `README.md`.
@@ -20,8 +20,8 @@
 - Dừng app local: `docker compose --env-file POS_INFRA/.env.local -f POS_INFRA/compose.local.yml down`; không thêm `-v` vì sẽ xóa volume dữ liệu local. Nguồn: `README.md`. Chưa chạy thử.
 - Build API: trong `POS_API/`, `npm run build`. Nguồn: `POS_API/package.json`, `.github/workflows/ci.yml`. Đã chạy thử 2026-11-10 (local): exit 0.
 - Build UI: trong `POS_UI/`, `npm run build`. Lệnh này typecheck rồi build Vite. Nguồn: `POS_UI/package.json`, `.github/workflows/ci.yml`. Đã chạy thử 2026-11-10 (local): exit 0.
-- Test toàn bộ API: trong `POS_API/`, `npm test`; lệnh tự build rồi chạy `node:test`. Cần `DATABASE_URL` trỏ tới PostgreSQL local/test; test tạo và xóa database thử ngẫu nhiên với prefix `pos_pb01_test_`, `pos_pb02_test_`, `pos_pb03_test_`, `pos_pb04_test_`, `pos_pb04_migration_` hoặc prefix theo module trong test. Tài khoản DB cần quyền `CREATE DATABASE`. Tuyệt đối không dùng DB production. Nguồn: `POS_API/package.json`, `POS_API/README.md`, `POS_API/src/**/tests/`. Đã chạy thử 2026-11-13 (local, `DATABASE_URL` trỏ PostgreSQL sandbox Docker cổng 15432, không phải DB production): exit 0, 224/224 pass (task 20261113-sprint09-ui, evidence/b51/primary-api.log).
-- Test toàn bộ UI: trong `POS_UI/`, `npm test` (Node `node:test`). Nguồn: `POS_UI/package.json`, `.github/workflows/ci.yml`. Đã chạy thử 2026-11-13 (local): exit 0, 143/143 pass (task 20261113-sprint09-ui, evidence/b51/ui-test-final.log).
+- Test toàn bộ API: trong `POS_API/`, `npm test`; lệnh tự build rồi chạy `node:test`. Cần `DATABASE_URL` trỏ tới PostgreSQL local/test; test tạo và xóa database thử ngẫu nhiên với prefix `pos_pb01_test_`, `pos_pb02_test_`, `pos_pb03_test_`, `pos_pb04_test_`, `pos_pb04_migration_` hoặc prefix theo module trong test. Tài khoản DB cần quyền `CREATE DATABASE`. Tuyệt đối không dùng DB production. Nguồn: `POS_API/package.json`, `POS_API/README.md`, `POS_API/src/**/tests/`. Đã chạy thử 2026-11-15 (local): exit 0, 256/256 pass (task 20261115-sprint10-stock-ledger; lượt trước chạy đồng thời nhiều bộ kiểm tra có một timeout PostgreSQL, lượt chạy tuần tự này đạt).
+- Test toàn bộ UI: trong `POS_UI/`, `npm test` (Node `node:test`). Nguồn: `POS_UI/package.json`, `.github/workflows/ci.yml`. Đã chạy thử 2026-11-16 (local): exit 0, 221/221 pass (fix-backlog B-65 của task 20261115-sprint10-stock-ledger).
 - Test một file / một case: manifest không định nghĩa script riêng. API test TypeScript phải build trước; test UI là `test/*.test.mjs`. Dùng `node --test` với file hoặc `--test-name-pattern` khi cần tập trung; xác nhận đúng đường dẫn output `dist/` và lệnh cụ thể theo test liên quan trước khi chạy. Chưa chạy thử.
 - Test giao diện đóng ca trên Chrome (chạy riêng, không thuộc `npm test`): từ `POS_UI/`, `node --test test/shift-close-accessibility.browser.mjs`; cần Chrome hoặc Chromium, có thể chỉ đường dẫn qua `CHROME_BIN`. Đã chạy thử local: 3/3 pass (task 20261113-sprint09-ui, evidence/fix-verify/green.log).\n- Lint: không có script lint trong `POS_API/package.json` hoặc `POS_UI/package.json`; CI hiện chạy build, test và audit dependency.
 - Format: không có script format trong manifest hai package.
@@ -31,6 +31,7 @@
 - Lệnh an toàn đã chạy trong lần init: `node --version` → `v22.22.2`; `npm --version` → `10.9.7`; `npm run` trong từng package để liệt kê script (exit 0). Không chạy build, test, migration hoặc khởi động dịch vụ.
 
 - Test browser icon/tooltip chạy riêng ngoài `npm test`: từ `POS_UI/`, `node --test test/icon-actions.browser.mjs`; cần Chrome hoặc Chromium. Đã kiểm local 2026-11-14: 22/22 pass (task 20261114-icon-tooltip-ui, evidence/verify-r1/icon-tests.log).
+- Test browser Sổ kho/router chạy riêng ngoài `npm test`: từ `POS_UI/`, `node --test test/stock-ledger-router.browser.mjs`; cần Chrome hoặc Chromium. Đã kiểm local 2026-11-15: 8/8 pass khi chạy tuần tự (task 20261115-sprint10-stock-ledger).
 
 ## 3. Cách kiểm AC thật (cho `ac-verifier`)
 - Chạy app local bằng Docker Compose theo lệnh ở mục 2; kiểm tra health tại `http://localhost:3000/api/v1/health`; mở UI tại `http://localhost:5173`. Chỉ dùng sandbox/local.
@@ -96,6 +97,8 @@
 - Chưa có staging/production hoặc tài khoản test cố định được chỉ định trong tài liệu; chỉ kiểm AC trên sandbox/local, không tự chọn môi trường production.
 
 ## 9. Lịch sử cập nhật (chỉ thêm, không xoá)
+- 2026-11-16 — Mục 2: cập nhật kết quả local UI 219/219 → 221/221 sau hai test `[B-65]` cho dialog tab Kho; task 20261115-sprint10-stock-ledger (sync-docs).
+- 2026-11-15 — Mục 2: cập nhật kết quả local API 256/256, UI 219/219 và thêm lệnh browser Sổ kho/router 8/8; task 20261115-sprint10-stock-ledger (sync-docs).
 - 2026-11-12 — Sao chép và đối chiếu SHA-256 cho 3.468 file QA cũ vào kho evidence lịch sử của plugin; lập manifest cho 1.000 file verify evidence Sprint 08 đã có, giữ nguồn và kết luận cũ.
 - 2026-11-12 — Nhập hồ sơ cũ vào cấu trúc plugin theo lựa chọn phương án 3 của người dùng; giữ bản gốc và chứng cứ QA tại chỗ, lập bảng đối chiếu SHA-256, đổi hướng ghi hồ sơ mới sang `.devloopflow/`.
 - 2026-11-12 — Mục 2: cập nhật trạng thái lệnh `npm run migration:run` từ “Chưa chạy thử” theo command metadata và stdout của sandbox R17; không suy exit code khi artifact không ghi — task 20261109-sprint08-payment (sync-docs).

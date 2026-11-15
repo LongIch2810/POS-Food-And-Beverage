@@ -2,10 +2,10 @@
 id: 2026-11-12-ui-redesign
 spec:   # Bỏ qua spec: user yêu cầu trực tiếp cải thiện giao diện theo DESIGN.md, không đổi chức năng
 plan:   # Bỏ qua plan: việc chỉnh giao diện theo từng màn, user duyệt qua kết quả trực quan
-status: in_progress
+status: completed
 owner: Claude Code
 started_at: 2026-11-12
-completed_at:
+completed_at: 2026-11-14
 ---
 
 > Ghi đầy đủ, không tóm tắt, không cắt bớt, không bịa. Thiếu nguồn thì ghi CHƯA CÓ NGUỒN và hỏi user.
@@ -74,3 +74,6 @@ Ràng buộc đã chốt khi làm:
 - Đã xem bằng trình duyệt: modal công thức (manager_dev), Cài đặt và màn mở ca (owner_dev), hộp thoại tạo cửa hàng (admin).
 - Chưa xem: mục Báo cáo (rail của manager_dev và owner_dev không có mục này), hộp thoại hủy hóa đơn mock, modal đổi mật khẩu bắt buộc, thêm chi phí, toast.
 - `npm run typecheck` sạch; `npm test` 85/85 pass.
+
+## Đóng task (2026-11-14)
+- Đóng theo yêu cầu của user ("đóng luôn đi") khi dọn `tasks/active/`. Task không có spec, plan hay AC. Chưa chạy code review, kiểm AC, sync-docs (10b) và reflect (10c) cho task này; các quan sát ở mục "Finding hoãn" vẫn chưa được quyết và chưa vào `.devloopflow/review/backlog.md`.

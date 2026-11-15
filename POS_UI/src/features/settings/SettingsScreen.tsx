@@ -19,6 +19,7 @@ import { AlertTriangle, XCircle } from 'lucide-react';
 import { OrganizationEditor } from './OrganizationEditor';
 import { PromotionsPanel } from './PromotionsPanel';
 import type { EditorKind, FormValues } from './organizationForm';
+import type { SettingsTab } from '../../app/routes';
 
 type Tab = 'branches' | 'tables' | 'staff';
 type Row = OrganizationBranch | OrganizationTable | OrganizationStaff;
@@ -33,27 +34,31 @@ const nullable = (value: string) => value.trim() || null;
 const tabStyle = (active: boolean): React.CSSProperties => ({ height: 56, padding: '0 16px', borderRadius: 0, background: 'transparent', border: 'none',
   borderBottom: `3px solid ${active ? 'var(--color-brand-600)' : 'transparent'}`, color: active ? 'var(--color-brand-600)' : 'var(--color-text-muted)' });
 
-export const SettingsScreen: React.FC = () => {
+export const SettingsScreen: React.FC<{ tab?: SettingsTab; onTabChange?: (tab: SettingsTab) => void }> = ({ tab, onTabChange } = {}) => {
   const { session } = useAuth();
-  const [section, setSection] = useState<'organization'|'promotions'>('organization');
+  const [ownTab, setOwnTab] = useState<SettingsTab | undefined>(undefined);
+  const current = tab ?? ownTab;
+  const section = current === 'promotions' ? 'promotions' : 'organization';
+  const select = (next: SettingsTab) => { setOwnTab(next); onTabChange?.(next); };
+  const orgDefault = (Object.keys(permissions) as Tab[]).find(t => session.permissions.includes(permissions[t])) ?? 'tables';
   const identity = JSON.stringify([session.user.id, session.user.store_id, session.user.branch_id,
     session.user.role_code, session.user.must_change_password, [...session.permissions].sort()]);
   return <div key={identity} style={{ flex:1, display:'flex', flexDirection:'column', overflow:'auto' }}>
     {session.permissions.includes('promotion.manage') && <nav aria-label="Mục cài đặt" className="settings-nav">
-      <Button variant="text" style={tabStyle(section === 'organization')} onClick={() => setSection('organization')}>Tổ chức</Button>
-      <Button variant="text" style={tabStyle(section === 'promotions')} onClick={() => setSection('promotions')}>Khuyến mãi</Button>
+      <Button variant="text" style={tabStyle(section === 'organization')} onClick={() => { if (section !== 'organization') select(orgDefault); }}>Tổ chức</Button>
+      <Button variant="text" style={tabStyle(section === 'promotions')} onClick={() => select('promotions')}>Khuyến mãi</Button>
     </nav>}
     {section === 'promotions' && session.permissions.includes('promotion.manage')
-      ? <PromotionsPanel key={identity} /> : <SettingsContent key={identity} session={session} />}
+      ? <PromotionsPanel key={identity} /> : <SettingsContent key={identity} session={session} tab={section === 'organization' ? current as Tab | undefined : undefined} onTabChange={select} />}
   </div>;
 };
 
-export function SettingsContent({ session }: { session: AuthSession }) {
+export function SettingsContent({ session, tab, onTabChange }: { session: AuthSession; tab?: Tab; onTabChange?: (tab: Tab) => void }) {
   const { showToast } = useToast();
   const allowed = (Object.keys(permissions) as Tab[]).filter(tab => session.permissions.includes(permissions[tab]));
   const allBranches = session.permissions.includes('branch.access_all');
   const roles = session.user.role_code === 'OWNER' ? ['MANAGER', 'CASHIER'] : session.user.role_code === 'MANAGER' ? ['CASHIER'] : [];
-  const [view, setView] = useState<View>({ tab: allowed[0] ?? 'tables', branch: '', status: '', role: '', cursors: [undefined] });
+  const [view, setView] = useState<View>({ tab: tab && allowed.includes(tab) ? tab : allowed[0] ?? 'tables', branch: '', status: '', role: '', cursors: [undefined] });
   const [rows, setRows] = useState<Row[]>([]);
   const [rowsKey, setRowsKey] = useState('');
   const [meta, setMeta] = useState({ nextCursor: null as string | null, total: 0 });
@@ -153,6 +158,12 @@ export function SettingsContent({ session }: { session: AuthSession }) {
     currentView.current = key;
     setView(next);
   };
+  useEffect(() => {
+    if (tab && tab !== view.tab && allowed.includes(tab)) {
+      setEditor(null); setConfirmation(null); setFieldErrors({}); setFormError('');
+      navigate({ tab, status: '', role: '', branch: '', cursors: [undefined] });
+    }
+  }, [tab]);
   const refresh = () => setRevision(current => ({ ...current, [view.tab]: current[view.tab] + 1 }));
   const openEditor = (kind: EditorKind, row?: Row) => {
     setFieldErrors({}); setFormError(''); setEditor({ kind, row });
@@ -291,7 +302,7 @@ export function SettingsContent({ session }: { session: AuthSession }) {
     {offline && <div role="alert" className="notice notice-warning"><AlertTriangle size={18} /><span>Mất kết nối. Thao tác mới sẽ không được lưu cho đến khi có mạng.</span></div>}
     <div role="tablist" aria-label="Cài đặt" className="settings-tabs">
       {allowed.map(tab => <Button key={tab} role="tab" aria-selected={view.tab === tab} disabled={busy}
-        variant="text" style={tabStyle(view.tab === tab)} onClick={() => navigate({ tab, status: '', role: '', branch: '', cursors: [undefined] })}>{titles[tab]}</Button>)}
+        variant="text" style={tabStyle(view.tab === tab)} onClick={() => { navigate({ tab, status: '', role: '', branch: '', cursors: [undefined] }); onTabChange?.(tab); }}>{titles[tab]}</Button>)}
     </div>
     <div className="organization-filters">
       {allBranches && view.tab !== 'branches' && <SelectField label="Chi nhánh" value={view.branch} disabled={busy || choicesLoading}

@@ -2,8 +2,8 @@ import { request } from '../../http/client';
 
 export interface Ingredient { id: string; name: string; unit: 'g' | 'ml' | 'piece'; isActive: boolean }
 export interface Stock { branchId: string; ingredientId: string; ingredientName: string; unit: string; currentStock: string; minStock: string }
-export interface Movement { id: string; branchId: string; ingredientId: string; ingredientName: string; unit: string;
-  type: string; quantity: string; balanceAfter: string; invoiceId: string | null; note: string | null; createdAt: string }
+export interface Movement { id: string; branchId: string; branchName: string; ingredientId: string; ingredientName: string; unit: string;
+  type: string; quantity: string; balanceAfter: string; invoiceId: string | null; invoiceCode: string | null; note: string | null; createdAt: string }
 export interface RecipeLine { ingredientId: string; ingredientName: string; unit: string; quantity: string }
 export interface Page<T> { data: T[]; meta: { nextCursor: string | null; total: number; limit: number } }
 

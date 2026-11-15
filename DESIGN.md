@@ -74,7 +74,7 @@ Mọi màu dùng qua token. Không viết mã hex trực tiếp trong component.
 | `--color-surface`        | `#FFFFFF` | Bề mặt làm việc, panel, ô nhập           |                          |
 | `--color-surface-sunken` | `#E9EDEF` | Vùng lõm: thanh tìm kiếm, bàn không dùng |                          |
 | `--color-border`         | `#D5DBDE` | Đường kẻ phân vùng (trang trí nhẹ)       |                          |
-| `--color-border-control` | `#8A979D` | Viền ô nhập, nút phụ                     | 3,0:1 trên trắng         |
+| `--color-border-control` | `#818D93` | Viền ô nhập, nút phụ                     | 3,1:1 trên nền trang `#F2F4F5`, 3,4:1 trên trắng |
 | `--color-text`           | `#1A2226` | Chữ chính                                | 16,1:1 trên trắng        |
 | `--color-text-muted`     | `#55636A` | Chữ phụ, nhãn                            | 6,2:1 trên trắng         |
 | `--color-text-disabled`  | `#98A3A9` | Chữ của mục bị vô hiệu                   | Chỉ dùng cho mục vô hiệu |
@@ -667,7 +667,7 @@ Cột số canh phải và dùng chữ số tabular để các hàng thẳng c�
   --color-surface: #ffffff;
   --color-surface-sunken: #e9edef;
   --color-border: #d5dbde;
-  --color-border-control: #8a979d;
+  --color-border-control: #818d93;
   --color-text: #1a2226;
   --color-text-muted: #55636a;
   --color-text-disabled: #98a3a9;

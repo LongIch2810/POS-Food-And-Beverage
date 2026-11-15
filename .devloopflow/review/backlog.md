@@ -1,7 +1,7 @@
 # Backlog lỗi nhẹ (Low, Very Low) chờ xử lý
 <!-- Do agent chính ghi vào .devloopflow/review/backlog.md khi user chọn "đưa vào backlog" ở bước 10 của run (hoặc khi review dùng rời và user muốn xử lý sau). Được commit nên chỉ ghi tóm tắt và trích đoạn ngắn không nhạy cảm, không secret. Chỉ thêm, không xoá mục cũ; đổi trạng thái khi xử lý và ghi thêm dòng lịch sử. Xử lý các mục bằng /devloopflow:fix-backlog. -->
 
-- Cập nhật lần cuối: 2026-11-14
+- Cập nhật lần cuối: 2026-11-16
 - Id `B-<n>` tăng dần trong toàn dự án, không dùng lại.
 
 ## Tổng hợp
@@ -60,6 +60,20 @@
 | B-51 | Low | 20261113-sprint09-ui (review vòng 1, R1-7) | `POS_UI/src/features/invoices/InvoicesScreen.tsx:70,80` | Hai catch bỏ toàn bộ lỗi server, thay bằng thông báo chung. Người dùng mất nguyên nhân và mã yêu cầu để tra soát. | 2026-11-13 | đã sửa |
 | B-52 | Low | Dùng rời, review riêng B-51 (R1-1) | `POS_UI/test/invoices-screen.test.mjs:117` | Test stale-list reject request đã resolve, chưa thực sự kiểm lỗi của request cũ đang chờ | 2026-11-14 | đã sửa |
 | B-53 | Very Low | 20261114-icon-tooltip-ui (review vòng 2, R2-1) | `POS_UI/test/icon-actions.browser.mjs:31` | Chuỗi tiếng Việt trong fixture và expected bị thay thành dấu `?` | 2026-11-14 | đã sửa |
+| B-54 | Low | 20261114-sprint10-reports (review vòng 1, R1-4) | `POS_API/src/reports/reports.service.ts:101-103` | Thiếu test ca cùng store khác chi nhánh (code trả 404) | 2026-11-14 | đã sửa |
+| B-55 | Low | 20261114-sprint10-reports (review vòng 1, R1-5) | `POS_UI/src/features/reports/DailyReportScreen.tsx:16-23`, `POS_API/src/reports/reports.service.ts:83-86` | UI và server chọn mức báo cáo khác nhau khi có `report.view_all` thiếu `branch.access_all` kèm quyền thấp hơn | 2026-11-14 | đã sửa |
+| B-56 | Low | 20261114-sprint10-reports (review vòng 1, R1-6) | `POS_API/src/reports/reports.controller.ts:26-27` | Validation query chạy trước kiểm quyền, người không quyền gửi query sai nhận 422 thay vì 403 | 2026-11-14 | đã sửa |
+| B-57 | Low | 20261114-sprint10-reports (review vòng 1, R1-7) | `POS_API/src/reports/tests/reports.fixture.ts:102,110,119` | Fixture đặt `invoices.paid_at` và `payments.paid_at` bằng nhau, đổi sang `p.paid_at` không test nào đỏ | 2026-11-14 | đã sửa |
+| B-58 | Very Low | 20261114-sprint10-reports (review vòng 1, R1-8) | `POS_UI/src/features/reports/DailyReportScreen.tsx:195-197,214`, `POS_UI/src/mock/mockEngine.ts:1662` | Thụt lề lệch, nút "Tải thêm ca" không disabled khi chờ, `MockEngine.getDailyReport` không còn caller, `down()` thiếu tham số | 2026-11-14 | đã sửa |
+| B-59 | Low | 20261114-sprint10-reports (fix-backlog B-55, phát hiện ngoài phạm vi) | `POS_UI/src/app/navigation.ts:20`, `POS_UI/src/app/App.tsx:115`, `POS_UI/src/components/common/AppShell.tsx:120` | Tab Báo cáo vẫn hiện cho người có `report.view_all` thiếu `branch.access_all`, vào màn rồi gặp "Không có quyền" | 2026-11-14 | đã sửa |
+| B-60 | Low | 20261115-sprint10-stock-ledger (R1-1) | `POS_UI/test/stock-ledger-router.browser.mjs:262,314` | Browser test dùng thời gian chờ cố định 300ms để coi điều hướng đã ổn định | 2026-11-15 | đã sửa |
+| B-61 | Low | 20261115-sprint10-stock-ledger (R2-2) | `POS_UI/src/features/products/ProductsScreen.tsx:735-750` | 4 nút tab Thực đơn chỉ phân biệt tab đang chọn bằng `style` | 2026-11-15 | đã sửa |
+| B-62 | Low | 20261115-sprint10-stock-ledger (R2-3) | `POS_UI/src/features/inventory/InventoryScreen.tsx:51,57-58` | Đổi ô "Chi nhánh kho" khi ở tab "Nguyên liệu" vẫn tải lại nguyên liệu | 2026-11-15 | đã sửa |
+| B-63 | Low | 20261115-sprint10-stock-ledger (R2-4) | `POS_UI/src/app/App.tsx:112-129`, `POS_UI/src/components/common/AppShell.tsx:114-120` | Rail có thể hiện mục mà `accessibleTabs` không cho | 2026-11-15 | đã sửa |
+| B-64 | Low | 20261115-sprint10-stock-ledger (R2-5) | `POS_UI/src/features/pos/LivePosScreen.tsx:156` | Callback bất đồng bộ có thể dùng điều hướng từ render cũ | 2026-11-15 | đã sửa |
+| B-65 | Low | 20261115-sprint10-stock-ledger (review vòng 2, R2-1) | `POS_UI/src/features/inventory/InventoryScreen.tsx:46` | Dialog của tab cũ vẫn mở sau Back sang tab kho khác | 2026-11-16 | đã sửa |
+| B-66 | Low | 20261115-sprint10-stock-ledger (review vòng 3, R3-1) | `POS_UI/src/features/products/ProductsScreen.tsx:45,1358` | Dialog của tab Thực đơn cũ còn mở sau Back sang tab khác | 2026-11-16 | đã sửa |
+| B-67 | Low | 20261115-sprint10-stock-ledger (review vòng 3, R3-2) | `POS_UI/test/stock-ledger-router.browser.mjs:251` | Helper đổi tab còn race khi click trước khi tab mới render | 2026-11-16 | đã sửa |
 
 - Trạng thái: `chờ xử lý` | `đã sửa` | `bỏ` (finding sai, hoặc không còn áp dụng vì code đã đổi; ghi lý do trong lịch sử)
 
@@ -433,3 +447,160 @@
 - Trạng thái: đã sửa
 - Lịch sử trạng thái: 2026-11-14 — chờ xử lý — review vòng 2, Very Low.
 - Lịch sử trạng thái: 2026-11-14 — đã sửa — khôi phục Unicode fixture và expected trong `POS_UI/test/icon-actions.browser.mjs`; browser 22/22 trước/sau, UI 143/143, typecheck/build exit 0. Hồ sơ `errors/20261114-backlog-icon-test-vietnamese-encoding.md`; chưa review riêng.
+
+### B-54 — R1-4 [Low]
+- Task nguồn: 20261114-sprint10-reports, review vòng 1.
+- File:dòng: `POS_API/src/reports/reports.service.ts:101-103`.
+- Finding (nguyên văn reviewer): Thiếu test ca cùng store nhưng khác chi nhánh. Code trả 404 vì có điều kiện `w.branch_id = $3` (điểm (b) tdd tự báo, khớp spec/plan dòng 142 "scope branch"). Không test nào dùng `sA2` cho `mgr_a1` hoặc `cash_a1`. Bỏ điều kiện đó thì manager a1 xem được ca a2 và nhận 200 với dữ liệu rỗng, mà test vẫn xanh. Mức Low vì không lộ số liệu.
+- Căn cứ và đề xuất sửa: plan ST-2 AC-3/4, spec "ID chi nhánh hoặc ca ngoài ... trả 404". Thêm assert vào `test_ST2_AC4_own_open_closed_shift`: `cash_a1` và `mgr_a1` dùng `shiftId` của `cash_a2` cùng store, kỳ vọng 404.
+- Phạm vi ảnh hưởng khi sửa: sẽ phải đổi `reports.integration.test.ts` (thêm assert, không đổi code) | nơi gọi/nơi dùng: không có | test có thể bị ảnh hưởng: chỉ test thêm | lan sang module khác: không | mức: Hẹp.
+- Ngày ghi: 2026-11-14
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-14 — chờ xử lý — review vòng 1 task 20261114-sprint10-reports. 2026-11-14 — đã sửa — fix-backlog tất cả (tdd, sonnet): thêm assert ca khác chi nhánh vào test_ST2_AC4_own_open_closed_shift, đột biến OR true bị bắt; agent chính chạy lại API 242/242, UI 161/161, typecheck và build xanh; errors: 20261114-reports-cross-branch-shift-and-payment-paid-at-untested.md.
+
+### B-55 — R1-5 [Low]
+- Task nguồn: 20261114-sprint10-reports, review vòng 1.
+- File:dòng: `POS_UI/src/features/reports/DailyReportScreen.tsx:16-23` so với `POS_API/src/reports/reports.service.ts:83-86`.
+- Finding (nguyên văn reviewer): UI và server chọn mức báo cáo không khớp. Người có `report.view_all` nhưng thiếu `branch.access_all` và còn `report.view_branch` hoặc `report.view_shift`: UI hạ xuống scope 'branch' hoặc 'shift'. Server (theo plan: "không hạ mức") luôn chọn 'all' rồi trả 403. Màn chỉ hiện lỗi 403 kèm nút "Thử lại" thất bại mãi. Điểm (a) và (e) tdd tự báo. Test chỉ phủ trường hợp chỉ có `view_all`.
+- Căn cứ và đề xuất sửa: plan dòng 106; spec ngầm. Chốt hành vi mong muốn: hoặc UI cũng trả `null` khi có `view_all` mà thiếu `access_all`, hoặc server hạ mức. Rồi thêm test. (Cần user quyết hành vi trước khi sửa.)
+- Phạm vi ảnh hưởng khi sửa: sẽ phải đổi `DailyReportScreen.tsx:16-23` (hoặc `reports.service.ts:83-86`) và test | nơi gọi/nơi dùng: `reportScope` chỉ dùng trong `DailyReportScreen.tsx:101` | test có thể bị ảnh hưởng: `reports-screen.test.mjs::test_ST3_AC1_service_shell_permissions screen deny`, `reports.integration.test.ts::test_ST2_AC3_scope_permissions_http` | lan sang module khác: không | mức: Hẹp.
+- Ngày ghi: 2026-11-14
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-14 — chờ xử lý — review vòng 1 task 20261114-sprint10-reports. 2026-11-14 — user quyết: chỉ OWNER xem toàn cửa hàng, bắt buộc có cả `report.view_all` và `branch.access_all`; thiếu `branch.access_all` thì không hạ mức. Hướng sửa: UI `reportScope` trả `null` khi có `report.view_all` mà thiếu `branch.access_all` (khớp server và plan dòng 106), thêm test; chờ `fix-backlog B-55`. 2026-11-14 — đã sửa — fix-backlog tất cả (tdd, sonnet): reportScope trả null khi có view_all thiếu access_all; test [B-55] (Red expected 0 actual 1); server không đổi; agent chính chạy lại API 242/242, UI 161/161, typecheck và build xanh; errors: 20261114-ui-report-scope-downgrades-when-access-all-missing.md.
+
+### B-56 — R1-6 [Low]
+- Task nguồn: 20261114-sprint10-reports, review vòng 1.
+- File:dòng: `POS_API/src/reports/reports.controller.ts:26-27` so với `reports.service.ts:80-86`.
+- Finding (nguyên văn reviewer): Validation query chạy trước kiểm quyền. `reportsQueryPipe.transform` ném 422 trước khi `ReportsService` kiểm quyền. Người không có quyền báo cáo hoặc PLATFORM_ADMIN gửi query sai nhận 422 thay vì 403. Plan bước 2-3 xếp quyền trước validation. Không lộ dữ liệu, nhưng lệch plan và chưa có test.
+- Căn cứ và đề xuất sửa: plan ST-2 "Các bước xử lý" mục 2 và 3. Kiểm quyền (có `storeId`, có `report.view_*`) trước pipe, hoặc ghi rõ thứ tự trong spec.
+- Phạm vi ảnh hưởng khi sửa: sẽ phải đổi `reports.controller.ts:20-28` và/hoặc `reports.service.ts:80-86` | nơi gọi/nơi dùng: `ReportsService.getRevenue` chỉ do controller gọi | test có thể bị ảnh hưởng: `reports.integration.test.ts::test_ST2_AC3_scope_permissions_http`, `test_ST2_AC5_days_range_validation` | lan sang module khác: không | mức: Hẹp.
+- Ngày ghi: 2026-11-14
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-14 — chờ xử lý — review vòng 1 task 20261114-sprint10-reports. 2026-11-14 — đã sửa — fix-backlog tất cả (tdd, sonnet): reportLevel(user) gọi trước reportsQueryPipe; test [B-56] (Red 422 !== 403); agent chính chạy lại API 242/242, UI 161/161, typecheck và build xanh; errors: 20261114-api-validation-before-permission-check.md.
+
+### B-57 — R1-7 [Low]
+- Task nguồn: 20261114-sprint10-reports, review vòng 1.
+- File:dòng: `POS_API/src/reports/tests/reports.fixture.ts:102,110,119`.
+- Finding (nguyên văn reviewer): Fixture đặt `invoices.paid_at` và `payments.paid_at` bằng nhau. Plan quy định dùng `invoices.paid_at`, không dùng `payments.paid_at`. Đổi `i.paid_at` sang `p.paid_at` ở dòng 44 và 49 của service không làm test nào đỏ.
+- Căn cứ và đề xuất sửa: plan "Khám phá" dòng 21. Thêm một test seed payment lệch ngày với hóa đơn: hóa đơn 14/11 có payment `paid_at` 13/11, kỳ vọng tính vào 14/11.
+- Phạm vi ảnh hưởng khi sửa: sẽ phải đổi `reports.integration.test.ts` và `reports.fixture.ts` (thêm tham số `paymentPaidAt`) | nơi gọi/nơi dùng: `w.invoice` được dùng khắp `reports.integration.test.ts` | test có thể bị ảnh hưởng: toàn bộ test trong file (tham số tùy chọn nên ít rủi ro) | lan sang module khác: không | mức: Hẹp.
+- Ngày ghi: 2026-11-14
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-14 — chờ xử lý — review vòng 1 task 20261114-sprint10-reports. 2026-11-14 — đã sửa — fix-backlog tất cả (tdd, sonnet): fixture thêm paymentPaidAt, test [B-57]; đột biến i.paid_at thành p.paid_at làm 4 test đỏ; agent chính chạy lại API 242/242, UI 161/161, typecheck và build xanh; errors: 20261114-reports-cross-branch-shift-and-payment-paid-at-untested.md.
+
+### B-58 — R1-8 [Very Low]
+- Task nguồn: 20261114-sprint10-reports, review vòng 1.
+- File:dòng: `POS_UI/src/features/reports/DailyReportScreen.tsx:195-197,214`; `POS_API/src/database/migrations/20261114000001-ReportsPermissions.ts:22`; `POS_UI/src/mock/mockEngine.ts:1662`.
+- Finding (nguyên văn reviewer): `DailyReportScreen.tsx:195-197`: thụt lề lệch 16 khoảng trắng so với dòng 194 và 198. `DailyReportScreen.tsx:214`: nút "Tải thêm ca" không có trạng thái chờ hay `disabled`. Bấm đôi tạo hai request cùng cursor (có dedupe nên không sai dữ liệu). `20261114000001-ReportsPermissions.ts:22`: `down()` không có tham số `queryRunner` như dòng `Interfaces` của plan; khớp mẫu `20261106000000-Sales.ts:77` và `20261113000000-ShiftExpenses.ts:31`, hành vi giống hệt, không có tác động. `mockEngine.ts:1662`: `MockEngine.getDailyReport` không còn caller sau khi bỏ `reportService` mock (grep trong `POS_UI/src` chỉ còn định nghĩa).
+- Căn cứ và đề xuất sửa: sửa từng chỗ nhỏ; chạy `reports-screen.test.mjs` và typecheck sau khi sửa.
+- Phạm vi ảnh hưởng khi sửa: sẽ phải đổi các file trên, mỗi dòng một chỗ | nơi gọi/nơi dùng: `getDailyReport` không có caller | test có thể bị ảnh hưởng: không thấy test nào phủ riêng các dòng này, chạy `reports-screen.test.mjs` và typecheck | lan sang module khác: không | mức: Hẹp.
+- Ngày ghi: 2026-11-14
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-14 — chờ xử lý — review vòng 1 task 20261114-sprint10-reports. 2026-11-14 — đã sửa — fix-backlog tất cả (tdd, sonnet): dedent, nút Tải thêm ca disabled khi chờ (test [B-58]), xóa MockEngine.getDailyReport; migration down() không đổi theo quy tắc dự án; agent chính chạy lại API 242/242, UI 161/161, typecheck và build xanh; errors: 20261114-ui-load-more-button-not-disabled-while-pending.md.
+
+### B-59 — [Low]
+- Task nguồn: 20261114-sprint10-reports, ghi bởi agent chính từ báo cáo `tdd` của fix-backlog B-55.
+- File:dòng: `POS_UI/src/app/navigation.ts:20`, `POS_UI/src/app/App.tsx:115`, `POS_UI/src/components/common/AppShell.tsx:120`.
+- Finding (nguyên văn `tdd`): Cả ba nơi kiểm `has('report.view_shift') || has('report.view_branch') || has('report.view_all')`, không xét `access_all`. Người có `view_all` thiếu `access_all` vẫn thấy tab "Báo cáo" và vào được màn, rồi gặp "Không có quyền". Không có test nào cho trường hợp này ở các file đó.
+- Căn cứ và đề xuất sửa: quyết định user 2026-11-14 ở B-55 (chỉ OWNER xem toàn cửa hàng, cần cả `report.view_all` và `branch.access_all`). Dùng chung một hàm quyền báo cáo giữa các nơi và `reportScope`, thêm test. Chưa đối chiếu lại code, sẽ kiểm khi fix-backlog.
+- Phạm vi ảnh hưởng khi sửa: chưa soát (sẽ đổi 3 file trên và `DailyReportScreen.tsx` nếu dùng chung hàm) | test có thể bị ảnh hưởng: `app-invoices-shell.test.mjs`, `reports-screen.test.mjs` | mức: Hẹp (chưa xác nhận).
+- Ngày ghi: 2026-11-14
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-14 — chờ xử lý — phát hiện ngoài phạm vi khi fix-backlog B-55. 2026-11-14 — fix-backlog B-59 kiểm lại, DỪNG chưa sửa: finding còn đúng (`navigation.ts:20`, `App.tsx:115-116`, `AppShell.tsx:120`), nhưng sửa buộc đổi test cũ `app-invoices-shell.test.mjs:15` (`test_ST3_AC1_service_shell_permissions shell` khẳng định tab Báo cáo hiện khi chỉ có `report.view_all`) và chạm ST-3.AC-1 của plan đã duyệt; chờ user quyết. 2026-11-14 — đã sửa — user chọn "2" (đổi test cũ và ST-3.AC-1), fix-backlog B-59 (tdd, sonnet): `navigation.ts:20`, `App.tsx:115-116`, `AppShell.tsx:120`, test `[B-59]` x3 + một dòng test cũ trong `app-invoices-shell.test.mjs`; agent chính chạy lại UI 166/166, typecheck và build xanh; errors: 20261114-ui-report-tab-shown-without-access-all.md.
+
+### B-60 — R1-1 [Low]
+- Task nguồn: 20261115-sprint10-stock-ledger, review vòng 1.
+- File:dòng: `POS_UI/test/stock-ledger-router.browser.mjs:262` và `:314`.
+- Finding nguyên văn: Browser test dùng thời gian chờ cố định 300ms để coi điều hướng đã ổn định. `backAfterSwitch` còn chờ điều kiện ở dòng 260 có thể đạt khi màn cũ vẫn có rail. Kết quả phụ thuộc tốc độ máy thay vì trạng thái router và nội dung cần kiểm.
+- Căn cứ: `rules/testing.md:19`: “Không dùng thời gian chờ cố định để che điều kiện đồng bộ.” Phạm vi liên quan: ST-10.AC-5, ST-10.AC-7, RF-1.
+- Đề xuất fix: thay hai `setTimeout` bằng điều kiện chờ pathname cùng màn/tab mong đợi; sau đó đọc nội dung để kiểm dữ liệu phiên trước.
+- Test tái hiện đề xuất: chạy lại `BR-5`, `BR-5b`, `BR-7` với CPU throttling. Input: OWNER đăng xuất, CASHIER/MANAGER đăng nhập rồi Back; reload hai địa chỉ tab con. Kết quả mong đợi: test đợi đúng màn trong timeout, không dựa vào 300ms.
+- Phạm vi ảnh hưởng khi sửa: Sẽ phải đổi helper `backAfterSwitch` tại `POS_UI/test/stock-ledger-router.browser.mjs:244` và thân `BR-7` tại `:304`. Nơi gọi: `BR-5` tại `:268`, `BR-5b` tại `:278`; đã tìm trong `POS_UI/` và `.github/`, không có caller khác. Test có thể bị ảnh hưởng: chính `BR-5`, `BR-5b`, `BR-7`; chạy lại toàn bộ `node --test test/stock-ledger-router.browser.mjs`. Lan sang module khác: không. Mức: Hẹp, một file test.
+- Ngày ghi: 2026-11-15
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-15 — chờ xử lý — review vòng 1, Low.
+- Lịch sử trạng thái: 2026-11-15 — đã sửa — `stock-ledger-router.browser.mjs` chờ pathname, rail và nội dung thay 300ms; browser 8/8 khi chạy tuần tự, BR-5b chạy riêng 1/1; hồ sơ `errors/20261115-browser-router-fixed-wait.md`.
+
+### B-61 — R2-2 [Low]
+- Task nguồn: 20261115-sprint10-stock-ledger, review vòng 1 (lượt Claude Code, sonnet).
+- File:dòng: `POS_UI/src/features/products/ProductsScreen.tsx:735-750`.
+- Finding nguyên văn: 4 nút tab Thực đơn chỉ phân biệt tab đang chọn bằng `style` (nền, màu, `fontWeight`). Không có `aria-current` hay `aria-selected`. Test mới `products-tabs.test.mjs` (AC-4) assert theo `style.fontWeight` nên khóa luôn việc thiếu ARIA. Các tab con khác (Kho, Bán hàng, Cài đặt) đã có `aria-current="true"` hoặc `aria-selected`.
+- Căn cứ: DESIGN.md a11y; tab con khác trong cùng task.
+- Đề xuất fix: thêm `aria-current={activeMainTab === key ? 'true' : undefined}` cho 4 nút và đổi assert test sang `aria-current`.
+- Phạm vi ảnh hưởng khi sửa: sẽ đổi `ProductsScreen.tsx` (4 nút tab); `ProductsScreen` chỉ được `App.tsx` import, `icon-actions.browser.mjs:361` bundle nó | test có thể bị ảnh hưởng: `products-tabs.test.mjs::test_ST7_AC4_products_tab` (assert `fontWeight`), chạy lại `icon-actions.browser.mjs` | lan sang module khác: không | mức: Hẹp.
+- Ngày ghi: 2026-11-15
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-15 — chờ xử lý — review vòng 1, Low.
+- Lịch sử trạng thái: 2026-11-15 — đã sửa — `ProductsScreen.tsx` thêm aria-current cho bốn tab; test `[B-61]` đỏ trước, xanh sau; UI 219/219, build exit 0; hồ sơ `errors/20261115-products-tabs-missing-aria-current.md`.
+
+### B-62 — R2-3 [Low]
+- Task nguồn: 20261115-sprint10-stock-ledger, review vòng 1 (lượt Claude Code, sonnet).
+- File:dòng: `POS_UI/src/features/inventory/InventoryScreen.tsx:51,57-58`.
+- Finding nguyên văn: `viewKey` có `branchId` cho mọi tab. Đổi ô "Chi nhánh kho" khi ở tab "Nguyên liệu" (danh mục không theo chi nhánh) vẫn tải lại `inventoryService.ingredients()` và hiện lại skeleton. Ô chọn chi nhánh cũng hiện ở tab này dù không có tác dụng. Tải thừa, không sai dữ liệu.
+- Căn cứ: plan ST-6 "tải theo tab, trạng thái độc lập".
+- Đề xuất fix: ẩn ô chọn khi `tab==='catalog'`, hoặc đưa `branchId` vào `viewKey` chỉ khi `tab !== 'catalog'`.
+- Phạm vi ảnh hưởng khi sửa: sẽ đổi `InventoryScreen.tsx:51` và khối ô chọn (~:138); `InventoryScreen` chỉ dùng ở `App.tsx` | test có thể bị ảnh hưởng: `inventory-screen.test.mjs::test_ST6_AC3`, `test_ST6_AC10`, `test_ST6_AC12`; `stock-ledger-router.browser.mjs::BR-3` | lan sang module khác: không | mức: Hẹp.
+- Ngày ghi: 2026-11-15
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-15 — chờ xử lý — review vòng 1, Low.
+- Lịch sử trạng thái: 2026-11-15 — đã sửa — `InventoryScreen.tsx` bỏ branchId khỏi viewKey của catalog; test `[B-62]` đỏ trước, xanh sau; UI 219/219, build exit 0; hồ sơ `errors/20261115-inventory-catalog-reloads-on-branch-change.md`.
+
+### B-63 — R2-4 [Low]
+- Task nguồn: 20261115-sprint10-stock-ledger, review vòng 1 (lượt Claude Code, sonnet).
+- File:dòng: `POS_UI/src/app/App.tsx:112-129`, `POS_UI/src/components/common/AppShell.tsx:114-120`.
+- Finding nguyên văn: Bấm mục rail mà `accessibleTabs` không cho (ví dụ rail "Hóa đơn" hiện khi có `pos.sell` hoặc `invoice.cancel_*`, còn route cần `invoice.read`) thì App thay thế lịch sử im lặng sang tab đầu, không còn thấy `AccessDenied`. Plan loại phần lệch nav và `accessibleTabs` ở các tab khác `products` khỏi phạm vi, mọi vai trò thật đều đủ quyền (G-2), nên hiện không kích hoạt được.
+- Đề xuất fix: đưa điều kiện `visible` của rail về `accessibleTabs`.
+- Phạm vi ảnh hưởng khi sửa: sẽ đổi `AppShell.tsx:114-120`; nơi dùng `AppShell`, `accessibleTabs` (`navigation.ts`), `App.tsx` | test có thể bị ảnh hưởng: `app-invoices-shell.test.mjs` (`navMock` không có `accessibleTabs`), `app-shell-products.test.mjs`, `icon-actions.browser.mjs` | lan sang module khác: không | mức: Vừa.
+- Ngày ghi: 2026-11-15
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-15 — chờ xử lý — review vòng 1, Low.
+- Lịch sử trạng thái: 2026-11-15 — đã sửa — `AppShell.tsx` lọc rail theo `accessibleTabs(session)`, cập nhật mock test liên quan; test `[B-63]` đỏ trước, xanh sau; UI 219/219, build exit 0; hồ sơ `errors/20261115-rail-and-routes-disagree-on-permissions.md`.
+
+### B-64 — R2-5 [Low]
+- Task nguồn: 20261115-sprint10-stock-ledger, review vòng 1 (lượt Claude Code, sonnet).
+- File:dòng: `POS_UI/src/features/pos/LivePosScreen.tsx:156`.
+- Finding nguyên văn: `selectTab('menu')` chạy trong callback bất đồng bộ (`openTable`), nên `onTabChange` là closure của `go` ở lần render lúc bấm. Nếu người dùng đổi địa chỉ trong lúc `salesService.get` đang chờ, `go('pos','menu')` so `path !== location.pathname` bằng `location` cũ; có thể push sai hoặc bỏ qua. Chưa có test.
+- Phạm vi ảnh hưởng khi sửa: sẽ đổi `LivePosScreen.tsx:156` (ref tới `onTabChange` mới nhất) hoặc `go` trong `App.tsx`; `LivePosScreen` chỉ dùng ở `App.tsx` (2 chỗ) | test có thể bị ảnh hưởng: `shift-screen.test.mjs::test_ST7_AC2_livepos_mo_ban_bao_menu`, `live-payment.test.mjs` | lan sang module khác: không | mức: Hẹp.
+- Ngày ghi: 2026-11-15
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-15 — chờ xử lý — review vòng 1, Low.
+- Lịch sử trạng thái: 2026-11-15 — đã sửa — `LivePosScreen.tsx` dùng callback onTabChange mới nhất qua ref; test `[B-64]` đỏ trước, xanh sau; UI 219/219, build exit 0; hồ sơ `errors/20261115-pos-open-table-stale-navigation-callback.md`.
+
+### B-65 — R2-1 [Low]
+- Task nguồn: 20261115-sprint10-stock-ledger, review vòng 2.
+- File:dòng: `POS_UI/src/features/inventory/InventoryScreen.tsx:46` (state tại :49; Dialog tại :158, :167).
+- Finding nguyên văn: `tab` lấy từ props tại dòng 41 nhưng `editing`/`minEditor` tại dòng 46, 49 giữ nguyên; hai Dialog tại dòng 158, 167 render độc lập với tab. Đã tái hiện trong bộ nhớ bằng harness hiện có: mở `catalog`, bấm “Thêm nguyên liệu”, đổi props sang `movements`; trước và sau đều có Dialog “Thêm nguyên liệu” đang mở. Modal cũ tiếp tục phủ màn Sổ kho.
+- Căn cứ: spec `20261115-sprint10-stock-ledger.md`, mục tiêu L4 về Back đúng màn; quy tắc phòng tránh trong `errors/20261115-settings-back-leaves-editor-open.md`. Chưa thấy ghi sai store/branch: lưu nguyên liệu dùng ID đang sửa; lưu ngưỡng giữ branch của `minEditor`.
+- Đề xuất fix: đóng dialog gắn với tab cũ khi tab thay đổi.
+- Test tái hiện đề xuất: `[R2-1] inventory Back closes previous tab dialogs` | input: mở form nguyên liệu ở catalog, đổi prop sang movements; mở form ngưỡng ở stocks, đổi prop sang catalog | mong đợi: dialog cũ đóng, tab mới hiển thị.
+- Phạm vi ảnh hưởng khi sửa: đổi `InventoryContent`, `InventoryScreen.tsx:31`; state/dialog tại dòng 46, 49, 158, 167. Caller `POS_UI/src/app/App.tsx:125`, không đổi interface. Test liên quan: `inventory-screen.test.mjs::test_ST6_AC11_tab_dieu_khien_tu_props`, `::test_ST6_AC10b_chuyen_tab_khong_hien_dong_tab_cu`; browser `BR-2`. Chưa có test đóng dialog khi đổi tab. Chạy lại test inventory và browser Sổ kho/router. Không lan module khác. Mức: Hẹp.
+- Ngày ghi: 2026-11-16
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-16 — chờ xử lý — review vòng 2, Low.
+- Lịch sử trạng thái: 2026-11-16 — đã sửa — `InventoryScreen.tsx:52` thêm effect `[tab]` đóng cả dialog nguyên liệu và ngưỡng tồn. Hai test `[B-65]` trong `inventory-screen.test.mjs` đỏ trước (`1 !== 0`), xanh sau; riêng Kho 18/18, toàn UI 221/221, build exit 0, browser Sổ kho/router 8/8, API 256/256. Hồ sơ: `.devloopflow/errors/20261116-inventory-dialog-persists-after-tab-change.md`.
+
+### B-66 — R3-1 [Low]
+- Task nguồn: 20261115-sprint10-stock-ledger, review vòng 3.
+- File:dòng: `POS_UI/src/features/products/ProductsScreen.tsx:45`, `:1358`.
+- Finding nguyên văn: `activeMainTab` đổi theo prop, nhưng state dialog giữ nguyên. Tái hiện bằng harness hiện có trong bộ nhớ, không sửa production: mở `categories`, bấm “Thêm danh mục”, đổi prop sang `sizes`; dialog vẫn có tiêu đề “Thêm danh mục mới”. Quay về `categories` dialog vẫn mở. Các dialog khác tại `:1045`, `:1109`, `:1168`, `:1199`, `:1232`, `:1265` và `RecipeModal` tại `:683` cũng dùng state độc lập với tab.
+- Căn cứ: mục tiêu L4 trong `.devloopflow/specs/20261115-sprint10-stock-ledger.md:30`; cùng pattern của `errors/20261115-settings-back-leaves-editor-open.md` và B-65. Chưa thấy ghi sai ID hoặc phạm vi dữ liệu; mức Low.
+- Đề xuất fix: đóng state dialog thuộc tab cũ khi `activeMainTab` đổi, tránh chỉ ẩn rồi mở lại khi quay về.
+- Test tái hiện đề xuất: `[R3-1] Products Back closes previous tab dialogs` | input: mở dialog danh mục tại `categories`, đổi prop sang `sizes`, quay lại | mong đợi: dialog đóng và không tự mở lại.
+- Phạm vi ảnh hưởng khi sửa: sẽ đổi state/cleanup của `ProductsScreen.tsx:63-102`. Nơi dùng: `POS_UI/src/app/App.tsx:122`; browser fixture `POS_UI/test/icon-actions.browser.mjs:361`. Test liên quan: `products-tabs.test.mjs::test_ST7_AC4_products_tab`, `::[B-61]`; chưa có test đóng dialog khi đổi prop tab. Chạy lại test Products, UI build/test và browser icon nếu chạm cách render dialog. Không đổi interface/API, không lan module khác. Mức: Hẹp.
+- Ngày ghi: 2026-11-16
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-16 — chờ xử lý — review vòng 3, Low.
+- Lịch sử trạng thái: 2026-11-16 — đã sửa — `ProductsScreen.tsx` đóng tám state dialog khi `activeMainTab` đổi; chín test `[V1-2/B-66]` đỏ đúng `true !== false` trước sửa, xanh sau; browser Back/Forward `[V1-2/B-66]` xanh. Agent chính chạy UI 230/230, browser 34/34, typecheck/build exit 0, API 256/256. Hồ sơ: `.devloopflow/errors/20261116-products-dialog-persists-after-tab-change.md`. Sprint QA V1-2 vẫn `mở` tới lượt `verify-ac` mới.
+
+### B-67 — R3-2 [Low]
+- Task nguồn: 20261115-sprint10-stock-ledger, review vòng 3.
+- File:dòng: `POS_UI/test/stock-ledger-router.browser.mjs:251`.
+- Finding nguyên văn: `backAfterSwitch` chờ `/kho/ton-kho`, rồi click “Sổ kho” ngay; chưa xác nhận tab Tồn kho đã được React render. Lượt toàn bộ reviewer chạy thất bại BR-5 tại `:253`: `pathname mong đợi /kho/so-kho, thực tế /kho/ton-kho`. Lỗi xảy ra trước đăng xuất. Chạy riêng BR-5 sau đó đạt 1/1. Chưa có bằng chứng lỗi phân quyền hoặc đổi phiên.
+- Căn cứ: `rules/testing.md`, mục “Test đáng tin”; `errors/20261115-browser-router-fixed-wait.md` yêu cầu chờ DOM và URL.
+- Đề xuất fix: trước click kế tiếp, chờ cả pathname và nút tab có `aria-current="true"` tương ứng; giữ kiểm nội dung sau đổi phiên.
+- Test tái hiện đề xuất: chạy BR-5/BR-5b với CPU throttling hiện có | input: Tồn kho rồi Sổ kho, sau đó đổi phiên | mong đợi: hoàn tất điều hướng và kiểm đổi phiên ổn định.
+- Phạm vi ảnh hưởng khi sửa: sẽ đổi helper `backAfterSwitch` tại `:244-254`. Nơi gọi: BR-5 tại `:273`, BR-5b tại `:283`; không có caller khác trong phạm vi đã tìm. Test ảnh hưởng: BR-5, BR-5b; chạy lại toàn bộ browser Sổ kho/router. Không lan module khác. Mức: Hẹp.
+- Ngày ghi: 2026-11-16
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-16 — chờ xử lý — review vòng 3, Low.
+- Lịch sử trạng thái: 2026-11-16 — đã sửa — helper `backAfterSwitch` trong `stock-ledger-router.browser.mjs` chờ pathname và tab Tồn kho `aria-current="true"` trước click Sổ kho; giữ assertion sau đổi phiên. BR-5/BR-5b 2/2 trước và sau thay đổi; agent chính chạy browser 34/34, UI 230/230, typecheck/build exit 0, API 256/256. Race không tái hiện ổn định trước sửa; fix lấp điều kiện chờ thiếu được reviewer chỉ ra, chưa chứng minh hết mọi flake. Hồ sơ: `.devloopflow/errors/20261115-browser-router-fixed-wait.md` (occurrences 2).

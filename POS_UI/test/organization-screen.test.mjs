@@ -18,7 +18,7 @@ const source = readFileSync(new URL('../src/features/settings/SettingsScreen.tsx
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS,
   jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
 
-function mount(overrides = {}, session = owner, shiftsTotal = 0, bankService = {}) {
+function mount(overrides = {}, session = owner, shiftsTotal = 0, bankService = {}, props = {}, name = 'SettingsContent') {
   const calls = [], toasts = [], slots = [], listeners = new Map(), sessionEvents = [];
   let index = 0, dirty = true, tree, effects = [], mounted = true, lateWrites = 0;
   const service = {
@@ -70,7 +70,7 @@ function mount(overrides = {}, session = owner, shiftsTotal = 0, bankService = {
   function render() {
     for (let pass = 0; dirty; pass++) {
       assert.ok(pass < 30, 'render settles'); dirty = false; index = 0; effects = [];
-      tree = exports.SettingsContent({ session });
+      tree = exports[name](name === 'SettingsContent' ? { session, ...props } : props);
       const table = find('DataTable');
       if (table) for (const row of table.props.data) for (const column of table.props.columns) column.render(row);
       effects.forEach(effect => effect());
@@ -89,7 +89,8 @@ function mount(overrides = {}, session = owner, shiftsTotal = 0, bankService = {
     assert.ok(button, 'button exists: ' + label); assert.ok(!button.props.disabled, 'button enabled: ' + label);
     button.props.onClick(); await flush();
   }
-  return { calls, toasts, sessionEvents, flush, find, click,
+  return { calls, toasts, sessionEvents, flush, find, click, exports,
+    setProps(next) { Object.assign(props, next); dirty = true; },
     data: () => find('DataTable')?.props.data,
     editor: () => find('OrganizationEditor')?.props,
     async select(label, value) { const node = find('SelectField', props => props.label === label); assert.ok(node); node.props.onChange({ target: { value } }); await flush(); },
@@ -211,6 +212,8 @@ test('PB13-NAV OWNER opens settings, permission-only staff entry and platform is
   assert.equal(canOpenSettings(['pos.sell']), false);
   const cashier = { ...owner, user: { ...owner.user, role_code: 'CASHIER' }, permissions: ['shift.read', 'shift.open', 'shift.close'] };
   assert.ok(accessibleTabs(cashier).includes('shifts'), 'CASHIER with API permissions can open Ca làm');
+  assert.equal(accessibleTabs(cashier).includes('reports'), false, 'CASHIER without report permission has no Báo cáo');
+  assert.ok(accessibleTabs({ ...cashier, permissions: [...cashier.permissions, 'report.view_shift'] }).includes('reports'), 'test_ST3_AC1_service_shell_permissions CASHIER with report.view_shift can open Báo cáo');
 });
 
 test('PB13-BR55 editing branch details omits unchanged initialCash', async () => {
@@ -360,4 +363,66 @@ test('PB13-SECRET self-reset does not reload revoked session before password ack
   assert.equal(screen.sessionEvents.length, 0);
   screen.find('input', props => props.type === 'checkbox').props.onChange({ target: { checked: true } }); await screen.flush();
   await screen.click('Đóng'); assert.deepEqual(screen.sessionEvents, ['revoked']);
+});
+
+const manager = { user: { id: 'manager', store_id: 'A', branch_id: 'A1', role_code: 'MANAGER' }, permissions: ['table.manage', 'promotion.manage'] };
+
+test('test_ST7_AC5_settings_section', async () => {
+  const ownerPromo = { ...owner, permissions: [...owner.permissions, 'promotion.manage'] };
+  const changes = [];
+  const screen = mount({}, ownerPromo, 0, {}, { tab: 'promotions', onTabChange: tab => changes.push(tab) }, 'SettingsScreen');
+  await screen.flush();
+  assert.ok(screen.find('PromotionsPanel'), 'promotions panel rendered');
+  assert.equal(screen.find(screen.exports.SettingsContent), undefined, 'organization content not rendered');
+  await screen.click('Tổ chức');
+  assert.deepEqual(changes, ['branches']);
+
+  const managerChanges = [];
+  const managerScreen = mount({}, manager, 0, {}, { tab: 'promotions', onTabChange: tab => managerChanges.push(tab) }, 'SettingsScreen');
+  await managerScreen.flush();
+  await managerScreen.click('Tổ chức');
+  assert.deepEqual(managerChanges, ['tables']);
+
+  const shown = mount({}, owner, 0, {}, { tab: 'tables' }, 'SettingsScreen');
+  await shown.flush();
+  assert.equal(shown.find(shown.exports.SettingsContent).props.tab, 'tables');
+});
+
+test('test_ST7_AC6_settings_content_tab_prop', async () => {
+  const changes = [];
+  const screen = mount({}, owner, 0, {}, { tab: 'staff', onTabChange: tab => changes.push(tab) });
+  await screen.flush();
+  assert.equal(screen.calls[0][0], 'staff');
+  await screen.select('Vai trò', 'CASHIER');
+  await screen.select('Trạng thái', 'true');
+  assert.equal(screen.calls.at(-1)[1].role, 'CASHIER');
+  const tablesBefore = screen.calls.filter(call => call[0] === 'tables').length;
+  await screen.click('Bàn');
+  assert.deepEqual(changes, ['tables']);
+  assert.equal(screen.calls.filter(call => call[0] === 'tables').length, tablesBefore + 1);
+
+  await screen.select('Trạng thái', 'true');
+  assert.equal(screen.calls.at(-1)[1].isActive, true);
+  screen.setProps({ tab: 'branches' });
+  await screen.flush();
+  const last = screen.calls.at(-1);
+  assert.equal(last[0], 'branches');
+  assert.equal(last[1].isActive, undefined, 'status filter reset');
+});
+
+test('test_ST7_AC7_back_dong_editor_khi_doi_tab [R1-1]', async () => {
+  const screen = mount({}, owner, 0, {}, { tab: 'tables' });
+  await screen.flush(); await screen.click('Thêm bàn');
+  assert.ok(screen.editor());
+  screen.setProps({ tab: 'branches' }); await screen.flush();
+  assert.equal(screen.editor(), undefined);
+  assert.equal(screen.find('Dialog', p => p.title !== 'Xác nhận thay đổi' && p.isOpen), undefined);
+});
+
+test('test_ST7_AC7_back_dong_confirmation_khi_doi_tab [R1-1]', async () => {
+  const screen = mount({}, owner, 0, {}, { tab: 'tables' });
+  await screen.flush(); await screen.rowAction('Ngưng dùng');
+  assert.ok(screen.find('Dialog', p => p.title === 'Xác nhận thay đổi' && p.isOpen));
+  screen.setProps({ tab: 'branches' }); await screen.flush();
+  assert.equal(screen.find('Dialog', p => p.title === 'Xác nhận thay đổi' && p.isOpen), undefined);
 });
