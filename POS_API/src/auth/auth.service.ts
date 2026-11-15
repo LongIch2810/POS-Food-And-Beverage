@@ -21,6 +21,8 @@ export interface UserSummary {
   mustChangePassword: boolean;
 }
 
+export interface SessionUser extends UserSummary { branchName: string | null; }
+
 export type AccessPermission = string | { platform: string; store: string };
 
 type AccessClaims = jwt.JwtPayload & { sub: string; sid: string };
@@ -37,6 +39,13 @@ export class AuthService {
       .leftJoinAndSelect('u.store', 's')
       .where('u.id = :id', { id })
       .getOne();
+  }
+
+  private async sessionUser(user: User): Promise<SessionUser> {
+    const summary = await this.summary(user);
+    if (!user.branch_id) return { ...summary, branchName: null };
+    const [row] = await this.db.query('SELECT name FROM branches WHERE id=$1', [user.branch_id]);
+    return { ...summary, branchName: row?.name ?? null };
   }
 
   private async summary(user: User): Promise<UserSummary> {
@@ -97,7 +106,7 @@ export class AuthService {
     });
   }
 
-  async login(username: string, password: string, ip: string, userAgent?: string): Promise<{ user: UserSummary; access: string; refresh: string; csrf: string }> {
+  async login(username: string, password: string, ip: string, userAgent?: string): Promise<{ user: SessionUser; access: string; refresh: string; csrf: string }> {
     const [{ username: normalized }] = await this.db.query('SELECT lower(btrim($1::text)) AS username', [username]);
     const keys = [this.rateKey('login_ip', ip), this.rateKey('login_username', normalized)];
     const sessionId = randomUUID();
@@ -155,7 +164,7 @@ export class AuthService {
       { algorithm: 'HS256', expiresIn: 1800, subject: outcome.id },
     );
     const csrf = this.csrf(sessionId);
-    return { user: await this.summary(outcome), access, refresh, csrf };
+    return { user: await this.sessionUser(outcome), access, refresh, csrf };
   }
 
   async authenticateAccess(token?: string): Promise<{ user: User; claims: AccessClaims }> {
@@ -190,9 +199,9 @@ export class AuthService {
     return { user, claims };
   }
 
-  async me(token?: string): Promise<UserSummary> {
+  async me(token?: string): Promise<SessionUser> {
     const { user } = await this.authenticateAccess(token);
-    return this.summary(user);
+    return this.sessionUser(user);
   }
 
   async authorizeAccess(token: string | undefined, permission: AccessPermission, csrfHeader?: string, csrfCookie?: string): Promise<UserSummary> {
@@ -225,7 +234,7 @@ export class AuthService {
     }
   }
 
-  async refresh(token: string | undefined, csrfHeader: string | undefined, csrfCookie: string | undefined): Promise<{ user: UserSummary; access: string; refresh: string }> {
+  async refresh(token: string | undefined, csrfHeader: string | undefined, csrfCookie: string | undefined): Promise<{ user: SessionUser; access: string; refresh: string }> {
     if (!token) throw httpError(401, 'UNAUTHENTICATED', 'Vui lòng đăng nhập để tiếp tục.');
     const nextToken = randomBytes(32).toString('base64url');
     const hash = tokenHash(token);
@@ -302,7 +311,7 @@ export class AuthService {
       this.jwtSecret(),
       { algorithm: 'HS256', expiresIn: 1800, subject: result.user.id },
     );
-    return { user: await this.summary(result.user), access, refresh: nextToken };
+    return { user: await this.sessionUser(result.user), access, refresh: nextToken };
   }
 
   async getCsrf(token?: string): Promise<string> {

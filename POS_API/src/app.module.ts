@@ -15,9 +15,10 @@ import { ShiftsModule } from './shifts/shifts.module';
 import { SalesModule } from './sales/sales.module';
 import { PromotionsModule } from './promotions/promotions.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, PlatformModule, OrganizationModule, UsersModule, MenuModule, ShiftsModule, SalesModule, InventoryModule, PromotionsModule],
+  imports: [DatabaseModule, AuthModule, PlatformModule, OrganizationModule, UsersModule, MenuModule, ShiftsModule, SalesModule, InventoryModule, PromotionsModule, ReportsModule],
   controllers: [HealthController],
   providers: [{ provide: APP_FILTER, useClass: ApiErrorFilter }],
 })
