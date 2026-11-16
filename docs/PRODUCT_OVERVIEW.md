@@ -69,14 +69,18 @@ store (cửa hàng) ── branch (chi nhánh) ── dining_table (bàn)
 
 ### Giai đoạn 2
 
-- Nhập hàng, kiểm kê, ghi hao hụt, cảnh báo sắp hết hàng.
-- Hoàn tiền một phần, hủy đơn của ca đã đóng.
-- Nhật ký thao tác (`audit_logs`), báo cáo bất thường.
-- Báo cáo tuần và tháng, giờ cao điểm, lợi nhuận gộp.
-- Giá và trạng thái bán riêng từng chi nhánh.
-- Tách bill, gộp bill, chuyển bàn nâng cao.
-- Gói dịch vụ và thời hạn sử dụng của cửa hàng, lời mời qua email.
-- Truy cập hỗ trợ có thời hạn cho quản trị nền tảng, có ghi nhật ký.
+Phạm vi chốt ngày 16/11/2026. Quy tắc chi tiết ở `BUSINESS_RULES.md` mục 18 (BR-106..BR-122). Chạy và nghiệm thu trên local, không phụ thuộc PB-14.
+
+- **Kho:** nhập hàng bằng phiếu nhập có đơn giá nhập (nhà cung cấp chỉ ghi chú chữ), giá vốn bình quân gia quyền, ghi hao hụt có lý do và chặn vượt tồn, kiểm kê theo đợt đếm mù, danh sách và huy hiệu sắp hết hàng.
+- **Hủy đơn:** bãi bỏ hủy đơn `PAID`; chỉ đơn `OPEN` hủy được. Đây là thay đổi hành vi MVP đã triển khai (PB-11).
+- **Nhật ký thao tác** (`audit_logs`) và báo cáo bất thường với ngưỡng do `OWNER` cấu hình.
+- **Báo cáo:** tuần và tháng, giờ cao điểm, lợi nhuận gộp (chỉ `OWNER`, theo giá vốn hiện hành, không chụp giá vốn vào hóa đơn).
+- **Bán hàng:** tách bill theo món thành hóa đơn mang đi; giảm giá tay (thu ngân trong giới hạn do `OWNER` cấu hình).
+- **Gói dịch vụ** hai gói cố định `BASIC` và `PRO`, có giới hạn thật (chi nhánh, tài khoản, bàn, tính năng) và trạng thái hết hạn `EXPIRED`, chặn ngay.
+- **Theme riêng** từng cửa hàng: màu thương hiệu và logo.
+- **Xuất hóa đơn PDF** cho đơn `PAID`, khổ hẹp 80mm. Không phải hóa đơn điện tử theo quy định thuế (mục "Ngoài phạm vi").
+
+**Đã bỏ khỏi Giai đoạn 2 (16/11/2026):** hoàn tiền một phần, hủy đơn của ca đã đóng, giá và trạng thái bán riêng từng chi nhánh, gộp bill, chuyển bàn nâng cao, lời mời qua email, truy cập hỗ trợ có thời hạn.
 
 ### Tùy chọn
 
@@ -125,7 +129,7 @@ Công thức: `tiền kỳ vọng = tiền đầu ca + tiền mặt từ hóa đ
 1. Mỗi món theo size (và mỗi topping) có công thức: dùng bao nhiêu của mỗi nguyên liệu.
 2. Khi đơn thành `PAID`, hệ thống trừ nguyên liệu theo công thức và theo chi nhánh của đơn.
 3. Mọi thay đổi tồn kho ghi vào sổ kho (`stock_movements`), chỉ thêm dòng mới, không sửa, không xóa.
-4. Hủy đơn đã thanh toán thì ghi dòng hoàn kho đối dấu, không xóa dòng cũ.
+4. Hủy đơn đã thanh toán thì ghi dòng hoàn kho đối dấu, không xóa dòng cũ. (Đã triển khai ở MVP; Giai đoạn 2 bãi bỏ hủy đơn `PAID`, xem BR-110.)
 5. Cho phép bán khi tồn âm nhưng cảnh báo.
 
 ### 6.5 Báo cáo
@@ -175,7 +179,7 @@ Công thức: `tiền kỳ vọng = tiền đầu ca + tiền mặt từ hóa đ
 - Ghi thanh toán (nếu tổng tiền lớn hơn 0), đổi trạng thái hóa đơn và trừ kho nằm trong **một transaction**. Hoàn tất đơn 0đ phải chống lặp.
 - Cập nhật tồn kho bằng phép cộng trừ nguyên tử, không đọc rồi ghi.
 - Sổ kho chỉ thêm dòng, không sửa hay xóa. Sai thì thêm dòng điều chỉnh.
-- Nội dung hóa đơn `PAID` hoặc `CANCELLED` và ca đã đóng không sửa trực tiếp. Hóa đơn `PAID` chỉ hủy được theo BR-29 (cần quyền, lý do, ca còn mở), các khoản thanh toán đã nhận giữ nguyên làm lịch sử.
+- Nội dung hóa đơn `PAID` hoặc `CANCELLED` và ca đã đóng không sửa trực tiếp. Hóa đơn `PAID` chỉ hủy được theo BR-29 (cần quyền, lý do, ca còn mở), các khoản thanh toán đã nhận giữ nguyên làm lịch sử. (Hiện hành ở MVP; Giai đoạn 2 bãi bỏ hủy đơn `PAID` theo BR-110, làm ở PB-16.)
 - Dữ liệu đã có tham chiếu thì ngưng dùng bằng `is_active`, không xóa cứng.
 
 **Ca và đối soát**
@@ -192,7 +196,7 @@ Công thức: `tiền kỳ vọng = tiền đầu ca + tiền mặt từ hóa đ
 - Mỗi bàn chỉ có một đơn `OPEN` tại một thời điểm.
 - Đơn `DINE_IN` phải có bàn, đơn `TAKEAWAY` thì không.
 - `invoices.branch_id` phải bằng chi nhánh của ca và của bàn.
-- Hủy đơn đã `PAID` cần quyền quản lý và lý do bắt buộc.
+- Hủy đơn đã `PAID` cần quyền quản lý và lý do bắt buộc. (Hiện hành ở MVP; Giai đoạn 2 bãi bỏ, xem BR-110.)
 
 **Tài khoản**
 

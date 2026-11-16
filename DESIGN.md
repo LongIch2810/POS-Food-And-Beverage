@@ -849,3 +849,28 @@ src/
 - [ ] Màn hình mới có mã BR tương ứng được ghi ở mục 8.
 - [ ] Làm được bằng bàn phím trên máy tính, có focus nhìn thấy.
 - [ ] Kiểm tra ở 1024px (tablet ngang) và 768px (tablet dọc).
+
+---
+
+## 15. Giao diện Giai đoạn 2 (dự kiến, chốt 16/11/2026)
+
+Phần này mô tả màn và thao tác **chưa có trong ứng dụng**. Quy tắc nghiệp vụ ở `docs/BUSINESS_RULES.md` mục 18. Bố cục chi tiết và trạng thái từng màn chốt khi viết spec; mọi màn theo quy ước chung ở các mục trước (tiếng Việt, VND, giờ Việt Nam, tablet ngang).
+
+| Màn / thao tác | Nội dung dự kiến | Quy tắc |
+| --- | --- | --- |
+| Kho: Phiếu nhập | Tạo phiếu nhiều nguyên liệu, nhập số lượng và đơn giá, ghi chú nguồn nhập. Danh sách phiếu đã lưu, không sửa. | BR-106 |
+| Kho: Hao hụt | Chọn nguyên liệu, số lượng, lý do từ danh sách cố định, ghi chú. Báo lỗi khi vượt tồn. | BR-109 |
+| Kho: Kiểm kê | Mở đợt, nhập số đếm từng nguyên liệu mà không thấy tồn hệ thống, chốt đợt rồi mới hiện chênh lệch. | BR-111 |
+| Kho: Sắp hết | Tab "Sắp hết" và huy hiệu số trên menu Kho. | BR-112 |
+| Báo cáo | Thêm báo cáo tuần, tháng, biểu đồ giờ cao điểm. Mục lợi nhuận gộp chỉ hiện cho `OWNER`, kèm ghi chú "tính theo giá vốn hiện hành". | BR-115, BR-116 |
+| Nhật ký thao tác | Bảng lọc theo người, hành động, ngày. `OWNER` toàn cửa hàng, `MANAGER` chi nhánh mình. | BR-113 |
+| Cài đặt: Ngưỡng bất thường | `OWNER` nhập ngưỡng; báo cáo bất thường hiển thị theo ngưỡng này. | BR-114 |
+| Hóa đơn: Tách bill | Chọn món và số lượng để tách sang hóa đơn mang đi; nhắc rằng mã giảm giá bị gỡ ở cả hai hóa đơn. | BR-117 |
+| Thanh toán: Giảm giá tay | Nhập số tiền hoặc phần trăm và lý do; hiển thị tổng do server tính. | BR-118 |
+| Hóa đơn: Xuất PDF | Nút xuất cho đơn `PAID`, khổ hẹp 80mm: tên cửa hàng, chi nhánh, địa chỉ, logo, mã QR chuyển khoản, phương thức và giờ thanh toán. | BR-122 |
+| Cài đặt cửa hàng: Theme | `OWNER` chọn màu thương hiệu và tải logo; hệ thống kiểm độ tương phản. | BR-121 |
+| Nền tảng: Gói dịch vụ | `PLATFORM_ADMIN` gán gói và ngày hết hạn; cửa hàng `EXPIRED` thấy thông báo hết hạn, khác thông báo bị khóa. | BR-119, BR-120 |
+
+**Thay đổi giao diện đã có:** bỏ nút hủy đơn đã thanh toán ở ngăn chi tiết Hóa đơn (mục 5, mục 8, mục 9) khi BR-110 được triển khai. Đơn `OPEN` vẫn hủy được.
+
+**Vẫn không làm:** nút gộp bill, chuyển bàn nâng cao, giá riêng từng chi nhánh, màn lời mời, màn truy cập hỗ trợ (mục 13).

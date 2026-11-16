@@ -4,7 +4,7 @@
 
 **Sprint 09:** [Sprint 09](../sprints/sprint-09/SPRINT.md) đã đóng ngày 14/11/2026 với QA local 6/6 AC cho PB-10 chi từ két/đối soát, PB-11 hủy đơn `PAID` và lát cắt PB-13 UI Ca/Hóa đơn. Mã đã tích hợp vào `master`; trạng thái CI hiện tại xem [README](../README.md). PB-12 và PB-14 chưa thuộc Sprint 09.
 
-**Sprint 10:** Product Owner chọn [Sprint 10](../sprints/sprint-10/SPRINT.md): PB-12 báo cáo doanh thu + lát cắt PB-13 UI Báo cáo, thêm biểu đồ doanh thu theo ngày và món bán chạy; kiểm tra và hoàn thiện tab Sổ kho theo dữ liệu API thật. Bắt đầu 14/11; ngày kết thúc chưa chốt. Đã có spec, plan và kiểm AC local cho Báo cáo (`.devloopflow/specs/20261114-sprint10-reports.md`) và Sổ kho (`.devloopflow/specs/20261115-sprint10-stock-ledger.md`); task Sổ kho còn mở sau B-65, chờ QA cấp sprint. PB-14 ở ngoài phạm vi sprint này. PB-15 nhập dữ liệu hàng loạt đã hủy ngày 15/11, không thuộc sprint.
+**Sprint 10:** Product Owner chọn [Sprint 10](../sprints/sprint-10/SPRINT.md): PB-12 báo cáo doanh thu + lát cắt PB-13 UI Báo cáo, thêm biểu đồ doanh thu theo ngày và món bán chạy; kiểm tra và hoàn thiện tab Sổ kho theo dữ liệu API thật. Bắt đầu 14/11 và đóng ngày 16/11/2026 (QA cấp sprint 7/7 AC PASS, mã đã merge vào `master` qua PR #24, CI xanh). Đã có spec, plan và kiểm AC local cho Báo cáo (`.devloopflow/specs/20261114-sprint10-reports.md`) và Sổ kho (`.devloopflow/specs/20261115-sprint10-stock-ledger.md`); task Sổ kho đã đóng, QA cấp sprint đạt. PB-14 ở ngoài phạm vi sprint này. PB-15 nhập dữ liệu hàng loạt đã hủy ngày 15/11, không thuộc sprint.
 
 **SePay:** Dự án cá nhân phục vụ học tập; chủ dự án quyết định chỉ sử dụng và nghiệm thu SePay Test mode, không triển khai hoặc yêu cầu kiểm SePay Live. Quyết định này không tự thay đổi phạm vi hạ tầng PB-14.
 
@@ -33,7 +33,33 @@ Nguồn phạm vi: [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md) mục 5; quy tắc
 | PB-14 | Web/API/DB vận hành cùng origin trên một VPS qua Docker Compose, migration riêng, sao lưu DB hằng ngày ra ngoài VPS và kiểm tra khôi phục. | Các lát cắt cần triển khai; chốt lựa chọn infra còn mở |
 | PB-15 | **Đã hủy 15/11/2026 theo quyết định chủ dự án:** nhập dữ liệu thiết lập hàng loạt từ Excel/CSV bị loại khỏi Sprint 10, không còn spec/plan/task và không tích hợp mã. Mở lại khi có yêu cầu mới. | — |
 
-Mỗi PB được tách thành item nhỏ khi refinement. Các mục Giai đoạn 2 và Tùy chọn trong product overview nằm ngoài backlog MVP này.
+Mỗi PB được tách thành item nhỏ khi refinement. Các mục Tùy chọn trong product overview nằm ngoài backlog MVP này. Giai đoạn 2 xem bảng dưới.
+
+## Product Backlog Giai đoạn 2
+
+Phạm vi chốt ngày 16/11/2026, quy tắc ở [BUSINESS_RULES.md](BUSINESS_RULES.md) mục 18 (BR-106..BR-122), tổng quan ở [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md) mục 5. **Chưa có sprint nào được chọn, chưa có spec.** Mỗi mục cần spec trong `.devloopflow/specs/` trước khi code. Chạy và nghiệm thu local, không phụ thuộc PB-14. Thứ tự dưới đây là đề xuất, Product Owner chọn sprint.
+
+| ID | Kết quả người dùng / điều kiện chấp nhận chính | Phụ thuộc |
+| --- | --- | --- |
+| PB-16 | Bãi bỏ hủy đơn `PAID`: chỉ đơn `OPEN` hủy được; gỡ API, UI, mã lỗi và test liên quan; dữ liệu `CANCELLED` cũ giữ nguyên. Thay đổi hành vi PB-11 đã triển khai (BR-110). Đơn `PAID` bất biến, thu nhầm xử lý ngoài hệ thống. **Làm đầu tiên ở Sprint 11.** | PB-11 |
+| PB-17 | `OWNER`/`MANAGER` tạo phiếu nhập có đơn giá; kho cộng đúng, giá vốn bình quân gia quyền cập nhật; phiếu không sửa được (BR-106, BR-107). Hủy phiếu ghi sai bằng dòng đảo dấu (BR-108). | PB-08 |
+| PB-18 | Ghi hao hụt có lý do và chặn vượt tồn; kiểm kê theo đợt đếm mù; danh sách và huy hiệu sắp hết (BR-109, BR-111, BR-112). | PB-17 |
+| PB-19 | Xuất hóa đơn `PAID` ra PDF khổ 80mm theo phạm vi xem hóa đơn (BR-122). | PB-09 |
+| PB-20 | `audit_logs` chỉ thêm cho các thao tác của BR-113; `OWNER`/`MANAGER` xem theo phạm vi; ngưỡng và báo cáo bất thường do `OWNER` cấu hình (BR-114). | PB-17, PB-18 |
+| PB-21 | Báo cáo tuần, tháng, giờ cao điểm cho `MANAGER`/`OWNER` (BR-115). | PB-12 |
+| PB-22 | Lợi nhuận gộp theo giá vốn hiện hành chỉ cho `OWNER`, không chụp giá vốn vào hóa đơn (BR-116). | PB-17, PB-21 |
+| PB-23 | Tách bill theo món thành hóa đơn mang đi, bàn vẫn một đơn `OPEN`, gỡ mã giảm giá cả hai bên (BR-117). | PB-07, PB-09 |
+| PB-24 | Giảm giá tay theo VND hoặc phần trăm, server tính; thu ngân giảm trong giới hạn `OWNER` cấu hình, vượt thì cần quản lý (BR-118). | PB-09, PB-20 |
+| PB-25 | Gói dịch vụ có giới hạn thật và trạng thái `EXPIRED` chặn ngay; `PLATFORM_ADMIN` gán một trong hai gói `BASIC`/`PRO` với giới hạn đã chốt; chỉ `PRO` có lợi nhuận gộp và xuất PDF (BR-119, BR-120). | PB-03 |
+| PB-26 | Theme riêng từng cửa hàng: màu thương hiệu và logo do `OWNER` đặt (BR-121). | PB-04 |
+
+**Đã bỏ khỏi Giai đoạn 2 (16/11/2026):** hoàn tiền một phần, hủy đơn của ca đã đóng, giá và trạng thái bán riêng từng chi nhánh, gộp bill, chuyển bàn nâng cao, lời mời qua email, truy cập hỗ trợ có thời hạn.
+
+**Đã chốt thêm 16/11/2026:** thu ngân giảm tay trong giới hạn `OWNER` cấu hình, vượt thì cần quản lý; hai gói cố định `BASIC` và `PRO`; hủy phiếu nhập ghi sai bằng dòng đảo dấu; PDF gồm tên, chi nhánh, địa chỉ, logo, mã QR, phương thức và giờ thanh toán.
+
+**Đã chốt thêm:** chưa đặt giới hạn thì thu ngân không giảm tay được; `BASIC` giới hạn 1 chi nhánh / 5 tài khoản / 15 bàn, `PRO` 5 / 30 / không giới hạn bàn; chỉ `PRO` có lợi nhuận gộp và xuất PDF; nhật ký đầy đủ nội dung, giữ 12 tháng.
+
+**Còn chưa chốt, để khi viết spec:** đơn vị tính giới hạn giảm tay (VND hay phần trăm); cách thực hiện việc dọn nhật ký quá 12 tháng (job nền hay khi có request). PB-14 vẫn để nguyên trạng, chưa làm.
 
 ## Việc theo dõi sau Sprint 2
 

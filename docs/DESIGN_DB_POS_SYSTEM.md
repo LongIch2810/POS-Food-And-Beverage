@@ -707,3 +707,40 @@ Ghi `payments` (nếu có), đổi `invoices.status`, trừ kho nằm trong **m�
 
 - Ca thu ngân đóng cưỡng chế vẫn phải có `counted_cash` do quản lý đếm và nhập.
 - Thu ngân không được sửa `opening_cash`.
+
+---
+
+## Phần 3: Thay đổi dữ liệu dự kiến cho Giai đoạn 2 (chốt 16/11/2026)
+
+Phần này là **thiết kế dự kiến, chưa có trong schema hiện tại và chưa có migration**. Tên cột, kiểu dữ liệu và index chốt khi viết spec. Quy tắc nghiệp vụ xem `BUSINESS_RULES.md` mục 18 (BR-106..BR-122). Mọi thay đổi schema đi qua migration TypeORM mới, không sửa migration cũ.
+
+### Bảng mới
+
+| Bảng | Mục đích | Quy tắc liên quan |
+| --- | --- | --- |
+| `stock_receipts` | Phiếu nhập kho: chi nhánh, ngày nhập, ghi chú nguồn nhập (chữ), người tạo, trạng thái. Không sửa sau khi lưu. | BR-106, BR-108 |
+| `stock_receipt_items` | Dòng phiếu nhập: nguyên liệu, số lượng, đơn giá nhập (số nguyên VND theo đơn vị nguyên liệu). Lưu phiếu thì ghi một dòng `IMPORT` vào `stock_movements`. | BR-106 |
+| `stocktake_sessions`, `stocktake_items` | Đợt kiểm kê: trạng thái mở/đã chốt, số đếm thực tế từng nguyên liệu. Chốt đợt thì ghi `ADJUST` cho dòng lệch. Giao diện không hiện tồn hệ thống khi nhập. | BR-111 |
+| `audit_logs` | Nhật ký thao tác chỉ thêm: ai, lúc nào, hành động, đối tượng, giá trị trước/sau, lý do, `requestId`. Phạm vi `store_id` và `branch_id` để lọc quyền xem. Giữ 12 tháng, dòng quá hạn được xóa; cách thực hiện việc dọn chốt khi viết spec. | BR-113 |
+| `anomaly_settings` | Ngưỡng báo cáo bất thường theo cửa hàng, do `OWNER` cấu hình. | BR-114 |
+| `service_plans` | Gói dịch vụ: tên, giới hạn số chi nhánh, tài khoản nhân viên, bàn mỗi chi nhánh, danh sách tính năng bật. Hai bản ghi `BASIC` (1 / 5 / 15) và `PRO` (5 / 30 / không giới hạn bàn); chỉ `PRO` bật lợi nhuận gộp và xuất PDF. | BR-119 |
+
+### Cột và trạng thái thêm vào bảng có sẵn
+
+| Bảng | Thay đổi | Quy tắc |
+| --- | --- | --- |
+| `branch_ingredient_stocks` | Thêm giá vốn bình quân gia quyền hiện hành. | BR-107 |
+| `stock_movements` | Thêm lý do hao hụt (danh sách cố định) và tham chiếu phiếu nhập hoặc đợt kiểm kê. Vẫn chỉ thêm dòng. | BR-109, BR-111 |
+| `invoices` | Thêm tham chiếu hóa đơn gốc khi tách bill (hóa đơn mang đi sinh ra từ tách). Giảm giá tay: loại, giá trị, lý do, người áp. | BR-117, BR-118 |
+| `stores` | Thêm gói dịch vụ, ngày hết hạn, trạng thái `EXPIRED` ngoài `ACTIVE` và `SUSPENDED`, màu thương hiệu, logo. | BR-119..BR-121 |
+| `permissions` | Mã mới: nhập, hao hụt, kiểm kê, xem lợi nhuận, xem nhật ký, giảm giá tay, tách bill, xuất PDF. Gán vào `role_permissions` theo ma trận mục 15. | BR-50, BR-116 |
+
+### Không thay đổi
+
+- Ràng buộc "mỗi bàn tối đa một đơn `OPEN`" giữ nguyên: tách bill sinh hóa đơn mang đi (không gắn bàn) nên không cần đổi index (BR-117).
+- Không thêm cột giá vốn vào `invoice_items`: quyết định không chụp giá vốn (BR-116).
+- Không có bảng giá riêng từng chi nhánh, không có bảng lời mời hay quyền hỗ trợ (đã bỏ).
+
+### Hủy đơn `PAID` (BR-110)
+
+Quyết định bãi bỏ làm đổi hành vi đã triển khai: bỏ chuyển `PAID` → `CANCELLED`, bỏ `SALE_REVERSAL` do hủy, bỏ trả lượt mã giảm giá khi hủy, bỏ các mã lỗi hủy đơn `PAID` liên quan. Dữ liệu hóa đơn đã `CANCELLED` từ MVP giữ nguyên. Cần migration và sửa ràng buộc `CHECK` trạng thái nếu có, quyết định chi tiết khi viết spec.

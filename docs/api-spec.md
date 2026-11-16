@@ -359,7 +359,7 @@ Mỗi mã gắn với một business rule. Danh sách đầy đủ và `message`
 | `ITEM_NOT_AVAILABLE`           | 409  | BR-09         | Món, size, topping đã ngưng bán                                        |
 | `TOPPING_NOT_ALLOWED`          | 422  | BR-11         | Topping không thuộc danh mục của món                                   |
 | `CANCEL_REASON_REQUIRED`       | 422  | BR-28, BR-29  | Hủy đơn thiếu lý do                                                    |
-| `CANCEL_NOT_ALLOWED`           | 409  | BR-29         | Hủy đơn `PAID` khi ca đã đóng                                          |
+| `CANCEL_NOT_ALLOWED`           | 409  | BR-29         | Hủy đơn `PAID` khi ca đã đóng (GĐ2 bãi bỏ hủy `PAID`, BR-110, PB-16)   |
 | `PAYMENT_AMOUNT_MISMATCH`      | 422  | BR-31         | Khoản thanh toán không bằng tổng hóa đơn                               |
 | `ZERO_TOTAL_REQUIRED`         | 422  | BR-104        | Gọi `complete-zero` khi tổng hóa đơn khác 0đ                          |
 | `TENDERED_INSUFFICIENT`        | 422  | BR-32         | Tiền khách đưa nhỏ hơn số tiền cần trả                                 |
@@ -376,7 +376,7 @@ Mỗi mã gắn với một business rule. Danh sách đầy đủ và `message`
 | `SHIFT_NOT_FOUND`              | 404  | BR-17         | Ca không tồn tại, khác cửa hàng hoặc khác chi nhánh khi không có `branch.access_all` |
 | `FORBIDDEN_NOT_SHIFT_OWNER`    | 403  | BR-16         | Thao tác trên ca của người khác (đóng ca, ghi chi phí)                 |
 | `EXPENSE_EXCEEDS_DRAWER`       | 422  | BR-53, BR-56  | Khoản chi từ két làm tiền kỳ vọng trong két nhỏ hơn 0                  |
-| `CANCEL_EXCEEDS_DRAWER`        | 409  | BR-29, BR-56  | Hủy đơn tiền mặt làm tiền kỳ vọng trong két nhỏ hơn 0                  |
+| `CANCEL_EXCEEDS_DRAWER`        | 409  | BR-29, BR-56  | Hủy đơn tiền mặt làm tiền kỳ vọng trong két nhỏ hơn 0 (GĐ2 bãi bỏ, PB-16) |
 
 
 - Thêm mã lỗi mới thì cập nhật bảng này và tham chiếu mã `BR-xx` tương ứng.
@@ -521,7 +521,7 @@ Mỗi endpoint trong `.devloopflow/specs/<module>.md` phải có đủ các mụ
 - Phạm vi chi nhánh xác định theo loại route ở mục 3.
 - Thanh toán một lần, một phương thức, đủ toàn bộ; tối đa một mã giảm giá mỗi hóa đơn. Đơn 0đ hoàn tất bằng hành động riêng, không tạo `payment` (BR-31, BR-40, BR-104).
 - Thanh toán gửi lại cùng key và nội dung trả kết quả cũ; `payments.idempotency_request_hash` dùng để so nội dung (BR-34).
-- Hủy hóa đơn `PAID` theo BR-29 giữ nguyên `payments`; tiền mặt hoàn từ két, chuyển khoản hoàn ngoài hệ thống và ghi lý do.
+- Hủy hóa đơn `PAID` theo BR-29 giữ nguyên `payments`; tiền mặt hoàn từ két, chuyển khoản hoàn ngoài hệ thống và ghi lý do. (Hiện hành ở MVP; Giai đoạn 2 bãi bỏ hủy `PAID` theo BR-110, làm ở PB-16.)
 - Access token 30 phút, refresh token 7 ngày và xoay vòng mỗi lần làm mới. Mật khẩu tối thiểu 12 ký tự; giới hạn tần suất xem [auth.md](architecture/auth.md).
 - MVP chấp nhận lần lưu sau ghi đè thay đổi menu và giá, chưa dùng `ETag`/`If-Match`.
 - Ảnh món không bắt buộc; người có quyền sửa món tải ảnh lên hệ thống theo BR-105.
