@@ -731,6 +731,7 @@ Phần này là **thiết kế dự kiến, chưa có trong schema hiện tại 
 | --- | --- | --- |
 | `branch_ingredient_stocks` | Thêm giá vốn bình quân gia quyền hiện hành. | BR-107 |
 | `stock_movements` | Thêm lý do hao hụt (danh sách cố định) và tham chiếu phiếu nhập hoặc đợt kiểm kê. Vẫn chỉ thêm dòng. | BR-109, BR-111 |
+| `invoice_items` | Thêm giá vốn đã chụp của dòng (số nguyên VND), ghi lúc hóa đơn thành `PAID` cùng transaction trừ kho; NULL với hóa đơn trước khi bật tính năng. Không đổi sau khi ghi. | BR-116 |
 | `invoices` | Thêm tham chiếu hóa đơn gốc khi tách bill (hóa đơn mang đi sinh ra từ tách). Giảm giá tay: loại, giá trị, lý do, người áp. | BR-117, BR-118 |
 | `stores` | Thêm gói dịch vụ, ngày hết hạn, trạng thái `EXPIRED` ngoài `ACTIVE` và `SUSPENDED`, màu thương hiệu, logo. | BR-119..BR-121 |
 | `permissions` | Mã mới: nhập, hao hụt, kiểm kê, xem lợi nhuận, xem nhật ký, giảm giá tay, tách bill, xuất PDF. Gán vào `role_permissions` theo ma trận mục 15. | BR-50, BR-116 |
@@ -738,7 +739,6 @@ Phần này là **thiết kế dự kiến, chưa có trong schema hiện tại 
 ### Không thay đổi
 
 - Ràng buộc "mỗi bàn tối đa một đơn `OPEN`" giữ nguyên: tách bill sinh hóa đơn mang đi (không gắn bàn) nên không cần đổi index (BR-117).
-- Không thêm cột giá vốn vào `invoice_items`: quyết định không chụp giá vốn (BR-116).
 - Không có bảng giá riêng từng chi nhánh, không có bảng lời mời hay quyền hỗ trợ (đã bỏ).
 
 ### Hủy đơn `PAID` (BR-110)

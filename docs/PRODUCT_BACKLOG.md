@@ -8,6 +8,8 @@
 
 **SePay:** Dự án cá nhân phục vụ học tập; chủ dự án quyết định chỉ sử dụng và nghiệm thu SePay Test mode, không triển khai hoặc yêu cầu kiểm SePay Live. Quyết định này không tự thay đổi phạm vi hạ tầng PB-14.
 
+**Giai đoạn 2:** phạm vi chốt ngày 16/11/2026, xem bảng "Product Backlog Giai đoạn 2" bên dưới (PB-16..PB-26); chưa có sprint nào được chọn.
+
 **Trạng thái:** Product Backlog còn được refinement. Thứ tự dưới đây là ưu tiên đề xuất cho MVP; [Sprint 2 đã kết thúc ngày 30/10/2026](../sprints/sprint-02/SPRINT.md#kết-luận-sprint-2--2026-10-30). [Sprint 3 đã kết thúc và được Product Owner nghiệm thu local ngày 01/11/2026](../sprints/sprint-03/SPRINT.md#kết-luận-sprint-3--2026-11-01): PB-04 + PB-13 tổ chức. Lịch ban đầu 30/10–05/11/2026 được giữ trong hồ sơ; sprint kết thúc sớm. [Sprint 4](../sprints/sprint-04/SPRINT.md) đã hoàn thành triển khai và kiểm thử PB-05 (Thực đơn) + lát cắt PB-13 thực đơn ngày 02/11/2026, sẵn sàng nghiệm thu. [Sprint 5](../sprints/sprint-05/SPRINT.md#kết-luận-đóng-sprint-05--05112026) đã kết thúc và được nghiệm thu local ngày 05/11/2026 cho PB-06 (Ca làm) + lát cắt PB-13 ca làm, 19/19 tiêu chí PASS. [Sprint 6](../sprints/sprint-06/SPRINT.md) đã kết thúc và được nghiệm thu local ngày 07/11/2026 cho PB-07 + lát cắt PB-13 bán hàng, S6-01..09 PASS. [Sprint 7](../sprints/sprint-07/SPRINT.md) đã đóng sớm ngày 07/11/2026 và nghiệm thu local PB-08, PB-08a + lát cắt PB-13 Kho/Khuyến mãi, S7-01..07 PASS. Bảng này không thay thế đặc tả endpoint.
 
 Nguồn phạm vi: [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md) mục 5; quy tắc chi tiết ở [BUSINESS_RULES.md](BUSINESS_RULES.md). PB-01, PB-02 và lát cắt xác thực của PB-13 đã được Product Owner nghiệm thu. Ngày30/10/2026, PB-03 và PB-13 lát cắt quản trị nền tảng được nghiệm thu local theo phạm vi và bằng chứng trong [Sprint 2](../sprints/sprint-02/SPRINT.md). Ngày01/11/2026, PB-04 và PB-13 tổ chức được nghiệm thu local trong Sprint 3. UI đăng nhập/quản trị nền tảng/Cài đặt tổ chức, Thực đơn, Ca làm, Bán hàng/Sơ đồ bàn và Kho/Khuyến mãi trong phạm vi Sprint 7 dùng API thật; tại thời điểm kết thúc Sprint 7, thanh toán, báo cáo và các màn ngoài lát cắt đã nối API chưa được nghiệm thu. Trạng thái thanh toán Sprint 08 xem ở trên. Mỗi item cần refinement và spec đã chốt trong `.devloopflow/specs/` trước khi code phần tương ứng.
@@ -47,7 +49,7 @@ Phạm vi chốt ngày 16/11/2026, quy tắc ở [BUSINESS_RULES.md](BUSINESS_RU
 | PB-19 | Xuất hóa đơn `PAID` ra PDF khổ 80mm theo phạm vi xem hóa đơn (BR-122). | PB-09 |
 | PB-20 | `audit_logs` chỉ thêm cho các thao tác của BR-113; `OWNER`/`MANAGER` xem theo phạm vi; ngưỡng và báo cáo bất thường do `OWNER` cấu hình (BR-114). | PB-17, PB-18 |
 | PB-21 | Báo cáo tuần, tháng, giờ cao điểm cho `MANAGER`/`OWNER` (BR-115). | PB-12 |
-| PB-22 | Lợi nhuận gộp theo giá vốn hiện hành chỉ cho `OWNER`, không chụp giá vốn vào hóa đơn (BR-116). | PB-17, PB-21 |
+| PB-22 | Lợi nhuận gộp chỉ cho `OWNER`, chụp giá vốn vào dòng hóa đơn lúc `PAID` để báo cáo quá khứ không đổi; hóa đơn cũ hiển thị "chưa có giá vốn" (BR-116). | PB-17, PB-21 |
 | PB-23 | Tách bill theo món thành hóa đơn mang đi, bàn vẫn một đơn `OPEN`, gỡ mã giảm giá cả hai bên (BR-117). | PB-07, PB-09 |
 | PB-24 | Giảm giá tay theo VND hoặc phần trăm, server tính; thu ngân giảm trong giới hạn `OWNER` cấu hình, vượt thì cần quản lý (BR-118). | PB-09, PB-20 |
 | PB-25 | Gói dịch vụ có giới hạn thật và trạng thái `EXPIRED` chặn ngay; `PLATFORM_ADMIN` gán một trong hai gói `BASIC`/`PRO` với giới hạn đã chốt; chỉ `PRO` có lợi nhuận gộp và xuất PDF (BR-119, BR-120). | PB-03 |

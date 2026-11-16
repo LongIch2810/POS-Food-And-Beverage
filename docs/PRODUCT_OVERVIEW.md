@@ -74,7 +74,7 @@ Phạm vi chốt ngày 16/11/2026. Quy tắc chi tiết ở `BUSINESS_RULES.md` 
 - **Kho:** nhập hàng bằng phiếu nhập có đơn giá nhập (nhà cung cấp chỉ ghi chú chữ), giá vốn bình quân gia quyền, ghi hao hụt có lý do và chặn vượt tồn, kiểm kê theo đợt đếm mù, danh sách và huy hiệu sắp hết hàng.
 - **Hủy đơn:** bãi bỏ hủy đơn `PAID`; chỉ đơn `OPEN` hủy được. Đây là thay đổi hành vi MVP đã triển khai (PB-11).
 - **Nhật ký thao tác** (`audit_logs`) và báo cáo bất thường với ngưỡng do `OWNER` cấu hình.
-- **Báo cáo:** tuần và tháng, giờ cao điểm, lợi nhuận gộp (chỉ `OWNER`, theo giá vốn hiện hành, không chụp giá vốn vào hóa đơn).
+- **Báo cáo:** tuần và tháng, giờ cao điểm, lợi nhuận gộp (chỉ `OWNER`, giá vốn chụp vào dòng hóa đơn lúc thanh toán nên số liệu quá khứ không đổi).
 - **Bán hàng:** tách bill theo món thành hóa đơn mang đi; giảm giá tay (thu ngân trong giới hạn do `OWNER` cấu hình).
 - **Gói dịch vụ** hai gói cố định `BASIC` và `PRO`, có giới hạn thật (chi nhánh, tài khoản, bàn, tính năng) và trạng thái hết hạn `EXPIRED`, chặn ngay.
 - **Theme riêng** từng cửa hàng: màu thương hiệu và logo.
@@ -203,7 +203,7 @@ Công thức: `tiền kỳ vọng = tiền đầu ca + tiền mặt từ hóa đ
 - Không có đăng ký công khai. Tài khoản mới buộc đổi mật khẩu ở lần đăng nhập đầu, trừ `PLATFORM_ADMIN` được tạo bằng bootstrap.
 - Mật khẩu chỉ lưu dạng băm. Refresh token chỉ lưu hash.
 - Mỗi cửa hàng luôn có ít nhất một `OWNER` đang hoạt động.
-- Cửa hàng `SUSPENDED`: chặn đăng nhập và mọi API của người dùng thuộc cửa hàng, thu hồi refresh token, giữ nguyên dữ liệu.
+- (Giai đoạn 2: cửa hàng `EXPIRED` hết hạn gói bị chặn tương tự, BR-120.) Cửa hàng `SUSPENDED`: chặn đăng nhập và mọi API của người dùng thuộc cửa hàng, thu hồi refresh token, giữ nguyên dữ liệu.
 
 ## 9. Công nghệ
 

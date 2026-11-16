@@ -250,7 +250,7 @@ Tầng 1 | Sân vườn | Tất cả                                   Còn tr�
 - Trạng thái bàn **tính từ dữ liệu** (có đơn `OPEN` hay không), không có nút đổi tay (BR-99).
 - Chạm bàn trống: tạo đơn mới. Chạm bàn đang phục vụ: mở đơn đó để gọi thêm món hoặc thanh toán. Khách ngồi chung, hoặc bạn của khách tới sau, thì gọi thêm vào **cùng một đơn**, không tạo đơn thứ hai (BR-74, BR-91).
 - **Chuyển bàn:** từ đơn của bàn đang phục vụ, bấm "Chuyển bàn". Sơ đồ bàn hiện lên và chỉ các bàn **trống cùng chi nhánh** chọn được. Chọn bàn mới là đổi bàn của đơn (BR-92). Bàn ngưng dùng hoặc bàn của chi nhánh khác không xuất hiện (BR-95).
-- Tách bill và gộp bill chưa có ở MVP (BR-101), giao diện không hiện các nút này.
+- Tách bill chưa có ở MVP (BR-101), giao diện không hiện nút này cho đến khi làm GĐ2 (BR-117, mục 15). Gộp bill không làm.
 - Chi nhánh chưa có bàn: hiện câu hướng dẫn "Chi nhánh chưa có bàn. Thêm bàn trong Cài đặt, hoặc bán đơn mang đi." Đơn mang đi vẫn tạo được.
 - Chia khu vực bằng tab (Tầng 1, Sân vườn). Bàn xếp theo lưới, thẻ cao tối thiểu 96px.
 
@@ -830,7 +830,7 @@ src/
 - Không có nút Đăng ký công khai.
 - Không hiển thị dữ liệu vận hành (hóa đơn, ca, kho, doanh thu) trong khu quản trị nền tảng.
 - Không hiển thị lại mật khẩu tạm sau khi hộp thoại đã đóng.
-- Không hiện nút tách bill, gộp bill khi chưa hỗ trợ.
+- Không hiện nút tách bill khi chưa hỗ trợ (GĐ2, BR-117). Không có nút gộp bill.
 
 ---
 
@@ -862,7 +862,7 @@ Phần này mô tả màn và thao tác **chưa có trong ứng dụng**. Quy t�
 | Kho: Hao hụt | Chọn nguyên liệu, số lượng, lý do từ danh sách cố định, ghi chú. Báo lỗi khi vượt tồn. | BR-109 |
 | Kho: Kiểm kê | Mở đợt, nhập số đếm từng nguyên liệu mà không thấy tồn hệ thống, chốt đợt rồi mới hiện chênh lệch. | BR-111 |
 | Kho: Sắp hết | Tab "Sắp hết" và huy hiệu số trên menu Kho. | BR-112 |
-| Báo cáo | Thêm báo cáo tuần, tháng, biểu đồ giờ cao điểm. Mục lợi nhuận gộp chỉ hiện cho `OWNER`, kèm ghi chú "tính theo giá vốn hiện hành". | BR-115, BR-116 |
+| Báo cáo | Thêm báo cáo tuần, tháng, biểu đồ giờ cao điểm. Mục lợi nhuận gộp chỉ hiện cho `OWNER`, hiển thị số đơn "chưa có giá vốn" (hóa đơn trước khi bật tính năng) bị loại khỏi lợi nhuận. | BR-115, BR-116 |
 | Nhật ký thao tác | Bảng lọc theo người, hành động, ngày. `OWNER` toàn cửa hàng, `MANAGER` chi nhánh mình. | BR-113 |
 | Cài đặt: Ngưỡng bất thường | `OWNER` nhập ngưỡng; báo cáo bất thường hiển thị theo ngưỡng này. | BR-114 |
 | Hóa đơn: Tách bill | Chọn món và số lượng để tách sang hóa đơn mang đi; nhắc rằng mã giảm giá bị gỡ ở cả hai hóa đơn. | BR-117 |
