@@ -1,6 +1,6 @@
 # Sprint 10 — Báo cáo doanh thu và Sổ kho
 
-**Trạng thái:** Đã chốt phạm vi ngày 14/11/2026; bắt đầu 14/11/2026, ngày kết thúc chưa được Product Owner chốt. Task Báo cáo và Sổ kho đã đóng; QA cấp sprint vòng 1 ngày 16/11/2026 FAIL (6/7 AC); vòng 3 cùng ngày PASS 7/7 AC (xem [report-3](../../.devloopflow/verify/20261116-sprint10-qa/report-3.md)). Sprint Review và Retrospective đã ghi; chưa có CI trên commit tích hợp, sprint chưa đóng.
+**Trạng thái:** Đã chốt phạm vi ngày 14/11/2026; bắt đầu 14/11/2026, Product Owner chốt ngày kết thúc 16/11/2026. Task Báo cáo và Sổ kho đã đóng; QA cấp sprint vòng 1 ngày 16/11/2026 FAIL (6/7 AC); vòng 3 cùng ngày PASS 7/7 AC (xem [report-3](../../.devloopflow/verify/20261116-sprint10-qa/report-3.md)). Sprint Review và Retrospective đã ghi. Mã đã merge vào `master` (PR #24, merge commit `ebf4e5e`) và CI GitHub Actions trên commit đó thành công. **Sprint 10 đã đóng ngày 16/11/2026** (QA local; không phải xác nhận production).
 
 **Nguồn:** [Product Backlog](../../docs/PRODUCT_BACKLOG.md) PB-12/PB-13; [Sprint 09](../sprint-09/SPRINT.md) mục ranh giới và quyết định đóng; [Product Overview](../../docs/PRODUCT_OVERVIEW.md) mục 5; [Business Rules](../../docs/BUSINESS_RULES.md) BR-62..66 và BR-77; [thiết kế UI](../../DESIGN.md) mục 5.6; [quy ước API](../../docs/api-spec.md).
 
@@ -59,7 +59,7 @@ Người có quyền xem doanh thu theo ngày Việt Nam trong đúng phạm vi 
 
 ## Theo dõi planning
 
-- Quyết định Product Owner ngày 14/11/2026: PB-12 + UI Báo cáo; thêm biểu đồ doanh thu theo ngày và món bán chạy; bắt đầu 14/11. Ngày kết thúc chưa chốt.
+- Quyết định Product Owner ngày 14/11/2026: PB-12 + UI Báo cáo; thêm biểu đồ doanh thu theo ngày và món bán chạy; bắt đầu 14/11. Ngày 16/11/2026 Product Owner chốt ngày kết thúc và đóng sprint.
 - Product Owner bổ sung tab Sổ kho vào Sprint 10; source hiện gọi API thật, cần kiểm lại trên ứng dụng và xử lý thiếu sót nếu phát hiện.
 - Quyết định Product Owner ngày 15/11/2026: hủy **PB-15 nhập dữ liệu hàng loạt** khỏi Sprint 10 và khỏi spec/plan/task; mã và hồ sơ PB-15 không được tích hợp. Mã tiêu chí S10-07..S10-10 đã bỏ, giữ nguyên S10-11 để không đổi tham chiếu.
 - Khi bắt đầu triển khai, lập spec và plan/task devloopflow riêng; ghi nhánh, HEAD, trạng thái working tree, AC ↔ S10 và ma trận AC ↔ artifact. Chỉ tick S10 sau QA cấp sprint trên bản cuối. Sprint Review, Retrospective và đóng sprint cần ghi riêng.
@@ -80,7 +80,7 @@ Người có quyền xem doanh thu theo ngày Việt Nam trong đúng phạm vi 
 | PB-12 (API báo cáo) | S10-01..04 đạt: biên ngày UTC+7, hủy sau thanh toán, bigint đến 9007199254740991 (vượt 1 trả 500, không làm tròn), top 10 khớp SQL. Quyền và cross-store đúng (S10-03). |
 | Lát cắt PB-13 (UI Báo cáo, Sổ kho) | S10-05, S10-06 và S10-11 đạt: ngày `dd/MM/yyyy`, trạng thái tải/rỗng/lỗi/Thử lại, đổi phiên không lộ dữ liệu cũ, Sổ kho SALE/SALE_REVERSAL khớp SQL. Thêm router theo địa chỉ cho các tab (Back/Forward/F5). |
 | Chất lượng | API 256/256, UI 230/230, browser 37/37, typecheck/build exit 0, `npm audit --audit-level=high` exit 0 (POS_API còn 3 moderate từ typeorm). QA cấp sprint 3 vòng: vòng 1 FAIL (V1-1 ngày theo locale, V1-2 dialog B-66), vòng 2 và 3 PASS; [sổ FAIL](../../.devloopflow/verify/20261116-sprint10-qa/fails.md) không còn mục mở. |
-| Tích hợp | Mã Sprint 10 vẫn ở working tree chưa commit trên `feat/sprint10-reports` (HEAD `19ef547`); chưa push, chưa PR, chưa có CI cho mã này. Hash 288 file đầu/cuối không đổi trong từng vòng QA. |
+| Tích hợp | Tại thời điểm QA, mã ở working tree chưa commit trên `feat/sprint10-reports` (HEAD `19ef547`). Sau đó đã merge vào `master` qua PR #24 (`ebf4e5e`); CI của commit này thành công (kiểm bằng `gh run list` ngày 16/11/2026). Hash 288 file đầu/cuối không đổi trong từng vòng QA. |
 | Ngoài phạm vi | PB-14 hạ tầng; SePay Live (dự án chỉ dùng Test mode). |
 
 **Giới hạn kết luận:** QA chạy local trên Chrome (giả lập locale en-US/vi-VN), không trên thiết bị cảm ứng thật, Safari/Firefox hay CI. Browser test của dự án dùng `window.fetch` giả; API thật chỉ kiểm trong sandbox của QA. B-67 (flake helper test, đã sửa) chưa được đo lại riêng. Còn mục Low chờ xử lý trong [backlog](../../.devloopflow/review/backlog.md).
