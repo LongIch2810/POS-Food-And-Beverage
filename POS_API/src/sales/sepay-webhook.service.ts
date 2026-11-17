@@ -3,6 +3,13 @@ import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { sePayWebhookSecret } from '../auth/auth-config';
 import { httpError } from '../http/http-error';
+import { PromotionCode } from '../promotions/entities/promotion-code.entity';
+import { WorkShift } from '../shifts/entities/work-shift.entity';
+import { BankTransferEvent } from './entities/bank-transfer-event.entity';
+import { InvoicePromotionCode } from './entities/invoice-promotion-code.entity';
+import { Invoice } from './entities/invoice.entity';
+import { Payment } from './entities/payment.entity';
+import { TransferAttempt } from './entities/transfer-attempt.entity';
 import { SalesService } from './sales.service';
 
 type EventPayload={
@@ -47,59 +54,54 @@ export class SePayWebhookService {
       .matchAll(/(?<![A-Za-z0-9])HD[A-Z0-9]{16}(?![A-Za-z0-9])/g)].map(match=>match[0]))];
     await this.db.transaction(async manager=>{
       const eventId=String(payload.id);
-      await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',['sepay:'+eventId]);
-      const prior=await manager.query('SELECT id FROM bank_transfer_events WHERE provider_event_id=$1',[eventId]);
-      if(prior.length)return;
+      // QueryBuilder: table-less SELECT (advisory lock or probe); no repository method runs it
+      await manager.createQueryBuilder().select('pg_advisory_xact_lock(hashtextextended(:lockKey, 0))','locked').fromDummy().setParameter('lockKey','sepay:'+eventId).getRawOne();
+      if(await manager.getRepository(BankTransferEvent).existsBy({provider_event_id:eventId}))return;
       const reference=tokens.length===1?tokens[0]:null;
-      const [attempt]=reference?await manager.query(`SELECT a.*,i.work_shift_id,i.branch_id FROM transfer_attempts a
-        JOIN invoices i ON i.id=a.invoice_id WHERE a.transfer_reference=$1`,[reference]):[];
+      const found=reference?await manager.getRepository(TransferAttempt).findOne({where:{transfer_reference:reference},
+        select:{id:true,invoice_id:true,store_id:true,account_number:true,idempotency_key:true,idempotency_request_hash:true}}):null;
+      const scoped=found?await manager.getRepository(Invoice).findOne({where:{id:found.invoice_id},select:{id:true,work_shift_id:true,branch_id:true}}):null;
+      const attempt=found&&scoped&&{...found,work_shift_id:scoped.work_shift_id,branch_id:scoped.branch_id};
       if(attempt&&attempt.account_number===payload.accountNumber&&payload.transferType==='in'){
-        const [shift]=await manager.query('SELECT status FROM work_shifts WHERE id=$1 FOR UPDATE',[attempt.work_shift_id]);
-        const [invoice]=await manager.query('SELECT status FROM invoices WHERE id=$1 FOR UPDATE',[attempt.invoice_id]);
-        const [locked]=await manager.query('SELECT status FROM transfer_attempts WHERE id=$1 FOR UPDATE',[attempt.id]);
+        const shift=(await manager.getRepository(WorkShift).findOne({where:{id:attempt.work_shift_id},select:{id:true,status:true},lock:{mode:'pessimistic_write'}}))!;
+        const invoice=(await manager.getRepository(Invoice).findOne({where:{id:attempt.invoice_id},select:{id:true,status:true},lock:{mode:'pessimistic_write'}}))!;
+        const locked=(await manager.getRepository(TransferAttempt).findOne({where:{id:attempt.id},select:{id:true,status:true},lock:{mode:'pessimistic_write'}}))!;
         let disposition:'PAID'|'UNDERPAID'|'ATTEMPT_CANCELLED'|'INVOICE_NOT_OPEN'|'PROMOTION_INVALID'|'DUPLICATE';
         if(invoice.status!=='OPEN'||shift.status!=='OPEN')disposition='INVOICE_NOT_OPEN';
         else if(locked.status!=='PENDING')disposition=locked.status==='CANCELLED'?'ATTEMPT_CANCELLED':'INVOICE_NOT_OPEN';
         else{
-          await manager.query(`SELECT p.id FROM promotion_codes p JOIN invoice_promotion_codes ip ON ip.promotion_code_id=p.id
-            WHERE ip.invoice_id=$1 FOR UPDATE OF p`,[attempt.invoice_id]);
+          const linked=await manager.getRepository(InvoicePromotionCode).findOneBy({invoice_id:attempt.invoice_id});
+          if(linked)await manager.getRepository(PromotionCode).findOne({where:{id:linked.promotion_code_id},select:{id:true},lock:{mode:'pessimistic_write'}});
           const pricing=await this.sales.evaluateInvoicePricing(manager,attempt.invoice_id);
           if(!pricing.promotionApplicable)disposition='PROMOTION_INVALID';
           else if(BigInt(payload.transferAmount)<pricing.totalAmount)disposition='UNDERPAID';
           else{
             const bankReference=payload.referenceCode.trim();
             const transactionRef=bankReference||`SEPAY:${eventId}`;
-            const inserted=await manager.query(`INSERT INTO payments(id,invoice_id,method,amount,actual_received_amount,excess_amount,
-              transfer_attempt_id,receiving_account_number,transaction_ref,transaction_ref_kind,confirmation_source,idempotency_key,idempotency_request_hash)
-              VALUES($1,$2,'TRANSFER',$3,$4,$5,$6,$7,$8,$11,'WEBHOOK',$9,$10)
-              ON CONFLICT (receiving_account_number,transaction_ref_kind,transaction_ref)
-                WHERE method='TRANSFER' AND transaction_ref IS NOT NULL DO NOTHING RETURNING id`,
-              [randomUUID(),attempt.invoice_id,Number(pricing.totalAmount),payload.transferAmount,
-                payload.transferAmount-Number(pricing.totalAmount),attempt.id,attempt.account_number,
-                transactionRef,attempt.idempotency_key,attempt.idempotency_request_hash,bankReference?'BANK':'SEPAY_EVENT']);
-            if(inserted.length===0)disposition='DUPLICATE';
+            // QueryBuilder: ON CONFLICT (target) DO NOTHING; upsert() only does DO UPDATE and orIgnore() drops the target
+            const inserted=await manager.createQueryBuilder().insert().into(Payment).values({id:randomUUID(),invoice_id:attempt.invoice_id,method:'TRANSFER',
+              amount:String(pricing.totalAmount),actual_received_amount:String(payload.transferAmount),excess_amount:String(payload.transferAmount-Number(pricing.totalAmount)),
+              transfer_attempt_id:attempt.id,receiving_account_number:attempt.account_number,transaction_ref:transactionRef,transaction_ref_kind:bankReference?'BANK':'SEPAY_EVENT',
+              confirmation_source:'WEBHOOK',idempotency_key:attempt.idempotency_key,idempotency_request_hash:attempt.idempotency_request_hash})
+              .onConflict("(receiving_account_number,transaction_ref_kind,transaction_ref) WHERE method='TRANSFER' AND transaction_ref IS NOT NULL DO NOTHING").returning(['id']).updateEntity(false).execute();
+            if(inserted.raw.length===0)disposition='DUPLICATE';
             else{
               await this.sales.finalizeInvoice(manager,attempt.invoice_id,null);
-              await manager.query(`UPDATE transfer_attempts SET status='PAID',updated_at=now() WHERE id=$1`,[attempt.id]);
+              await manager.getRepository(TransferAttempt).update({id:attempt.id},{status:'PAID',updated_at:()=>'now()'});
               disposition='PAID';
             }
           }
         }
-        await manager.query(`INSERT INTO bank_transfer_events(id,provider_event_id,provider_reference,account_number,
-          transfer_reference,transfer_amount,content,disposition,store_id,branch_id,invoice_id,attempt_id)
-          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-          [randomUUID(),eventId,payload.referenceCode.trim()||null,payload.accountNumber,reference,payload.transferAmount,
-            payload.content,disposition,attempt.store_id,attempt.branch_id,attempt.invoice_id,attempt.id]);
+        await manager.getRepository(BankTransferEvent).insert({id:randomUUID(),provider_event_id:eventId,provider_reference:payload.referenceCode.trim()||null,
+          account_number:payload.accountNumber,transfer_reference:reference,transfer_amount:String(payload.transferAmount),content:payload.content,disposition,
+          store_id:attempt.store_id,branch_id:attempt.branch_id,invoice_id:attempt.invoice_id,attempt_id:attempt.id});
         return;
       }
       // Exact QR token but a different receiving account: keep the tenant link so managers see it as WRONG_ACCOUNT.
-      const wrongAccount=Boolean(attempt)&&payload.transferType==='in';
-      await manager.query(`INSERT INTO bank_transfer_events(id,provider_event_id,provider_reference,account_number,
-        transfer_reference,transfer_amount,content,disposition,store_id,branch_id,invoice_id,attempt_id)
-        VALUES($1,$2,$3,$4,$5,$6,$7,'QUARANTINED',$8,$9,$10,$11)`,
-        [randomUUID(),eventId,payload.referenceCode.trim()||null,payload.accountNumber,reference,
-          payload.transferAmount,payload.content,wrongAccount?attempt.store_id:null,wrongAccount?attempt.branch_id:null,
-          wrongAccount?attempt.invoice_id:null,wrongAccount?attempt.id:null]);
+      const wrongAccount=payload.transferType==='in'?attempt:null;
+      await manager.getRepository(BankTransferEvent).insert({id:randomUUID(),provider_event_id:eventId,provider_reference:payload.referenceCode.trim()||null,
+        account_number:payload.accountNumber,transfer_reference:reference,transfer_amount:String(payload.transferAmount),content:payload.content,disposition:'QUARANTINED',
+        store_id:wrongAccount?.store_id??null,branch_id:wrongAccount?.branch_id??null,invoice_id:wrongAccount?.invoice_id??null,attempt_id:wrongAccount?.id??null});
     });
   }
 }

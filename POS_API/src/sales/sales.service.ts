@@ -1,9 +1,29 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, In, ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 import { UserSummary } from '../auth/auth.service';
+import { User } from '../auth/entities/user.entity';
 import { httpError } from '../http/http-error';
 import { uuidPattern } from '../http/request-validation';
+import { CategoryTopping } from '../menu/entities/category-topping.entity';
+import { ProductSize } from '../menu/entities/product-size.entity';
+import { Topping } from '../menu/entities/topping.entity';
+import { Branch } from '../organization/entities/branch.entity';
+import { DiningTable } from '../organization/entities/dining-table.entity';
+import { Ingredient } from '../inventory/entities/ingredient.entity';
+import { BranchIngredientStock } from '../inventory/entities/branch-ingredient-stock.entity';
+import { ProductSizeIngredient } from '../inventory/entities/product-size-ingredient.entity';
+import { StockMovement } from '../inventory/entities/stock-movement.entity';
+import { ToppingIngredient } from '../inventory/entities/topping-ingredient.entity';
+import { PromotionCode } from '../promotions/entities/promotion-code.entity';
+import { CashReconciliation } from '../shifts/entities/cash-reconciliation.entity';
+import { WorkShift } from '../shifts/entities/work-shift.entity';
+import { InvoiceItem } from './entities/invoice-item.entity';
+import { InvoiceItemTopping } from './entities/invoice-item-topping.entity';
+import { InvoicePromotionCode } from './entities/invoice-promotion-code.entity';
+import { Invoice } from './entities/invoice.entity';
+import { Payment } from './entities/payment.entity';
+import { TransferAttempt } from './entities/transfer-attempt.entity';
 import { AddInvoiceItemDto, CreateInvoiceDto, PatchInvoiceItemDto } from './http/sales.dto';
 import { CashPaymentDto, InvoicePricing, PaymentDto, PaymentPreviewDto } from './http/payment.dto';
 import { evaluatePromotion } from '../promotions/promotion-calculation';
@@ -40,17 +60,19 @@ export class SalesService {
   }
 
   private async shift(manager: EntityManager, user: UserSummary): Promise<Row> {
-    const rows = await manager.query(`SELECT s.id, s.branch_id, b.store_id, b.is_active FROM work_shifts s
-      JOIN branches b ON b.id=s.branch_id WHERE s.user_id=$1 AND s.status='OPEN' AND s.shift_type='CASHIER' FOR UPDATE OF s,b`, [user.id]);
-    const shift = rows[0];
-    if (!shift || shift.store_id !== scope(user)) throw httpError(409, 'SHIFT_NOT_OPEN', 'Bạn cần mở ca thu ngân để bán hàng.');
-    return shift;
+    // Shift first, then branch: same lock order as the old FOR UPDATE OF s,b (PB-07), held until commit.
+    const shift = await manager.getRepository(WorkShift).findOne({ where: { user_id: user.id, status: 'OPEN', shift_type: 'CASHIER' },
+      select: { id: true, branch_id: true }, lock: { mode: 'pessimistic_write' } });
+    const branch = shift ? await manager.getRepository(Branch).findOne({ where: { id: shift.branch_id },
+      select: { id: true, store_id: true, is_active: true }, lock: { mode: 'pessimistic_write' } }) : null;
+    if (!shift || !branch || branch.store_id !== scope(user)) throw httpError(409, 'SHIFT_NOT_OPEN', 'Bạn cần mở ca thu ngân để bán hàng.');
+    return { id: shift.id, branch_id: shift.branch_id, store_id: branch.store_id, is_active: branch.is_active };
   }
 
   private async invoice(manager: EntityManager, user: UserSummary, id: string, lock = false): Promise<Row> {
-    const rows = await manager.query(`SELECT i.*, b.store_id FROM invoices i JOIN branches b ON b.id=i.branch_id
-      WHERE i.id=$1 ${lock ? 'FOR UPDATE OF i' : ''}`, [id]);
-    const row = rows[0];
+    const invoice = await manager.getRepository(Invoice).findOne({ where: { id }, ...(lock ? { lock: { mode: 'pessimistic_write' as const } } : {}) });
+    const branch = invoice ? await manager.getRepository(Branch).findOne({ where: { id: invoice.branch_id }, select: { id: true, store_id: true } }) : null;
+    const row: Row | null = invoice && branch ? { ...invoice, store_id: branch.store_id } : null;
     if (!row || row.store_id !== scope(user) || (!user.permissions.includes('branch.access_all') && row.branch_id !== user.branchId))
       throw httpError(404, 'NOT_FOUND', 'Không tìm thấy hóa đơn.');
     return row;
@@ -58,19 +80,19 @@ export class SalesService {
 
   private async detail(manager: EntityManager, row: Row) {
     const pricing = row.status === 'OPEN' ? await this.evaluateInvoicePricing(manager, row.id) : null;
-    const [context] = await manager.query(`SELECT s.status AS shift_status, s.user_id AS cashier_id,
-      u.full_name AS cashier_name, t.name AS table_name, p.method AS payment_method
-      FROM work_shifts s JOIN users u ON u.id=s.user_id
-      LEFT JOIN dining_tables t ON t.id=$2 LEFT JOIN payments p ON p.invoice_id=$3 WHERE s.id=$1`,
-      [row.work_shift_id, row.table_id, row.id]);
-    const promotions: Row[] = await manager.query('SELECT code,discount_amount FROM invoice_promotion_codes WHERE invoice_id=$1',[row.id]);
-    const items: Row[] = await manager.query(`SELECT * FROM invoice_items WHERE invoice_id=$1 ORDER BY created_at,id`, [row.id]);
-    const toppings: Row[] = items.length ? await manager.query(`SELECT t.* FROM invoice_item_toppings t
-      JOIN invoice_items i ON i.id=t.invoice_item_id WHERE i.invoice_id=$1 ORDER BY t.created_at,t.id`, [row.id]) : [];
+    const shift = (await manager.getRepository(WorkShift).findOne({ where: { id: row.work_shift_id }, relations: { user: true },
+      select: { id: true, status: true, user_id: true, user: { id: true, full_name: true } } }))!;
+    const table = row.table_id ? await manager.getRepository(DiningTable).findOne({ where: { id: row.table_id }, select: { id: true, name: true } }) : null;
+    const payment = await manager.getRepository(Payment).findOne({ where: { invoice_id: row.id }, select: { id: true, method: true } });
+    const promotions: Row[] = await manager.getRepository(InvoicePromotionCode).find({ where: { invoice_id: row.id },
+      select: { invoice_id: true, code: true, discount_amount: true } });
+    const items: Row[] = await manager.getRepository(InvoiceItem).find({ where: { invoice_id: row.id }, order: { created_at: 'ASC', id: 'ASC' } });
+    const toppings: Row[] = items.length ? await manager.getRepository(InvoiceItemTopping).find({
+      where: { invoice_item_id: In(items.map(i => i.id)) }, order: { created_at: 'ASC', id: 'ASC' } }) : [];
     return {
       id: row.id, invoiceCode: row.invoice_code, branchId: row.branch_id, workShiftId: row.work_shift_id,
-      workShiftStatus: context.shift_status, cashierId: context.cashier_id, cashierName: context.cashier_name,
-      tableName: context.table_name, paymentMethod: context.payment_method,
+      workShiftStatus: shift.status, cashierId: shift.user_id, cashierName: shift.user!.full_name,
+      tableName: table?.name ?? null, paymentMethod: payment?.method ?? null,
       tableId: row.table_id, orderType: row.order_type, status: row.status,
       subtotal: money(pricing?.subtotal ?? row.subtotal), discountAmount: money(pricing?.discountAmount ?? row.discount_amount), totalAmount: money(pricing?.totalAmount ?? row.total_amount),
       promotionCode: promotions[0] ? {code:promotions[0].code, applicable:pricing?.promotionApplicable ?? true} : null,
@@ -92,7 +114,7 @@ export class SalesService {
     const row = await this.invoice(this.db.manager, user, id);
     const cashierId = this.readScope(user).cashierId;
     if (cashierId) {
-      const [shift] = await this.db.query('SELECT user_id FROM work_shifts WHERE id=$1', [row.work_shift_id]);
+      const shift = await this.db.getRepository(WorkShift).findOne({ where: { id: row.work_shift_id }, select: { id: true, user_id: true } });
       if (shift?.user_id !== cashierId) throw httpError(404, 'NOT_FOUND', 'Không tìm thấy hóa đơn.');
     }
     return this.detail(this.db.manager, row);
@@ -148,32 +170,44 @@ export class SalesService {
         after = parsed;
       } catch { throw httpError(422, 'VALIDATION_ERROR', 'Cursor không hợp lệ.'); }
     }
-    const params: unknown[] = [storeId, branchId ?? null, after?.createdAt ?? null, after?.id ?? null, limit + 1, cashierId, status, cashierFilter, tableId, sqlDate(from), sqlDate(to)];
-    const where = `JOIN branches b ON b.id=i.branch_id WHERE b.store_id=$1 AND ($7::text='ALL' OR i.status=$7)
-      AND ($9::uuid IS NULL OR i.table_id=$9) AND ($10::timestamptz IS NULL OR i.created_at >= $10)
-      AND ($11::timestamptz IS NULL OR i.created_at < $11)
-      AND ($8::uuid IS NULL OR EXISTS (SELECT 1 FROM work_shifts s WHERE s.id=i.work_shift_id AND s.user_id=$8))
-      AND ($2::uuid IS NULL OR i.branch_id=$2) AND ($3::timestamptz IS NULL OR (i.created_at,i.id)<($3::timestamptz,$4::uuid))
-      AND ($6::uuid IS NULL OR EXISTS (SELECT 1 FROM work_shifts s WHERE s.id=i.work_shift_id AND s.user_id=$6))`;
-    const rows: Row[] = await this.db.query(`SELECT i.*, s.status AS shift_status, s.user_id AS cashier_id, u.full_name AS cashier_name,
-      t.name AS table_name, p.method AS payment_method, (SELECT COALESCE(SUM(quantity),0)::int FROM invoice_items WHERE invoice_id=i.id) AS item_count,
-      to_char(i.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_created_at
-      FROM invoices i JOIN work_shifts s ON s.id=i.work_shift_id JOIN users u ON u.id=s.user_id
-      LEFT JOIN dining_tables t ON t.id=i.table_id LEFT JOIN payments p ON p.invoice_id=i.id
-      ${where} ORDER BY i.created_at DESC,i.id DESC LIMIT $5`, params);
-    const count: Row[] = await this.db.query(`SELECT COUNT(*)::int AS total FROM invoices i JOIN branches b ON b.id=i.branch_id
-      WHERE b.store_id=$1 AND ($4::text='ALL' OR i.status=$4) AND ($2::uuid IS NULL OR i.branch_id=$2)
-      AND ($6::uuid IS NULL OR i.table_id=$6) AND ($7::timestamptz IS NULL OR i.created_at >= $7)
-      AND ($8::timestamptz IS NULL OR i.created_at < $8)
-      AND ($5::uuid IS NULL OR EXISTS (SELECT 1 FROM work_shifts s WHERE s.id=i.work_shift_id AND s.user_id=$5))
-      AND ($3::uuid IS NULL OR EXISTS (SELECT 1 FROM work_shifts s WHERE s.id=i.work_shift_id AND s.user_id=$3))`, [storeId, branchId ?? null, cashierId, status, cashierFilter, tableId, sqlDate(from), sqlDate(to)]);
-    const optionParams = [storeId, branchId ?? null, cashierId];
-    const tables: Row[] = await this.db.query(`SELECT DISTINCT t.id,t.name FROM dining_tables t JOIN invoices i ON i.table_id=t.id
-      JOIN branches b ON b.id=i.branch_id JOIN work_shifts s ON s.id=i.work_shift_id
-      WHERE b.store_id=$1 AND ($2::uuid IS NULL OR i.branch_id=$2) AND ($3::uuid IS NULL OR s.user_id=$3) ORDER BY t.name,t.id`, optionParams);
-    const cashiers: Row[] = await this.db.query(`SELECT DISTINCT u.id,u.full_name AS name FROM users u JOIN work_shifts s ON s.user_id=u.id
-      JOIN invoices i ON i.work_shift_id=s.id JOIN branches b ON b.id=i.branch_id
-      WHERE b.store_id=$1 AND ($2::uuid IS NULL OR i.branch_id=$2) AND ($3::uuid IS NULL OR s.user_id=$3) ORDER BY u.full_name,u.id`, optionParams);
+    const filter = <T extends ObjectLiteral>(qb: SelectQueryBuilder<T>, withCursor: boolean) => {
+      qb.where('b.store_id = :storeId', { storeId });
+      if (status !== 'ALL') qb.andWhere('i.status = :status', { status });
+      if (tableId) qb.andWhere('i.table_id = :tableId', { tableId });
+      if (from) qb.andWhere('i.created_at >= CAST(:fromAt AS timestamptz)', { fromAt: sqlDate(from) });
+      if (to) qb.andWhere('i.created_at < CAST(:toAt AS timestamptz)', { toAt: sqlDate(to) });
+      if (cashierFilter) qb.andWhere('EXISTS (SELECT 1 FROM work_shifts s2 WHERE s2.id = i.work_shift_id AND s2.user_id = :cashierFilter)', { cashierFilter });
+      if (branchId) qb.andWhere('i.branch_id = :branchId', { branchId });
+      if (withCursor && after) qb.andWhere('(i.created_at, i.id) < (CAST(:afterCreatedAt AS timestamptz), CAST(:afterId AS uuid))', { afterCreatedAt: after.createdAt, afterId: after.id });
+      if (cashierId) qb.andWhere('EXISTS (SELECT 1 FROM work_shifts s3 WHERE s3.id = i.work_shift_id AND s3.user_id = :cashierId)', { cashierId });
+      return qb;
+    };
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
+    const rows: Row[] = await filter(this.db.createQueryBuilder().from(Invoice, 'i').innerJoin(Branch, 'b', 'b.id = i.branch_id')
+      .innerJoin(WorkShift, 's', 's.id = i.work_shift_id').innerJoin(User, 'u', 'u.id = s.user_id')
+      .leftJoin(DiningTable, 't', 't.id = i.table_id').leftJoin(Payment, 'p', 'p.invoice_id = i.id')
+      .select('i.id', 'id').addSelect('i.invoice_code', 'invoice_code').addSelect('i.branch_id', 'branch_id').addSelect('i.table_id', 'table_id')
+      .addSelect('i.order_type', 'order_type').addSelect('i.status', 'status').addSelect('i.total_amount', 'total_amount')
+      .addSelect('i.created_at', 'created_at').addSelect('i.work_shift_id', 'work_shift_id')
+      .addSelect('s.status', 'shift_status').addSelect('s.user_id', 'cashier_id').addSelect('u.full_name', 'cashier_name')
+      .addSelect('t.name', 'table_name').addSelect('p.method', 'payment_method')
+      .addSelect('(SELECT COALESCE(SUM(quantity),0)::int FROM invoice_items WHERE invoice_id = i.id)', 'item_count')
+      .addSelect(`to_char(i.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`, 'cursor_created_at'), true)
+      .orderBy('i.created_at', 'DESC').addOrderBy('i.id', 'DESC').limit(limit + 1).getRawMany();
+    // QueryBuilder: joins and DISTINCT over many rows; separate find() calls would load every row
+    const total = await filter(this.db.createQueryBuilder().from(Invoice, 'i').innerJoin(Branch, 'b', 'b.id = i.branch_id'), false).getCount();
+    // QueryBuilder: joins and DISTINCT over many rows; separate find() calls would load every row
+    const tablesQuery = this.db.createQueryBuilder().from(DiningTable, 't').innerJoin(Invoice, 'i', 'i.table_id = t.id')
+      .innerJoin(Branch, 'b', 'b.id = i.branch_id').innerJoin(WorkShift, 's', 's.id = i.work_shift_id')
+      .select('t.id', 'id').addSelect('t.name', 'name').distinct(true).where('b.store_id = :storeId', { storeId });
+    // QueryBuilder: joins and DISTINCT over many rows; separate find() calls would load every row
+    const cashiersQuery = this.db.createQueryBuilder().from(User, 'u').innerJoin(WorkShift, 's', 's.user_id = u.id')
+      .innerJoin(Invoice, 'i', 'i.work_shift_id = s.id').innerJoin(Branch, 'b', 'b.id = i.branch_id')
+      .select('u.id', 'id').addSelect('u.full_name', 'name').distinct(true).where('b.store_id = :storeId', { storeId });
+    if (branchId) { tablesQuery.andWhere('i.branch_id = :branchId', { branchId }); cashiersQuery.andWhere('i.branch_id = :branchId', { branchId }); }
+    if (cashierId) { tablesQuery.andWhere('s.user_id = :cashierId', { cashierId }); cashiersQuery.andWhere('s.user_id = :cashierId', { cashierId }); }
+    const tables: Row[] = await tablesQuery.orderBy('t.name').addOrderBy('t.id').getRawMany();
+    const cashiers: Row[] = await cashiersQuery.orderBy('u.full_name').addOrderBy('u.id').getRawMany();
     const selected = rows.slice(0, limit);
     const last = selected.at(-1);
     return {
@@ -183,7 +217,7 @@ export class SalesService {
         workShiftStatus: row.shift_status, cashierId: row.cashier_id, cashierName: row.cashier_name,
         tableName: row.table_name, paymentMethod: row.payment_method })),
       meta: { limit, nextCursor: rows.length > limit && last ? Buffer.from(JSON.stringify({ scope: cursorScope,
-        createdAt: last.cursor_created_at, id: last.id })).toString('base64url') : null, total: count[0].total,
+        createdAt: last.cursor_created_at, id: last.id })).toString('base64url') : null, total,
         filterOptions: { tables, cashiers } },
     };
   }
@@ -198,17 +232,18 @@ export class SalesService {
           if (!shift.is_active) throw httpError(409, 'BRANCH_INACTIVE', 'Chi nhánh đã ngưng hoạt động.');
           if (input.tableId) await this.table(manager, user, input.tableId, shift.branch_id);
           const id = randomUUID();
-          const rows = await manager.query(`INSERT INTO invoices (id,branch_id,work_shift_id,table_id,invoice_code,created_by,order_type,status,subtotal,discount_amount,total_amount,note)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,'OPEN',0,0,0,$8) RETURNING *`,
-            [id, shift.branch_id, shift.id, input.tableId ?? null, invoiceCode(), user.id, input.orderType, input.note ?? null]);
-          return this.detail(manager, rows[0]);
+          await manager.getRepository(Invoice).insert({ id, branch_id: shift.branch_id, work_shift_id: shift.id, table_id: input.tableId ?? null,
+            invoice_code: invoiceCode(), created_by: user.id, order_type: input.orderType, status: 'OPEN', subtotal: '0', discount_amount: '0',
+            total_amount: '0', note: input.note ?? null });
+          return this.detail(manager, await manager.getRepository(Invoice).findOneByOrFail({ id }));
         });
       } catch (error: any) {
         if (error?.code === '23505' && error?.constraint === 'invoices_invoice_code_key') continue;
         if (error?.code === '23505' && error?.constraint === 'uq_invoices_table_open') {
-          const existing: Row[] = await this.db.query("SELECT id FROM invoices WHERE table_id=$1 AND status='OPEN'", [input.tableId]);
+          // uq_invoices_table_open only fires for a non-null table_id, so input.tableId is set here.
+          const existing = await this.db.getRepository(Invoice).findOne({ where: { table_id: input.tableId!, status: 'OPEN' }, select: { id: true } });
           throw new HttpException({ code: 'TABLE_HAS_OPEN_INVOICE', message: 'Bàn đang có đơn mở.',
-            details: existing[0] ? [{ field: 'invoiceId', value: existing[0].id }] : [] }, 409);
+            details: existing ? [{ field: 'invoiceId', value: existing.id }] : [] }, 409);
         }
         throw error;
       }
@@ -217,10 +252,11 @@ export class SalesService {
   }
 
   private async table(manager: EntityManager, user: UserSummary, tableId: string, branchId: string) {
-    const rows: Row[] = await manager.query(`SELECT t.id,t.branch_id,t.is_active,b.store_id FROM dining_tables t
-      JOIN branches b ON b.id=t.branch_id WHERE t.id=$1 FOR SHARE OF t`, [tableId]);
-    const table = rows[0];
-    if (!table || table.store_id !== scope(user)) throw httpError(404, 'NOT_FOUND', 'Không tìm thấy bàn.');
+    // find()[0] keeps one statement and locks only dining_tables (FOR SHARE OF), not the LEFT JOIN side (M-20).
+    const table = (await manager.getRepository(DiningTable).find({ where: { id: tableId }, relations: { branch: true },
+      select: { id: true, branch_id: true, is_active: true, branch: { id: true, store_id: true } },
+      lock: { mode: 'pessimistic_read', tables: ['dining_tables'] } }))[0];
+    if (!table || table.branch?.store_id !== scope(user)) throw httpError(404, 'NOT_FOUND', 'Không tìm thấy bàn.');
     if (table.branch_id !== branchId) throw httpError(422, 'INVOICE_BRANCH_MISMATCH', 'Bàn không thuộc chi nhánh của ca.');
     if (!table.is_active) throw httpError(409, 'TABLE_INACTIVE', 'Bàn đã ngưng dùng.');
   }
@@ -231,24 +267,24 @@ export class SalesService {
     if (row.status !== 'OPEN') throw httpError(409, 'INVOICE_NOT_OPEN', 'Đơn không còn mở.');
     if (row.branch_id !== shift.branch_id || row.work_shift_id !== shift.id)
       throw httpError(409, 'SHIFT_NOT_OPEN', 'Đơn không thuộc ca thu ngân hiện tại.');
-    const pending=await manager.query("SELECT id FROM transfer_attempts WHERE invoice_id=$1 AND status='PENDING'",[id]);
-    if(pending.length)throw httpError(409,'TRANSFER_PENDING','Đơn đang chờ chuyển khoản. Hủy chờ trước khi sửa hoặc thanh toán.');
+    if(await manager.getRepository(TransferAttempt).existsBy({invoice_id:id,status:'PENDING'}))throw httpError(409,'TRANSFER_PENDING','Đơn đang chờ chuyển khoản. Hủy chờ trước khi sửa hoặc thanh toán.');
     return row;
   }
 
   private async recalculate(manager: EntityManager, id: string) {
     const pricing=await this.evaluateInvoicePricing(manager,id);
-    await manager.query('UPDATE invoices SET subtotal=$2,discount_amount=$3,total_amount=$4,updated_at=now() WHERE id=$1',
-      [id,money(pricing.subtotal),money(pricing.discountAmount),money(pricing.totalAmount)]);
-    await manager.query('UPDATE invoice_promotion_codes SET discount_amount=$2 WHERE invoice_id=$1',[id,money(pricing.discountAmount)]);
+    await manager.getRepository(Invoice).update({ id }, { subtotal: String(money(pricing.subtotal)), discount_amount: String(money(pricing.discountAmount)),
+      total_amount: String(money(pricing.totalAmount)), updated_at: () => 'now()' });
+    await manager.getRepository(InvoicePromotionCode).update({ invoice_id: id }, { discount_amount: String(money(pricing.discountAmount)) });
   }
 
   async evaluateInvoicePricing(manager: EntityManager, invoiceId: string): Promise<InvoicePricing> {
-    const [sum]=await manager.query('SELECT COALESCE(SUM(line_total),0)::bigint AS subtotal FROM invoice_items WHERE invoice_id=$1',[invoiceId]);
+    // QueryBuilder: SUM of money read as text; Repository.sum() returns a float
+    const sum=await manager.getRepository(InvoiceItem).createQueryBuilder('i').select('COALESCE(SUM(i.line_total),0)::bigint','subtotal')
+      .where('i.invoice_id = :invoiceId',{invoiceId}).getRawOne();
     const subtotal=BigInt(sum.subtotal); money(subtotal);
-    const promotions:Row[]=await manager.query(`SELECT p.* FROM invoice_promotion_codes ip
-      JOIN promotion_codes p ON p.id=ip.promotion_code_id WHERE ip.invoice_id=$1`,[invoiceId]);
-    const promo=promotions[0];
+    const applied=await manager.getRepository(InvoicePromotionCode).findOneBy({invoice_id:invoiceId});
+    const promo=applied?await manager.getRepository(PromotionCode).findOneBy({id:applied.promotion_code_id}):null;
     const result=promo ? evaluatePromotion({isActive:promo.is_active,startAt:promo.start_at,endAt:promo.end_at,
       discountType:promo.discount_type,discountValue:BigInt(promo.discount_value),
       maxDiscountAmount:promo.max_discount_amount===null?null:BigInt(promo.max_discount_amount),
@@ -262,11 +298,11 @@ export class SalesService {
       throw httpError(422,'VALIDATION_ERROR','Mã giảm giá không hợp lệ.');
     return this.db.transaction(async manager=>{
       const invoice=await this.writable(manager,user,invoiceId);
-      const existing=await manager.query('SELECT invoice_id FROM invoice_promotion_codes WHERE invoice_id=$1',[invoiceId]);
-      if(existing.length)throw httpError(409,'PROMOTION_ALREADY_APPLIED','Đơn đã có mã giảm giá. Bỏ mã cũ trước khi áp mã khác.');
-      const [promo]=await manager.query('SELECT * FROM promotion_codes WHERE store_id=$1 AND code=$2 FOR UPDATE',[scope(user),code.trim().toUpperCase()]);
+      if(await manager.getRepository(InvoicePromotionCode).existsBy({invoice_id:invoiceId}))
+        throw httpError(409,'PROMOTION_ALREADY_APPLIED','Đơn đã có mã giảm giá. Bỏ mã cũ trước khi áp mã khác.');
+      const promo=await manager.getRepository(PromotionCode).findOne({where:{store_id:scope(user),code:code.trim().toUpperCase()},lock:{mode:'pessimistic_write'}});
       if(!promo)throw httpError(404,'NOT_FOUND','Không tìm thấy mã giảm giá.');
-      await manager.query('INSERT INTO invoice_promotion_codes(invoice_id,promotion_code_id,code) VALUES($1,$2,$3)',[invoiceId,promo.id,promo.code]);
+      await manager.getRepository(InvoicePromotionCode).insert({invoice_id:invoiceId,promotion_code_id:promo.id,code:promo.code});
       const pricing=await this.evaluateInvoicePricing(manager,invoiceId);
       if(!pricing.promotionApplicable)throw httpError(422,'PROMOTION_NOT_APPLICABLE','Mã giảm giá không còn đủ điều kiện. Đổi hoặc bỏ mã để thanh toán.');
       await this.recalculate(manager,invoiceId);
@@ -277,7 +313,7 @@ export class SalesService {
   async removePromotion(user:UserSummary,invoiceId:string) {
     return this.db.transaction(async manager=>{
       await this.writable(manager,user,invoiceId);
-      await manager.query('DELETE FROM invoice_promotion_codes WHERE invoice_id=$1',[invoiceId]);
+      await manager.getRepository(InvoicePromotionCode).delete({invoice_id:invoiceId});
       await this.recalculate(manager,invoiceId);
       return this.detail(manager,await this.invoice(manager,user,invoiceId));
     });
@@ -290,24 +326,23 @@ export class SalesService {
     return this.db.transaction(async manager=>{
       const row=await this.invoice(manager,user,invoiceId);
       // Serialize a key across the zero/payment/QR tables, which have separate unique indexes.
-      await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[normalized]);
-      const completed:Row[]=await manager.query('SELECT id FROM invoices WHERE zero_completion_key=$1',[normalized]);
+      // QueryBuilder: table-less SELECT (advisory lock or probe); no repository method runs it
+      await manager.createQueryBuilder().select('pg_advisory_xact_lock(hashtextextended(:lockKey, 0))','locked').fromDummy().setParameter('lockKey',normalized).getRawOne();
+      const completed=await manager.getRepository(Invoice).find({where:{zero_completion_key:normalized},select:{id:true}});
       if(completed.length){
         if(completed[0].id===row.id)return true;
         throw httpError(409,'IDEMPOTENCY_KEY_REUSED','Mã yêu cầu đã được dùng cho nội dung khác.');
       }
-      const used=await manager.query(`SELECT id FROM payments WHERE idempotency_key=$1 UNION ALL
-        SELECT id FROM transfer_attempts WHERE idempotency_key=$1`,[normalized]);
-      if(used.length)throw httpError(409,'IDEMPOTENCY_KEY_REUSED','Mã yêu cầu đã được dùng cho nội dung khác.');
+      if(await manager.getRepository(Payment).existsBy({idempotency_key:normalized})||await manager.getRepository(TransferAttempt).existsBy({idempotency_key:normalized}))
+        throw httpError(409,'IDEMPOTENCY_KEY_REUSED','Mã yêu cầu đã được dùng cho nội dung khác.');
       await this.writable(manager,user,invoiceId);
-      const items=await manager.query('SELECT id FROM invoice_items WHERE invoice_id=$1 LIMIT 1',[invoiceId]);
-      if(!items.length)throw httpError(422,'INVOICE_EMPTY','Đơn chưa có món để thanh toán.');
-      await manager.query(`SELECT p.id FROM promotion_codes p JOIN invoice_promotion_codes ip ON ip.promotion_code_id=p.id
-        WHERE ip.invoice_id=$1 FOR UPDATE OF p`,[invoiceId]);
+      if(!await manager.getRepository(InvoiceItem).existsBy({invoice_id:invoiceId}))throw httpError(422,'INVOICE_EMPTY','Đơn chưa có món để thanh toán.');
+      const linked=await manager.getRepository(InvoicePromotionCode).findOneBy({invoice_id:invoiceId});
+      if(linked)await manager.getRepository(PromotionCode).findOne({where:{id:linked.promotion_code_id},select:{id:true},lock:{mode:'pessimistic_write'}});
       const pricing=await this.evaluateInvoicePricing(manager,invoiceId);
       if(!pricing.promotionApplicable)throw httpError(422,'PROMOTION_NOT_APPLICABLE','Mã giảm giá không còn đủ điều kiện. Đổi hoặc bỏ mã để thanh toán.');
       if(pricing.totalAmount!==0n)throw httpError(422,'ZERO_TOTAL_REQUIRED','Chỉ hoàn tất đơn có tổng tiền 0đ.');
-      await manager.query('UPDATE invoices SET zero_completion_key=$2 WHERE id=$1',[invoiceId,normalized]);
+      await manager.getRepository(Invoice).update({id:invoiceId},{zero_completion_key:normalized});
       await this.finalizeInvoice(manager,invoiceId,user.id);
       return false;
     });
@@ -324,34 +359,35 @@ export class SalesService {
       const invoice=await this.invoice(manager,user,invoiceId);
       const hash=createHash('sha256').update(JSON.stringify({invoiceId:invoice.id,method:'CASH',amount:input.amount,
         tenderedAmount:input.tenderedAmount,transactionRef:null})).digest('hex');
-      await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[normalized]);
-      const [previous]=await manager.query('SELECT * FROM payments WHERE idempotency_key=$1',[normalized]);
+      // QueryBuilder: table-less SELECT (advisory lock or probe); no repository method runs it
+      await manager.createQueryBuilder().select('pg_advisory_xact_lock(hashtextextended(:lockKey, 0))','locked').fromDummy().setParameter('lockKey',normalized).getRawOne();
+      const previous=await manager.getRepository(Payment).findOneBy({idempotency_key:normalized});
       if(previous){
         if(previous.invoice_id!==invoice.id||previous.idempotency_request_hash!==hash)
           throw httpError(409,'IDEMPOTENCY_KEY_REUSED','Mã yêu cầu đã được dùng cho nội dung khác.');
         return this.cashPaymentView(previous,true);
       }
-      const used=await manager.query(`SELECT id FROM invoices WHERE zero_completion_key=$1 UNION ALL
-        SELECT id FROM transfer_attempts WHERE idempotency_key=$1`,[normalized]);
-      if(used.length)throw httpError(409,'IDEMPOTENCY_KEY_REUSED','Mã yêu cầu đã được dùng cho nội dung khác.');
+      if(await manager.getRepository(Invoice).existsBy({zero_completion_key:normalized})||await manager.getRepository(TransferAttempt).existsBy({idempotency_key:normalized}))
+        throw httpError(409,'IDEMPOTENCY_KEY_REUSED','Mã yêu cầu đã được dùng cho nội dung khác.');
       await this.writable(manager,user,invoiceId);
-      const items=await manager.query('SELECT id FROM invoice_items WHERE invoice_id=$1 LIMIT 1',[invoiceId]);
-      if(!items.length)throw httpError(422,'INVOICE_EMPTY','Đơn chưa có món để thanh toán.');
-      await manager.query(`SELECT p.id FROM promotion_codes p JOIN invoice_promotion_codes ip ON ip.promotion_code_id=p.id
-        WHERE ip.invoice_id=$1 FOR UPDATE OF p`,[invoiceId]);
+      if(!await manager.getRepository(InvoiceItem).existsBy({invoice_id:invoiceId}))throw httpError(422,'INVOICE_EMPTY','Đơn chưa có món để thanh toán.');
+      const linked=await manager.getRepository(InvoicePromotionCode).findOneBy({invoice_id:invoiceId});
+      if(linked)await manager.getRepository(PromotionCode).findOne({where:{id:linked.promotion_code_id},select:{id:true},lock:{mode:'pessimistic_write'}});
       const pricing=await this.evaluateInvoicePricing(manager,invoiceId);
       if(!pricing.promotionApplicable)throw httpError(422,'PROMOTION_NOT_APPLICABLE','Mã giảm giá không còn đủ điều kiện. Đổi hoặc bỏ mã để thanh toán.');
       if(pricing.totalAmount!==BigInt(input.amount))throw httpError(422,'PAYMENT_AMOUNT_MISMATCH','Khoản thanh toán không bằng tổng hóa đơn.');
       if(input.tenderedAmount<input.amount)throw httpError(422,'TENDERED_INSUFFICIENT','Tiền khách đưa chưa đủ để thanh toán.');
-      const [reconciliation]=await manager.query(`SELECT r.opening_cash,COALESCE((SELECT SUM(p.amount) FROM payments p
-        JOIN invoices i ON i.id=p.invoice_id WHERE i.work_shift_id=r.work_shift_id AND i.status='PAID' AND p.method='CASH'),0) AS cash_sales
-        FROM cash_reconciliations r WHERE r.work_shift_id=$1`,[invoice.work_shift_id]);
+      // QueryBuilder: SUM of money read as text; Repository.sum() returns a float
+      const reconciliation=await manager.getRepository(CashReconciliation).createQueryBuilder('r').select('r.opening_cash','opening_cash')
+        .addSelect("COALESCE((SELECT SUM(p.amount) FROM payments p JOIN invoices i ON i.id=p.invoice_id WHERE i.work_shift_id=r.work_shift_id AND i.status='PAID' AND p.method='CASH'),0)",'cash_sales')
+        .where('r.work_shift_id = :shiftId',{shiftId:invoice.work_shift_id}).getRawOne();
       if(!reconciliation)throw httpError(500,'INTERNAL_ERROR','Không tìm thấy bản ghi đối soát của ca thu ngân.');
       if(BigInt(reconciliation.opening_cash)+BigInt(reconciliation.cash_sales)+BigInt(input.amount)>MAX_MONEY)
         throw httpError(422,'VALIDATION_ERROR','Số tiền vượt giới hạn cho phép.');
-      const [payment]=await manager.query(`INSERT INTO payments(id,invoice_id,method,amount,tendered_amount,change_amount,
-        idempotency_key,idempotency_request_hash,created_by) VALUES($1,$2,'CASH',$3,$4,$5,$6,$7,$8) RETURNING *`,
-        [randomUUID(),invoice.id,input.amount,input.tenderedAmount,input.tenderedAmount-input.amount,normalized,hash,user.id]);
+      const paymentId=randomUUID();
+      await manager.getRepository(Payment).insert({id:paymentId,invoice_id:invoice.id,method:'CASH',amount:String(input.amount),tendered_amount:String(input.tenderedAmount),
+        change_amount:String(input.tenderedAmount-input.amount),idempotency_key:normalized,idempotency_request_hash:hash,created_by:user.id});
+      const payment=await manager.getRepository(Payment).findOneByOrFail({id:paymentId});
       await this.finalizeInvoice(manager,invoice.id,user.id);
       return this.cashPaymentView(payment,false);
     });
@@ -363,50 +399,61 @@ export class SalesService {
   }
 
   async finalizeInvoice(manager:EntityManager,invoiceId:string,actorId:string|null):Promise<void> {
-    const [invoice]=await manager.query('SELECT * FROM invoices WHERE id=$1 FOR UPDATE',[invoiceId]);
+    const invoice=await manager.getRepository(Invoice).findOne({where:{id:invoiceId},lock:{mode:'pessimistic_write'}});
     if(!invoice||invoice.status!=='OPEN')throw httpError(409,'INVOICE_NOT_OPEN','Đơn không còn mở.');
-    const items=await manager.query('SELECT id FROM invoice_items WHERE invoice_id=$1 LIMIT 1',[invoiceId]);
-    if(!items.length)throw httpError(422,'INVOICE_EMPTY','Đơn chưa có món để thanh toán.');
-    await manager.query(`SELECT p.id FROM promotion_codes p JOIN invoice_promotion_codes ip ON ip.promotion_code_id=p.id
-      WHERE ip.invoice_id=$1 FOR UPDATE OF p`,[invoiceId]);
+    if(!await manager.getRepository(InvoiceItem).existsBy({invoice_id:invoiceId}))throw httpError(422,'INVOICE_EMPTY','Đơn chưa có món để thanh toán.');
+    const linked=await manager.getRepository(InvoicePromotionCode).findOneBy({invoice_id:invoiceId});
+    if(linked)await manager.getRepository(PromotionCode).findOne({where:{id:linked.promotion_code_id},select:{id:true},lock:{mode:'pessimistic_write'}});
     const pricing=await this.evaluateInvoicePricing(manager,invoiceId);
     if(!pricing.promotionApplicable)throw httpError(422,'PROMOTION_NOT_APPLICABLE','Mã giảm giá không còn đủ điều kiện. Đổi hoặc bỏ mã để thanh toán.');
-    const requirements:Row[]=await manager.query(`WITH requirements AS (
-      SELECT r.ingredient_id,r.quantity*i.quantity AS quantity FROM invoice_items i
-      JOIN product_size_ingredients r ON r.product_size_id=i.product_size_id WHERE i.invoice_id=$1
-      UNION ALL SELECT r.ingredient_id,r.quantity*t.quantity*i.quantity FROM invoice_items i
-      JOIN invoice_item_toppings t ON t.invoice_item_id=i.id JOIN topping_ingredients r ON r.topping_id=t.topping_id WHERE i.invoice_id=$1
-    ) SELECT ingredient_id,SUM(quantity) AS quantity FROM requirements GROUP BY ingredient_id ORDER BY ingredient_id`,[invoiceId]);
+    // QueryBuilder: CTE or sub-query in one statement; find() cannot express it
+    // Two grouped sub-queries replace UNION ALL; the sum stays in PostgreSQL numeric
+    const requirements:Row[]=await manager.createQueryBuilder().select('g.id','ingredient_id').addSelect('COALESCE(pr.quantity, 0) + COALESCE(tr.quantity, 0)','quantity')
+      .from(Ingredient,'g')
+      .leftJoin(qb=>qb.select('r.ingredient_id','ingredient_id').addSelect('SUM(r.quantity * i.quantity)','quantity').from(InvoiceItem,'i')
+        .innerJoin(ProductSizeIngredient,'r','r.product_size_id = i.product_size_id').where('i.invoice_id = :invoiceId').groupBy('r.ingredient_id'),'pr','pr.ingredient_id = g.id')
+      .leftJoin(qb=>qb.select('r.ingredient_id','ingredient_id').addSelect('SUM(r.quantity * t.quantity * i.quantity)','quantity').from(InvoiceItem,'i')
+        .innerJoin(InvoiceItemTopping,'t','t.invoice_item_id = i.id').innerJoin(ToppingIngredient,'r','r.topping_id = t.topping_id')
+        .where('i.invoice_id = :invoiceId').groupBy('r.ingredient_id'),'tr','tr.ingredient_id = g.id')
+      .where('(pr.ingredient_id IS NOT NULL OR tr.ingredient_id IS NOT NULL)').orderBy('g.id').setParameter('invoiceId',invoiceId).getRawMany();
     if(pricing.promotionCodeId){
-      await manager.query('UPDATE promotion_codes SET used_count=used_count+1,updated_at=now() WHERE id=$1',[pricing.promotionCodeId]);
-      await manager.query('UPDATE invoice_promotion_codes SET discount_amount=$2 WHERE invoice_id=$1',[invoiceId,money(pricing.discountAmount)]);
+      await manager.getRepository(PromotionCode).update({id:pricing.promotionCodeId},{used_count:()=>'used_count + 1',updated_at:()=>'now()'});
+      await manager.getRepository(InvoicePromotionCode).update({invoice_id:invoiceId},{discount_amount:String(money(pricing.discountAmount))});
     }
     for(const requirement of requirements){
-      await manager.query(`INSERT INTO stock_movements(id,branch_id,ingredient_id,type,quantity,balance_after,invoice_id,created_by,source)
-        VALUES($1,$2,$3,'SALE',-$4::numeric,0,$5,$6,$7)`,[randomUUID(),invoice.branch_id,requirement.ingredient_id,
-        requirement.quantity,invoiceId,actorId,actorId===null?'SYSTEM':'USER']);
+      await manager.getRepository(StockMovement).insert({id:randomUUID(),branch_id:invoice.branch_id,ingredient_id:requirement.ingredient_id,type:'SALE',
+        quantity:requirement.quantity.startsWith('-')?requirement.quantity.slice(1):`-${requirement.quantity}`,balance_after:'0',invoice_id:invoiceId,
+        created_by:actorId,source:actorId===null?'SYSTEM':'USER'});
     }
-    await manager.query(`UPDATE invoices SET status='PAID',subtotal=$2,discount_amount=$3,total_amount=$4,paid_at=now(),updated_at=now() WHERE id=$1`,
-      [invoiceId,money(pricing.subtotal),money(pricing.discountAmount),money(pricing.totalAmount)]);
+    await manager.getRepository(Invoice).update({id:invoiceId},{status:'PAID',subtotal:String(money(pricing.subtotal)),discount_amount:String(money(pricing.discountAmount)),
+      total_amount:String(money(pricing.totalAmount)),paid_at:()=>'now()',updated_at:()=>'now()'});
   }
 
   async paymentPreview(user:UserSummary,invoiceId:string):Promise<PaymentPreviewDto> {
     const invoice=await this.invoice(this.db.manager,user,invoiceId);
     if(invoice.status!=='OPEN')throw httpError(409,'INVOICE_NOT_OPEN','Đơn không còn mở.');
     const pricing=await this.evaluateInvoicePricing(this.db.manager,invoiceId);
-    const [promo]=await this.db.query('SELECT code FROM invoice_promotion_codes WHERE invoice_id=$1',[invoiceId]);
-    const missing:Row[]=await this.db.query(`SELECT i.id FROM invoice_items i WHERE i.invoice_id=$1 AND
-      (NOT EXISTS(SELECT 1 FROM product_size_ingredients r WHERE r.product_size_id=i.product_size_id)
-       OR EXISTS(SELECT 1 FROM invoice_item_toppings t WHERE t.invoice_item_id=i.id
-         AND NOT EXISTS(SELECT 1 FROM topping_ingredients r WHERE r.topping_id=t.topping_id))) ORDER BY i.id`,[invoiceId]);
-    const negative:Row[]=await this.db.query(`WITH requirements AS (
-      SELECT r.ingredient_id,r.quantity*i.quantity AS quantity FROM invoice_items i
-      JOIN product_size_ingredients r ON r.product_size_id=i.product_size_id WHERE i.invoice_id=$1
-      UNION ALL SELECT r.ingredient_id,r.quantity*t.quantity*i.quantity FROM invoice_items i
-      JOIN invoice_item_toppings t ON t.invoice_item_id=i.id JOIN topping_ingredients r ON r.topping_id=t.topping_id WHERE i.invoice_id=$1
-    ) SELECT r.ingredient_id FROM requirements r
-      LEFT JOIN branch_ingredient_stocks s ON s.ingredient_id=r.ingredient_id AND s.branch_id=$2
-      GROUP BY r.ingredient_id,s.current_stock HAVING COALESCE(s.current_stock,0)-SUM(r.quantity)<0 ORDER BY r.ingredient_id`,[invoiceId,invoice.branch_id]);
+    const promo=await this.db.getRepository(InvoicePromotionCode).findOne({where:{invoice_id:invoiceId},select:{invoice_id:true,code:true}});
+    const items=await this.db.getRepository(InvoiceItem).find({where:{invoice_id:invoiceId},select:{id:true,product_size_id:true},order:{id:'ASC'}});
+    const sized=new Set((items.length?await this.db.getRepository(ProductSizeIngredient).find({where:{product_size_id:In(items.map(i=>i.product_size_id))},
+      select:{product_size_id:true,ingredient_id:true}}):[]).map(r=>r.product_size_id));
+    const tops=items.length?await this.db.getRepository(InvoiceItemTopping).find({where:{invoice_item_id:In(items.map(i=>i.id))},
+      select:{id:true,invoice_item_id:true,topping_id:true}}):[];
+    const topped=new Set((tops.length?await this.db.getRepository(ToppingIngredient).find({where:{topping_id:In(tops.map(t=>t.topping_id))},
+      select:{topping_id:true,ingredient_id:true}}):[]).map(r=>r.topping_id));
+    const missing=items.filter(i=>!sized.has(i.product_size_id)||tops.some(t=>t.invoice_item_id===i.id&&!topped.has(t.topping_id)));
+    // QueryBuilder: CTE or sub-query in one statement; find() cannot express it
+    // Two grouped sub-queries replace UNION ALL; the sum stays in PostgreSQL numeric
+    const negative:Row[]=await this.db.createQueryBuilder().select('g.id','ingredient_id').from(Ingredient,'g')
+      .leftJoin(qb=>qb.select('r.ingredient_id','ingredient_id').addSelect('SUM(r.quantity * i.quantity)','quantity').from(InvoiceItem,'i')
+        .innerJoin(ProductSizeIngredient,'r','r.product_size_id = i.product_size_id').where('i.invoice_id = :invoiceId').groupBy('r.ingredient_id'),'pr','pr.ingredient_id = g.id')
+      .leftJoin(qb=>qb.select('r.ingredient_id','ingredient_id').addSelect('SUM(r.quantity * t.quantity * i.quantity)','quantity').from(InvoiceItem,'i')
+        .innerJoin(InvoiceItemTopping,'t','t.invoice_item_id = i.id').innerJoin(ToppingIngredient,'r','r.topping_id = t.topping_id')
+        .where('i.invoice_id = :invoiceId').groupBy('r.ingredient_id'),'tr','tr.ingredient_id = g.id')
+      .leftJoin(BranchIngredientStock,'s','s.ingredient_id = g.id AND s.branch_id = :branchId')
+      .where('(pr.ingredient_id IS NOT NULL OR tr.ingredient_id IS NOT NULL)')
+      .andWhere('COALESCE(s.current_stock, 0) - (COALESCE(pr.quantity, 0) + COALESCE(tr.quantity, 0)) < 0')
+      .orderBy('g.id').setParameters({invoiceId,branchId:invoice.branch_id}).getRawMany();
     return {invoiceId,subtotal:money(pricing.subtotal),discountAmount:money(pricing.discountAmount),totalAmount:money(pricing.totalAmount),
       promotion:promo?{code:promo.code,applicable:pricing.promotionApplicable,reason:pricing.promotionApplicable?null:'PROMOTION_NOT_APPLICABLE'}:null,
       warnings:[...missing.map(item=>({type:'MISSING_RECIPE' as const,itemId:item.id})),...negative.map(row=>({type:'NEGATIVE_STOCK' as const,ingredientId:row.ingredient_id}))]};
@@ -415,19 +462,23 @@ export class SalesService {
   async addItem(user: UserSummary, id: string, input: AddInvoiceItemDto) {
     return this.db.transaction(async manager => {
       const invoice = await this.writable(manager, user, id);
-      const product: Row[] = await manager.query(`SELECT ps.id,ps.price,ps.is_active AS size_active,p.name AS product_name,p.is_active AS product_active,
-        p.category_id,c.store_id,c.is_active AS category_active,s.name AS size_name
-        FROM product_sizes ps JOIN products p ON p.id=ps.product_id JOIN categories c ON c.id=p.category_id
-        JOIN sizes s ON s.id=ps.size_id WHERE ps.id=$1`, [input.productSizeId]);
-      const p = product[0];
+      const ps = await manager.getRepository(ProductSize).findOne({ where: { id: input.productSizeId },
+        relations: { product: { category: true }, size: true } });
+      const p = ps && { id: ps.id, price: ps.price, size_active: ps.is_active, product_name: ps.product!.name, product_active: ps.product!.is_active,
+        category_id: ps.product!.category_id, store_id: ps.product!.category!.store_id, category_active: ps.product!.category!.is_active, size_name: ps.size!.name };
       if (!p || p.store_id !== scope(user)) throw httpError(404, 'NOT_FOUND', 'Không tìm thấy món trong cửa hàng.');
       if (!p.size_active || !p.product_active || !p.category_active) throw httpError(409, 'ITEM_NOT_AVAILABLE', 'Món hoặc size đã ngưng bán.');
       const requested = (input.toppings ?? []).map(t => ({ ...t, toppingId: t.toppingId.toLowerCase() }));
       if (new Set(requested.map(t => t.toppingId)).size !== requested.length)
         throw httpError(422, 'VALIDATION_ERROR', 'Topping bị lặp.');
-      const toppingRows: Row[] = requested.length ? await manager.query(`SELECT t.id,t.name,t.price,t.is_active,t.store_id,
-        EXISTS(SELECT 1 FROM category_toppings ct WHERE ct.topping_id=t.id AND ct.category_id=$2) AS allowed
-        FROM toppings t WHERE t.id=ANY($1::uuid[])`, [requested.map(t => t.toppingId), p.category_id]) : [];
+      let toppingRows: Row[] = [];
+      if (requested.length) {
+        const toppings = await manager.getRepository(Topping).find({ where: { id: In(requested.map(t => t.toppingId)) },
+          select: { id: true, name: true, price: true, is_active: true, store_id: true } });
+        const allowed = new Set((await manager.getRepository(CategoryTopping).find({
+          where: { category_id: p.category_id, topping_id: In(toppings.map(t => t.id)) }, select: { category_id: true, topping_id: true } })).map(ct => ct.topping_id));
+        toppingRows = toppings.map(t => ({ ...t, allowed: allowed.has(t.id) }));
+      }
       if (toppingRows.length !== requested.length || toppingRows.some(t => t.store_id !== scope(user)))
         throw httpError(404, 'NOT_FOUND', 'Không tìm thấy topping trong cửa hàng.');
       if (toppingRows.some(t => !t.is_active)) throw httpError(409, 'ITEM_NOT_AVAILABLE', 'Topping đã ngưng bán.');
@@ -435,13 +486,13 @@ export class SalesService {
       const toppingPrice = toppingRows.reduce((sum, t) => sum + BigInt(t.price) * BigInt(requested.find(x => x.toppingId === t.id)!.quantity), 0n);
       const lineTotal = money((BigInt(p.price) + toppingPrice) * BigInt(input.quantity));
       const itemId = randomUUID();
-      await manager.query(`INSERT INTO invoice_items (id,invoice_id,product_size_id,product_name,size_name,unit_price,quantity,line_total,note)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [itemId, id, p.id, p.product_name, p.size_name, p.price, input.quantity, lineTotal, input.note ?? null]);
+      await manager.getRepository(InvoiceItem).insert({ id: itemId, invoice_id: id, product_size_id: p.id, product_name: p.product_name,
+        size_name: p.size_name, unit_price: p.price, quantity: input.quantity, line_total: String(lineTotal), note: input.note ?? null });
       for (const topping of toppingRows) {
         const quantity = requested.find(x => x.toppingId === topping.id)!.quantity;
-        await manager.query(`INSERT INTO invoice_item_toppings (id,invoice_item_id,topping_id,topping_name,unit_price,quantity,line_total)
-          VALUES ($1,$2,$3,$4,$5,$6,$7)`, [randomUUID(), itemId, topping.id, topping.name, topping.price, quantity,
-          money(BigInt(topping.price) * BigInt(quantity) * BigInt(input.quantity))]);
+        await manager.getRepository(InvoiceItemTopping).insert({ id: randomUUID(), invoice_item_id: itemId, topping_id: topping.id,
+          topping_name: topping.name, unit_price: topping.price, quantity,
+          line_total: String(money(BigInt(topping.price) * BigInt(quantity) * BigInt(input.quantity))) });
       }
       await this.recalculate(manager, id);
       const updated = await this.invoice(manager, user, invoice.id);
@@ -450,9 +501,9 @@ export class SalesService {
   }
 
   private async itemInvoice(manager: EntityManager, itemId: string): Promise<string> {
-    const rows: Row[] = await manager.query('SELECT invoice_id FROM invoice_items WHERE id=$1', [itemId]);
-    if (!rows[0]) throw httpError(404, 'NOT_FOUND', 'Không tìm thấy dòng món.');
-    return rows[0].invoice_id;
+    const item = await manager.getRepository(InvoiceItem).findOne({ where: { id: itemId }, select: { id: true, invoice_id: true } });
+    if (!item) throw httpError(404, 'NOT_FOUND', 'Không tìm thấy dòng món.');
+    return item.invoice_id;
   }
 
   async patchItem(user: UserSummary, itemId: string, input: PatchInvoiceItemDto) {
@@ -460,17 +511,16 @@ export class SalesService {
     return this.db.transaction(async manager => {
       const id = await this.itemInvoice(manager, itemId);
       await this.writable(manager, user, id);
-      const rows: Row[] = await manager.query('SELECT * FROM invoice_items WHERE id=$1', [itemId]);
-      const item = rows[0];
+      const item = await manager.getRepository(InvoiceItem).findOneBy({ id: itemId });
       if (!item) throw httpError(404, 'NOT_FOUND', 'Không tìm thấy dòng món.');
       const quantity = input.quantity ?? item.quantity;
-      const toppingRows: Row[] = await manager.query('SELECT * FROM invoice_item_toppings WHERE invoice_item_id=$1', [itemId]);
+      const toppingRows = await manager.getRepository(InvoiceItemTopping).findBy({ invoice_item_id: itemId });
       const perItem = BigInt(item.unit_price) + toppingRows.reduce((sum, t) => sum + BigInt(t.unit_price) * BigInt(t.quantity), 0n);
       const lineTotal = money(perItem * BigInt(quantity));
-      await manager.query('UPDATE invoice_items SET quantity=$2,note=$3,line_total=$4,updated_at=now() WHERE id=$1',
-        [itemId, quantity, input.note === undefined ? item.note : input.note, lineTotal]);
-      for (const topping of toppingRows) await manager.query('UPDATE invoice_item_toppings SET line_total=$2 WHERE id=$1',
-        [topping.id, money(BigInt(topping.unit_price) * BigInt(topping.quantity) * BigInt(quantity))]);
+      await manager.getRepository(InvoiceItem).update({ id: itemId }, { quantity, note: input.note === undefined ? item.note : input.note,
+        line_total: String(lineTotal), updated_at: () => 'now()' });
+      for (const topping of toppingRows) await manager.getRepository(InvoiceItemTopping).update({ id: topping.id },
+        { line_total: String(money(BigInt(topping.unit_price) * BigInt(topping.quantity) * BigInt(quantity))) });
       await this.recalculate(manager, id);
       return this.detail(manager, await this.invoice(manager, user, id));
     });
@@ -480,7 +530,7 @@ export class SalesService {
     await this.db.transaction(async manager => {
       const id = await this.itemInvoice(manager, itemId);
       await this.writable(manager, user, id);
-      await manager.query('DELETE FROM invoice_items WHERE id=$1', [itemId]);
+      await manager.getRepository(InvoiceItem).delete({ id: itemId });
       await this.recalculate(manager, id);
     });
   }
@@ -491,7 +541,7 @@ export class SalesService {
         const row = await this.writable(manager, user, id);
         if (row.order_type !== 'DINE_IN') throw httpError(409, 'CONFLICT', 'Chỉ đơn tại bàn mới chuyển bàn được.');
         await this.table(manager, user, tableId, row.branch_id);
-        if (row.table_id !== tableId) await manager.query('UPDATE invoices SET table_id=$2,updated_at=now() WHERE id=$1', [id, tableId]);
+        if (row.table_id !== tableId) await manager.getRepository(Invoice).update({ id }, { table_id: tableId, updated_at: () => 'now()' });
         return this.detail(manager, await this.invoice(manager, user, id));
       });
     } catch (error: any) {
@@ -508,8 +558,7 @@ export class SalesService {
       if (row.status === 'PAID') await this.cancelPaid(manager, user, row, reason.trim());
       else if (row.status === 'OPEN') {
         await this.writable(manager, user, id);
-        await manager.query(`UPDATE invoices SET status='CANCELLED',cancel_reason=$2,cancelled_by=$3,
-          cancelled_at=now(),updated_at=now() WHERE id=$1`, [id, reason.trim(), user.id]);
+        await manager.getRepository(Invoice).update({ id }, { status: 'CANCELLED', cancel_reason: reason.trim(), cancelled_by: user.id, cancelled_at: () => 'now()', updated_at: () => 'now()' });
       } else throw httpError(409, 'INVOICE_NOT_OPEN', 'Đơn không còn mở.');
       return this.detail(manager, await this.invoice(manager, user, id));
     });
@@ -518,37 +567,34 @@ export class SalesService {
   // Lock order: shift -> invoice -> promotion codes -> stock (same as payCash).
   private async cancelPaid(manager: EntityManager, user: UserSummary, row: Row, reason: string): Promise<void> {
     if (!user.permissions.includes('invoice.cancel_paid')) throw httpError(403, 'PERMISSION_DENIED', 'Bạn không có quyền thực hiện thao tác này.');
-    const [shift] = await manager.query('SELECT id, status FROM work_shifts WHERE id=$1 FOR UPDATE', [row.work_shift_id]);
-    if (shift.status !== 'OPEN') throw httpError(409, 'CANCEL_NOT_ALLOWED', 'Chỉ hủy được đơn đã thanh toán khi ca của đơn còn mở.');
+    const shift = await manager.getRepository(WorkShift).findOne({ where: { id: row.work_shift_id }, select: { id: true, status: true }, lock: { mode: 'pessimistic_write' } });
+    if (shift!.status !== 'OPEN') throw httpError(409, 'CANCEL_NOT_ALLOWED', 'Chỉ hủy được đơn đã thanh toán khi ca của đơn còn mở.');
     const locked = await this.invoice(manager, user, row.id, true);
     if (locked.status !== 'PAID') throw httpError(409, 'INVOICE_NOT_OPEN', 'Đơn không còn mở.');
 
-    const [payment] = await manager.query('SELECT method, amount::text AS amount FROM payments WHERE invoice_id=$1', [row.id]);
+    const payment = await manager.getRepository(Payment).findOne({ where: { invoice_id: row.id }, select: { id: true, method: true, amount: true } });
     if (payment?.method === 'CASH') {
-      const [cash] = await manager.query(`SELECT r.opening_cash::text AS opening_cash,
-        COALESCE((SELECT SUM(p.amount) FROM payments p JOIN invoices i ON i.id=p.invoice_id
-          WHERE i.work_shift_id=r.work_shift_id AND i.status='PAID' AND p.method='CASH'),0)::text AS cash_sales,
-        COALESCE((SELECT SUM(e.amount) FROM shift_expenses e
-          WHERE e.work_shift_id=r.work_shift_id AND e.paid_from_drawer=true),0)::text AS expenses
-        FROM cash_reconciliations r WHERE r.work_shift_id=$1`, [row.work_shift_id]);
+      // QueryBuilder: SUM of money read as text; Repository.sum() returns a float
+      const cash = await manager.getRepository(CashReconciliation).createQueryBuilder('r').select('r.opening_cash::text', 'opening_cash')
+        .addSelect("COALESCE((SELECT SUM(p.amount) FROM payments p JOIN invoices i ON i.id=p.invoice_id WHERE i.work_shift_id=r.work_shift_id AND i.status='PAID' AND p.method='CASH'),0)::text", 'cash_sales')
+        .addSelect("COALESCE((SELECT SUM(e.amount) FROM shift_expenses e WHERE e.work_shift_id=r.work_shift_id AND e.paid_from_drawer=true),0)::text", 'expenses')
+        .where('r.work_shift_id = :shiftId', { shiftId: row.work_shift_id }).getRawOne();
       if (!cash) throw httpError(500, 'INTERNAL_ERROR', 'Không tìm thấy bản ghi đối soát của ca thu ngân.');
       if (BigInt(cash.opening_cash) + BigInt(cash.cash_sales) - BigInt(cash.expenses) - BigInt(payment.amount) < 0n)
         throw httpError(409, 'CANCEL_EXCEEDS_DRAWER', 'Tiền mặt trong két không đủ để hoàn cho khách.');
     }
 
-    const promos: Row[] = await manager.query(`SELECT p.id FROM promotion_codes p
-      JOIN invoice_promotion_codes ip ON ip.promotion_code_id=p.id WHERE ip.invoice_id=$1 FOR UPDATE OF p`, [row.id]);
+    const linked = await manager.getRepository(InvoicePromotionCode).findOneBy({ invoice_id: row.id });
+    const promos = linked ? [await manager.getRepository(PromotionCode).findOne({ where: { id: linked.promotion_code_id }, select: { id: true }, lock: { mode: 'pessimistic_write' } })] : [];
     // CHECK used_count >= 0 aborts the transaction (500) if the counter is already 0.
-    for (const promo of promos) await manager.query('UPDATE promotion_codes SET used_count=used_count-1,updated_at=now() WHERE id=$1', [promo.id]);
+    for (const promo of promos) await manager.getRepository(PromotionCode).update({ id: promo!.id }, { used_count: () => 'used_count - 1', updated_at: () => 'now()' });
 
-    const sales: Row[] = await manager.query(`SELECT branch_id, ingredient_id, quantity FROM stock_movements
-      WHERE invoice_id=$1 AND type='SALE' ORDER BY ingredient_id, id`, [row.id]);
+    const sales = await manager.getRepository(StockMovement).find({ where: { invoice_id: row.id, type: 'SALE' },
+      select: { id: true, branch_id: true, ingredient_id: true, quantity: true }, order: { ingredient_id: 'ASC', id: 'ASC' } });
     for (const sale of sales) {
-      await manager.query(`INSERT INTO stock_movements(id,branch_id,ingredient_id,type,quantity,balance_after,invoice_id,created_by,source)
-        VALUES($1,$2,$3,'SALE_REVERSAL',-$4::numeric,0,$5,$6,'USER')`,
-        [randomUUID(), sale.branch_id, sale.ingredient_id, sale.quantity, row.id, user.id]);
+      await manager.getRepository(StockMovement).insert({ id: randomUUID(), branch_id: sale.branch_id, ingredient_id: sale.ingredient_id, type: 'SALE_REVERSAL',
+        quantity: sale.quantity.startsWith('-') ? sale.quantity.slice(1) : `-${sale.quantity}`, balance_after: '0', invoice_id: row.id, created_by: user.id, source: 'USER' });
     }
-    await manager.query(`UPDATE invoices SET status='CANCELLED',cancel_reason=$2,cancelled_by=$3,
-      cancelled_at=now(),updated_at=now() WHERE id=$1`, [row.id, reason, user.id]);
+    await manager.getRepository(Invoice).update({ id: row.id }, { status: 'CANCELLED', cancel_reason: reason, cancelled_by: user.id, cancelled_at: () => 'now()', updated_at: () => 'now()' });
   }
 }

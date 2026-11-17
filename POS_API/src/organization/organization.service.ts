@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { And, DataSource, Equal, EntityManager, FindOptionsWhere } from 'typeorm';
 import { UserSummary } from '../auth/auth.service';
 import { httpError } from '../http/http-error';
 import { Branch } from './entities/branch.entity';
@@ -42,17 +42,22 @@ export class OrganizationService {
     }
   }
 
+  // find* drops null conditions, so empty identity must fail before the query; And() keeps DB-side uuid comparison.
+  private branchWhere(id: string, user: UserSummary): FindOptionsWhere<Branch> {
+    const all = user.permissions.includes('branch.access_all');
+    if (!user.storeId || (!all && !user.branchId)) throw missing();
+    return { id: all ? id : And(Equal(id), Equal(user.branchId!)), store_id: user.storeId };
+  }
+
   async branchInScope(manager: EntityManager, id: string, user: UserSummary, lock = false): Promise<Branch> {
-    const query = manager.getRepository(Branch).createQueryBuilder('b')
-      .where('b.id = :id AND b.store_id = :storeId', { id, storeId: user.storeId });
-    if (!user.permissions.includes('branch.access_all')) query.andWhere('b.id = :branchId', { branchId: user.branchId });
-    if (lock) query.setLock('pessimistic_read');
-    const branch = await query.getOne();
+    const branch = await manager.getRepository(Branch).findOne({ where: this.branchWhere(id, user),
+      ...(lock ? { lock: { mode: 'pessimistic_read' as const } } : {}) });
     if (!branch) throw missing();
     return branch;
   }
 
   async listBranches(user: UserSummary, page: OrganizationPage) {
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
     const query = this.db.getRepository(Branch).createQueryBuilder('b').where('b.store_id = :storeId', { storeId: user.storeId });
     if (page.branchId) query.andWhere('b.id = :branchId', { branchId: page.branchId });
     const result = await organizationPageResponse(query, 'b', page, ['b.id AS id', 'b.store_id AS "storeId"',
@@ -73,9 +78,7 @@ export class OrganizationService {
   async patchBranch(user: UserSummary, id: string, input: PatchBranchDto) {
     return this.unique(() => this.db.transaction(async manager => {
       const repo = manager.getRepository(Branch);
-      const query = repo.createQueryBuilder('b').where('b.id = :id AND b.store_id = :storeId', { id, storeId: user.storeId });
-      if (!user.permissions.includes('branch.access_all')) query.andWhere('b.id = :branchId', { branchId: user.branchId });
-      const branch = await query.setLock('pessimistic_write').getOne();
+      const branch = await repo.findOne({ where: this.branchWhere(id, user), lock: { mode: 'pessimistic_write' } });
       if (!branch) throw missing();
       if (input.name !== undefined) branch.name = input.name;
       if (input.address !== undefined) branch.address = input.address || null;
@@ -97,6 +100,7 @@ export class OrganizationService {
 
   async listTables(user: UserSummary, page: OrganizationPage) {
     if (page.branchId) await this.branchInScope(this.db.manager, page.branchId, user);
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
     const query = this.db.getRepository(DiningTable).createQueryBuilder('t').innerJoin('t.branch', 'b')
       .where('b.store_id = :storeId', { storeId: user.storeId });
     if (page.branchId) query.andWhere('t.branch_id = :branchId', { branchId: page.branchId });
@@ -121,10 +125,10 @@ export class OrganizationService {
   async patchTable(user: UserSummary, id: string, input: PatchTableDto) {
     return this.unique(() => this.db.transaction(async manager => {
       const repo = manager.getRepository(DiningTable);
-      const query = repo.createQueryBuilder('t').innerJoin('t.branch', 'b')
-        .where('t.id = :id AND b.store_id = :storeId', { id, storeId: user.storeId });
-      if (!user.permissions.includes('branch.access_all')) query.andWhere('t.branch_id = :branchId', { branchId: user.branchId });
-      const table = await query.setLock('pessimistic_write', undefined, ['t']).getOne();
+      const all = user.permissions.includes('branch.access_all');
+      if (!user.storeId || (!all && !user.branchId)) throw missing();
+      const [table] = await repo.find({ where: { id, branch: { store_id: user.storeId }, ...(all ? {} : { branch_id: user.branchId! }) },
+        lock: { mode: 'pessimistic_write', tables: ['dining_tables'] } });
       if (!table) throw missing();
       if (input.name !== undefined) table.name = input.name;
       if (input.area !== undefined) table.area = input.area || null;

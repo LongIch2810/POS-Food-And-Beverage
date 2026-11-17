@@ -465,6 +465,105 @@ test('PB-05 menu and catalog HTTP with PostgreSQL', { timeout: 180_000 }, async 
         assert.equal(cashierPatchPrice.json.error.code, 'PERMISSION_DENIED');
       });
 
+      const jpeg = Buffer.from([
+        0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00, 0x48,
+        0x00, 0x48, 0x00, 0x00, 0xff, 0xdb, 0x00, 0x43, 0x00, 0xff, 0xd9,
+      ]);
+      const uploadImage = async (session: Session, productId: string) => {
+        const form = new FormData();
+        form.append('image', new Blob([jpeg], { type: 'image/jpeg' }), 'p.jpg');
+        return fetch(`${base}/products/${productId}/image`, {
+          method: 'POST',
+          headers: { Cookie: session.cookie, Origin: process.env.PUBLIC_ORIGIN!, 'X-CSRF-Token': session.csrf },
+          body: form,
+        });
+      };
+
+      await t.test('test_ST22_AC1_cross_store_404', async () => {
+        const catB = (await request(ownerB, '/categories', 'POST', { name: 'ST22 cat B' })).json.data.id;
+        const sizeB = (await request(ownerB, '/sizes', 'POST', { name: 'ST22 size B' })).json.data.id;
+        const topB = (await request(ownerB, '/toppings', 'POST', { name: 'ST22 top B', price: 1000 })).json.data.id;
+        const prodB = (await request(ownerB, '/products', 'POST', { categoryId: catB, name: 'ST22 prod B' })).json.data.id;
+        const psB = (await request(ownerB, `/products/${prodB}/sizes`, 'POST', { sizeId: sizeB, price: 20000 })).json.data.id;
+        assert.equal((await request(ownerB, `/categories/${catB}/toppings`, 'POST', { toppingId: topB })).status, 201);
+        assert.equal((await uploadImage(ownerB, prodB)).status, 200);
+
+        const notFound = async (res: { status: number; json: any }, message: string) => {
+          assert.equal(res.status, 404);
+          assert.equal(res.json.error.code, 'NOT_FOUND');
+          assert.equal(res.json.error.message, message);
+        };
+        const product = 'Món ăn không tồn tại.';
+        await notFound(await request(ownerA, `/products/${prodB}`), product);
+        await notFound(await request(ownerA, `/products/${prodB}`, 'PATCH', { name: 'Hack' }), product);
+        await notFound(await request(ownerA, `/products/${prodB}`, 'DELETE'), product);
+        await notFound(await request(ownerA, `/products/${prodB}/sizes`, 'POST', { sizeId: sizeMId, price: 1000 }), product);
+        await notFound(await request(ownerA, `/products/${prodB}/image`, 'DELETE'), product);
+        const upload = await uploadImage(ownerA, prodB);
+        await notFound({ status: upload.status, json: await upload.json() }, product);
+        const image = await fetch(`${base}/products/${prodB}/image`, { headers: { Cookie: ownerA.cookie } });
+        await notFound({ status: image.status, json: await image.json() }, 'Ảnh món không tồn tại.');
+        await notFound(await request(ownerA, `/product-sizes/${psB}`, 'PATCH', { price: 1 }), 'Cấu hình giá theo kích cỡ không tồn tại.');
+        await notFound(await request(ownerA, `/product-sizes/${psB}`, 'DELETE'), 'Cấu hình kích cỡ không tồn tại.');
+        await notFound(await request(ownerA, `/categories/${catB}/toppings`), 'Danh mục không tồn tại.');
+
+        // Store B data untouched
+        const own = await request(ownerB, `/products/${prodB}`);
+        assert.equal(own.status, 200);
+        assert.equal(own.json.data.name, 'ST22 prod B');
+        assert.equal(own.json.data.sizes.length, 1);
+        assert.equal(own.json.data.imageUrl, `/api/v1/products/${prodB}/image`);
+        assert.equal((await fetch(`${base}/products/${prodB}/image`, { headers: { Cookie: ownerB.cookie } })).status, 200);
+
+        // A topping of store A linked (bad data) to a category of store B is hidden from store B
+        const topA = (await request(ownerA, '/toppings', 'POST', { name: 'ST22 top A', price: 1000 })).json.data.id;
+        await db.query('INSERT INTO category_toppings (category_id, topping_id) VALUES ($1, $2)', [catB, topA]);
+        const links = await request(ownerB, `/categories/${catB}/toppings`);
+        assert.deepEqual(links.json.data.map((r: any) => r.id), [topB]);
+      });
+
+      await t.test('test_ST22_AC2_size_order_and_image', async () => {
+        const cat = (await request(ownerB, '/categories', 'POST', { name: 'ST22 order cat' })).json.data.id;
+        const prod = (await request(ownerB, '/products', 'POST', { categoryId: cat, name: 'ST22 order prod' })).json.data.id;
+        const sizeIds: Record<string, string> = {};
+        for (const [name, sortOrder] of [['M', 2], ['S', 1], ['L', 1]] as const) {
+          const res = await request(ownerB, '/sizes', 'POST', { name, sortOrder });
+          assert.equal(res.status, 201);
+          sizeIds[name] = res.json.data.id;
+          assert.equal((await request(ownerB, `/products/${prod}/sizes`, 'POST', { sizeId: res.json.data.id, price: 10000 })).status, 201);
+        }
+
+        const list = await request(ownerB, `/products?categoryId=${cat}`);
+        assert.deepEqual(list.json.data[0].sizes.map((s: any) => s.sizeName), ['L', 'S', 'M']);
+        assert.deepEqual(list.json.data[0].sizes.map((s: any) => s.sizeId), [sizeIds.L, sizeIds.S, sizeIds.M]);
+
+        // Detail orders by sort_order only: M is last; the S/L tie has no secondary key
+        const detail = await request(ownerB, `/products/${prod}`);
+        const names = detail.json.data.sizes.map((s: any) => s.sizeName);
+        assert.equal(names.length, 3);
+        assert.equal(names[2], 'M');
+        assert.deepEqual([...names.slice(0, 2)].sort(), ['L', 'S']);
+        assert.equal(detail.json.data.categoryName, 'ST22 order cat');
+
+        const patched = await request(ownerB, `/products/${prod}`, 'PATCH', { description: 'mô tả' });
+        assert.equal(patched.status, 200);
+        assert.equal(patched.json.data.categoryName, 'ST22 order cat');
+        assert.deepEqual(patched.json.data.sizes.map((s: any) => s.sizeName).sort(), ['L', 'M', 'S']);
+
+        for (const name of ['Zeta', 'Alpha']) {
+          const top = await request(ownerB, '/toppings', 'POST', { name, price: 1000 });
+          assert.equal((await request(ownerB, `/categories/${cat}/toppings`, 'POST', { toppingId: top.json.data.id })).status, 201);
+        }
+        const linked = await request(ownerB, `/categories/${cat}/toppings`);
+        assert.deepEqual(linked.json.data.map((r: any) => r.name), ['Alpha', 'Zeta']);
+
+        assert.equal((await uploadImage(ownerB, prod)).status, 200);
+        const image = await fetch(`${base}/products/${prod}/image`, { headers: { Cookie: ownerB.cookie } });
+        assert.equal(image.status, 200);
+        assert.equal(image.headers.get('Content-Type'), 'image/jpeg');
+        assert.deepEqual(Buffer.from(await image.arrayBuffer()), jpeg);
+      });
+
       await app.close();
     } finally {
       await db.destroy();

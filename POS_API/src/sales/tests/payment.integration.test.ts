@@ -3,12 +3,55 @@ import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import { DataSource } from 'typeorm';
 import { dataSource } from '../../database/data-source';
+import { captureSql, lockSequence } from '../../database/tests/sql-capture';
+import { StoreBankAccountService } from '../store-bank-account.service';
 import { SalesService } from '../sales.service';
 import { ShiftsService } from '../../shifts/shifts.service';
 import { TransferAttemptsService } from '../transfer-attempts.service';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../../app.module';
 import * as bcrypt from 'bcryptjs';
+
+test('orm ST-5 bank account preserves locking, upsert and pending behavior', { timeout: 120_000 }, async t => {
+  const name = `pos_orm_st5_${randomBytes(6).toString('hex')}`, url = new URL(process.env.DATABASE_URL!);
+  assert.ok(['localhost', '127.0.0.1'].includes(url.hostname));
+  url.pathname = `/${name}`;
+  const db = new DataSource({ type: 'postgres', url: url.toString(), entities: dataSource.options.entities, migrations: dataSource.options.migrations });
+  await dataSource.initialize();
+  try {
+    await dataSource.query(`CREATE DATABASE "${name}"`); await db.initialize(); await db.runMigrations();
+    const store = randomUUID(), branch = randomUUID(), owner = randomUUID(), shift = randomUUID(), invoice = randomUUID();
+    await db.query('INSERT INTO stores(id,name) VALUES($1,$2)', [store, 'ORM ST5']);
+    const user = { id: owner, storeId: store, branchId: null, username: 'orm_st5', fullName: 'Owner', role: 'OWNER', permissions: [], mustChangePassword: false };
+    const service = new StoreBankAccountService(db);
+    const account = { bankBin: '970422', accountNumber: '123456789', accountName: 'FIRST' };
+    await t.test('test_ST5_AC1_update_lock_sequence', async t => {
+      const sql = captureSql(t);
+      await service.update(user, account);
+      assert.deepEqual(lockSequence(sql), ['UPDATE:stores']);
+    });
+    await t.test('test_ST5_AC2_upsert_updates_updated_at', async () => {
+      await db.query("UPDATE store_bank_accounts SET updated_at=now()-interval '1 minute' WHERE store_id=$1", [store]);
+      const [before] = await db.query('SELECT updated_at FROM store_bank_accounts WHERE store_id=$1', [store]);
+      await service.update(user, { ...account, accountName: 'SECOND' });
+      const [after] = await db.query('SELECT updated_at FROM store_bank_accounts WHERE store_id=$1', [store]);
+      assert.deepEqual(await service.get(user), { ...account, accountName: 'SECOND' });
+      assert.ok(after.updated_at > before.updated_at);
+    });
+    await t.test('test_ST5_AC3_pending_blocks_update', async () => {
+      await db.query('INSERT INTO branches(id,store_id,code,name) VALUES($1,$2,$3,$4)', [branch, store, 'B', 'Branch']);
+      await db.query("INSERT INTO users(id,store_id,role_id,full_name,username,password_hash) VALUES($1,$2,(SELECT id FROM roles WHERE name='OWNER'),'Owner','orm_st5','hash')", [owner, store]);
+      await db.query("INSERT INTO work_shifts(id,branch_id,user_id,shift_type,status,started_at) VALUES($1,$2,$3,'CASHIER','OPEN',now())", [shift, branch, owner]);
+      await db.query("INSERT INTO invoices(id,branch_id,work_shift_id,created_by,invoice_code,order_type,status,subtotal,total_amount) VALUES($1,$2,$3,$4,'HD12345678','TAKEAWAY','OPEN',50000,50000)", [invoice, branch, shift, owner]);
+      await db.query("INSERT INTO transfer_attempts(id,invoice_id,store_id,bank_bin,account_number,account_name,amount,transfer_reference,idempotency_key,idempotency_request_hash,status) VALUES($1,$2,$3,'970422','123456789','FIRST',50000,'HD12345678ABCDEFGH',$4,$5,'PENDING')", [randomUUID(), invoice, store, randomUUID(), 'a'.repeat(64)]);
+      await assert.rejects(service.update(user, account), (e: any) => e.getStatus?.() === 409 && e.getResponse?.().code === 'TRANSFER_PENDING' && e.getResponse?.().message === 'Cửa hàng còn mã QR đang chờ thanh toán.');
+      assert.equal((await service.get(user))?.accountName, 'SECOND');
+    });
+  } finally {
+    if (db.isInitialized) await db.destroy();
+    await dataSource.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`); await dataSource.destroy();
+  }
+});
 
 test('ST-1.AC-1 BR-31/34/44 payment migration preserves data and enforces payment constraints', { timeout: 120_000 }, async () => {
   const name = `pos_pb09_test_${randomBytes(6).toString('hex')}`;
@@ -631,6 +674,124 @@ test('ST-4.AC-1 BR-31/32/34/35 CASH payment is atomic and replay safe', {timeout
         assert.equal((attempts.find(r=>r.status==='rejected') as PromiseRejectedResult).reason.getResponse().code,'INVOICE_NOT_OPEN');
       }finally{await app.close();}
     });
+    const promo16=(code:string,value:number)=>db.query(`INSERT INTO promotion_codes(id,store_id,code,discount_type,discount_value,start_at,end_at,usage_limit)
+      VALUES($1,$2,$3,'FIXED',$4,now()-interval '1 day',now()+interval '1 day',10)`,[randomUUID(),store,code,value]);
+    const order16=async(code?:string)=>{const invoice=await sales.create(user,{orderType:'TAKEAWAY'});await sales.addItem(user,invoice.id,{productSizeId:ps,quantity:3});
+      if(code)await sales.applyPromotion(user,invoice.id,code);return invoice.id as string;};
+    const stock16=(ingredientId:string,quantity:string)=>db.query(`INSERT INTO stock_movements(id,branch_id,ingredient_id,type,quantity,balance_after,created_by)
+      VALUES($1,$2,$3,'IMPORT',$4,0,$5)`,[randomUUID(),branch,ingredientId,quantity,actor]);
+    // Ingredient ids share a prefix and differ in the last digit, so ORDER BY ingredient_id is X, Y, Z.
+    const recipe16=async()=>{
+      const r=randomBytes(5).toString('hex'),[X,Y,Z]=[1,2,3].map(n=>`00000000-0000-4000-8000-${r}0${n}`);
+      const productS=randomUUID(),productM=randomUUID(),psS=randomUUID(),psM=randomUUID(),topping=randomUUID();
+      for(const [id,label] of [[X,'X'],[Y,'Y'],[Z,'Z']])await db.query('INSERT INTO ingredients(id,store_id,name,unit) VALUES($1,$2,$3,$4)',[id,store,`${label}${r}`,'g']);
+      for(const [id,label] of [[productS,'S16S'],[productM,'S16M']])await db.query('INSERT INTO products(id,category_id,name) VALUES($1,$2,$3)',[id,category,`${label}${r}`]);
+      await db.query('INSERT INTO product_sizes(id,product_id,size_id,price) VALUES($1,$2,$3,10000)',[psS,productS,size]);
+      await db.query('INSERT INTO product_sizes(id,product_id,size_id,price) VALUES($1,$2,$3,5000)',[psM,productM,size]);
+      await db.query('INSERT INTO toppings(id,store_id,name,price) VALUES($1,$2,$3,1000)',[topping,store,`T16${r}`]);
+      await db.query('INSERT INTO category_toppings(category_id,topping_id) VALUES($1,$2)',[category,topping]);
+      for(const [owner,ingredientId,quantity] of [[psS,X,'0.500'],[psS,Y,'0.125'],[psM,Y,'0.200']])
+        await db.query('INSERT INTO product_size_ingredients(product_size_id,ingredient_id,quantity) VALUES($1,$2,$3)',[owner,ingredientId,quantity]);
+      for(const [ingredientId,quantity] of [[X,'0.250'],[Z,'1.000']])
+        await db.query('INSERT INTO topping_ingredients(topping_id,ingredient_id,quantity) VALUES($1,$2,$3)',[topping,ingredientId,quantity]);
+      const invoice=await sales.create(user,{orderType:'TAKEAWAY'});
+      await sales.addItem(user,invoice.id,{productSizeId:psS,quantity:3,toppings:[{toppingId:topping,quantity:2}]});
+      await sales.addItem(user,invoice.id,{productSizeId:psM,quantity:1});
+      return {X,Y,Z,invoiceId:invoice.id as string};
+    };
+    await promo16('ST16CASH',10000);await promo16('ST16FREE',100000);
+    await t.test('test_ST16_AC1_pay_cash_lock_sequence',async t=>{
+      const id=await order16('ST16CASH'),sql=captureSql(t);
+      await sales.payCash(user,id,cashInput,randomUUID());
+      assert.deepEqual(lockSequence(sql),['advisory','UPDATE:work_shifts','UPDATE:branches','UPDATE:invoices','UPDATE:promotion_codes','UPDATE:invoices','UPDATE:promotion_codes']);
+    });
+    await t.test('test_ST16_AC1_complete_zero_lock_sequence',async t=>{
+      const id=await order16('ST16FREE'),sql=captureSql(t);
+      await sales.completeZero(user,id,randomUUID());
+      assert.deepEqual(lockSequence(sql),['advisory','UPDATE:work_shifts','UPDATE:branches','UPDATE:invoices','UPDATE:promotion_codes','UPDATE:invoices','UPDATE:promotion_codes']);
+    });
+    await t.test('test_ST16_AC2_sale_movement_quantity',async()=>{
+      const ingredientId=randomUUID(),product=randomUUID(),psX=randomUUID();
+      await db.query('INSERT INTO ingredients(id,store_id,name,unit) VALUES($1,$2,$3,$4)',[ingredientId,store,'ST16 AC2','g']);
+      await db.query('INSERT INTO products(id,category_id,name) VALUES($1,$2,$3)',[product,category,'ST16 AC2']);
+      await db.query('INSERT INTO product_sizes(id,product_id,size_id,price) VALUES($1,$2,$3,20000)',[psX,product,size]);
+      await db.query('INSERT INTO product_size_ingredients(product_size_id,ingredient_id,quantity) VALUES($1,$2,0.500)',[psX,ingredientId]);
+      await stock16(ingredientId,'10.000');
+      const invoice=await sales.create(user,{orderType:'TAKEAWAY'});await sales.addItem(user,invoice.id,{productSizeId:psX,quantity:2});
+      await sales.payCash(user,invoice.id,{method:'CASH',amount:40000,tenderedAmount:40000},randomUUID());
+      assert.deepEqual(await db.query('SELECT type,quantity,source,created_by,invoice_id FROM stock_movements WHERE invoice_id=$1',[invoice.id]),
+        [{type:'SALE',quantity:'-1.000',source:'USER',created_by:actor,invoice_id:invoice.id}]);
+      assert.equal((await db.query('SELECT current_stock FROM branch_ingredient_stocks WHERE branch_id=$1 AND ingredient_id=$2',[branch,ingredientId]))[0].current_stock,'9.000');
+    });
+    await t.test('test_ST16_AC3_key_reused_across_tables',async()=>{
+      const reused=(call:Promise<unknown>)=>assert.rejects(call,(e:any)=>e.getStatus?.()===409&&e.getResponse?.().code==='IDEMPOTENCY_KEY_REUSED'
+        &&e.getResponse?.().message==='Mã yêu cầu đã được dùng cho nội dung khác.');
+      const qrKey=randomUUID(),cashKey=randomUUID(),zeroKey=randomUUID(),holder=await order16();
+      await db.query(`INSERT INTO transfer_attempts(id,invoice_id,store_id,bank_bin,account_number,account_name,amount,transfer_reference,idempotency_key,idempotency_request_hash,status)
+        VALUES($1,$2,$3,'970422','123456789','STORE',60000,$4,$5,$6,'PENDING')`,[randomUUID(),holder,store,`HD${randomBytes(8).toString('hex').toUpperCase()}`,qrKey,'a'.repeat(64)]);
+      await sales.payCash(user,await order16('ST16CASH'),cashInput,cashKey);
+      await sales.completeZero(user,await order16('ST16FREE'),zeroKey);
+      const cashTarget=await order16('ST16CASH'),zeroTarget=await order16('ST16FREE');
+      await reused(sales.payCash(user,cashTarget,cashInput,qrKey));
+      await reused(sales.payCash(user,cashTarget,cashInput,zeroKey));
+      await reused(sales.completeZero(user,zeroTarget,qrKey));
+      await reused(sales.completeZero(user,zeroTarget,cashKey));
+      assert.deepEqual(await db.query(`SELECT status,(SELECT count(*)::int FROM payments WHERE invoice_id=i.id) AS payments,
+        (SELECT count(*)::int FROM stock_movements WHERE invoice_id=i.id) AS movements,zero_completion_key FROM invoices i WHERE id=ANY($1::uuid[]) ORDER BY id`,[[cashTarget,zeroTarget].sort()]),
+        [cashTarget,zeroTarget].sort().map(()=>({status:'OPEN',payments:0,movements:0,zero_completion_key:null})));
+    });
+    await t.test('test_ST16_cash_replay_returns_stored_payment',async()=>{
+      const id=await order16('ST16CASH'),key=randomUUID(),before=(await db.query('SELECT used_count FROM promotion_codes WHERE code=$1',['ST16CASH']))[0].used_count;
+      const first=await sales.payCash(user,id,cashInput,key),second=await sales.payCash(user,id,cashInput,key);
+      assert.equal(first.replayed,false);assert.equal(second.replayed,true);
+      assert.deepEqual({...second,replayed:false},first);
+      assert.equal(first.amount,50000);assert.equal(first.changeAmount,50000);
+      assert.equal((await db.query('SELECT count(*)::int AS n FROM payments WHERE invoice_id=$1',[id]))[0].n,1);
+      assert.equal((await db.query('SELECT used_count FROM promotion_codes WHERE code=$1',['ST16CASH']))[0].used_count,before+1);
+    });
+    await t.test('test_ST16_AC6_requirements_product_plus_topping',async()=>{
+      const {X,Y,Z,invoiceId}=await recipe16();
+      for(const id of [X,Y,Z])await stock16(id,'10.000');
+      assert.equal((await sales.payCash(user,invoiceId,{method:'CASH',amount:41000,tenderedAmount:50000},randomUUID())).status,'PAID');
+      assert.deepEqual((await db.query('SELECT ingredient_id,type,quantity,source,created_by FROM stock_movements WHERE invoice_id=$1 ORDER BY ctid',[invoiceId]))
+        .map((row:any)=>[row.ingredient_id,row.type,row.quantity,row.source,row.created_by]),
+        [[X,'SALE','-3.000','USER',actor],[Y,'SALE','-0.575','USER',actor],[Z,'SALE','-6.000','USER',actor]]);
+      assert.deepEqual((await db.query('SELECT ingredient_id,current_stock FROM branch_ingredient_stocks WHERE ingredient_id=ANY($1::uuid[]) ORDER BY ingredient_id',[[X,Y,Z]]))
+        .map((row:any)=>row.current_stock),['7.000','9.425','4.000']);
+    });
+    await t.test('test_ST16_AC7_negative_stock_preview',async()=>{
+      const {X,Y,Z,invoiceId}=await recipe16();
+      await stock16(X,'3.000');await stock16(Y,'0.574');
+      // Negative stock of an ingredient this invoice does not need must not be reported.
+      const unrelated=randomUUID();
+      await db.query('INSERT INTO ingredients(id,store_id,name,unit) VALUES($1,$2,$3,$4)',[unrelated,store,`U${randomBytes(5).toString('hex')}`,'g']);
+      await db.query(`INSERT INTO stock_movements(id,branch_id,ingredient_id,type,quantity,balance_after,created_by) VALUES($1,$2,$3,'WASTE','-5.000',0,$4)`,[randomUUID(),branch,unrelated,actor]);
+      const preview=await sales.paymentPreview(user,invoiceId);
+      assert.equal(preview.totalAmount,41000);
+      assert.deepEqual(preview.warnings,[{type:'NEGATIVE_STOCK',ingredientId:Y},{type:'NEGATIVE_STOCK',ingredientId:Z}]);
+    });
+    await t.test('test_ST16_AC7_missing_recipe_for_product_or_topping_sorted_by_item',async()=>{
+      const r=randomBytes(5).toString('hex'),ingredientId=randomUUID(),bare=randomUUID();
+      await db.query('INSERT INTO ingredients(id,store_id,name,unit) VALUES($1,$2,$3,$4)',[ingredientId,store,`W${r}`,'g']);
+      const sizes:string[]=[];
+      for(const [product,label,recipe] of [[randomUUID(),'NR',false],[randomUUID(),'WR',true],[randomUUID(),'WR2',true]] as const){
+        const psId=randomUUID();sizes.push(psId);
+        await db.query('INSERT INTO products(id,category_id,name) VALUES($1,$2,$3)',[product,category,`${label}${r}`]);
+        await db.query('INSERT INTO product_sizes(id,product_id,size_id,price) VALUES($1,$2,$3,1000)',[psId,product,size]);
+        if(recipe)await db.query('INSERT INTO product_size_ingredients(product_size_id,ingredient_id,quantity) VALUES($1,$2,1.000)',[psId,ingredientId]);
+      }
+      await db.query('INSERT INTO toppings(id,store_id,name,price) VALUES($1,$2,$3,0)',[bare,store,`bare${r}`]);
+      await db.query('INSERT INTO category_toppings(category_id,topping_id) VALUES($1,$2)',[category,bare]);
+      await stock16(ingredientId,'100.000');
+      const invoice=await sales.create(user,{orderType:'TAKEAWAY'});
+      const itemIds:string[]=[];
+      for(const input of [{productSizeId:sizes[0],quantity:1},{productSizeId:sizes[1],quantity:1,toppings:[{toppingId:bare,quantity:1}]},{productSizeId:sizes[2],quantity:1}]){
+        const detail=await sales.addItem(user,invoice.id,input);
+        itemIds.push(detail.items.find((item:any)=>item.productSizeId===input.productSizeId).id);
+      }
+      const preview=await sales.paymentPreview(user,invoice.id);
+      assert.deepEqual(preview.warnings,[itemIds[0],itemIds[1]].sort().map(itemId=>({type:'MISSING_RECIPE',itemId})));
+    });
   }finally{if(db.isInitialized)await db.destroy();await dataSource.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);await dataSource.destroy();}
 });
 
@@ -868,6 +1029,53 @@ test('ST-2.AC-1 BR-24/36/39/40 promo on OPEN invoices and readonly preview', { t
       await assert.rejects(sales.paymentPreview({...user,storeId:randomUUID()},paidOrder.id),(e:any)=>e.getResponse?.().code==='NOT_FOUND');
       assert.deepEqual(await snapshot(),before);
     });
+    const promoCode=(code:string,type:'PERCENT'|'FIXED',value:number,max:number|null,min:number|null,owner=store)=>
+      db.query(`INSERT INTO promotion_codes(id,store_id,code,discount_type,discount_value,max_discount_amount,min_order_amount,start_at,end_at,usage_limit)
+        VALUES($1,$2,$3,$4,$5,$6,$7,now()-interval '1 day',now()+interval '1 day',5)`,[randomUUID(),owner,code,type,value,max,min]);
+    const order100k=async()=>{const created=await sales.create(user,{orderType:'TAKEAWAY'});await sales.addItem(user,created.id,{productSizeId:productSize,quantity:5});return created.id as string;};
+    const promoRows=(id:string)=>db.query('SELECT code,discount_amount::text AS discount_amount FROM invoice_promotion_codes WHERE invoice_id=$1',[id]);
+    const totals=async(id:string)=>(await db.query(`SELECT subtotal::text AS subtotal,discount_amount::text AS discount_amount,total_amount::text AS total_amount,
+      updated_at>now()-interval '30 seconds' AS fresh FROM invoices WHERE id=$1`,[id]))[0];
+    await t.test('test_ST15_AC1_apply_promotion_lock_sequence',async t=>{
+      await promoCode('ST15LOCK','PERCENT',10,5000,null);
+      const id=await order100k();
+      const sql=captureSql(t);
+      await sales.applyPromotion(user,id,'ST15LOCK');
+      assert.deepEqual(lockSequence(sql),['UPDATE:work_shifts','UPDATE:branches','UPDATE:invoices','UPDATE:promotion_codes']);
+    });
+    await t.test('test_ST15_AC2_percent_cap_recalculates_and_one_code_per_invoice',async()=>{
+      await promoCode('ST15PCT','PERCENT',10,5000,null);await promoCode('ST15OTHER2','FIXED',1000,null,null);
+      const id=await order100k();
+      await db.query("UPDATE invoices SET updated_at=now()-interval '1 hour' WHERE id=$1",[id]);
+      const detail=await sales.applyPromotion(user,id,' st15pct ');
+      assert.equal(detail.discountAmount,5000);assert.equal(detail.totalAmount,95000);assert.equal(detail.promotionCode.code,'ST15PCT');
+      assert.deepEqual(await totals(id),{subtotal:'100000',discount_amount:'5000',total_amount:'95000',fresh:true});
+      assert.deepEqual(await promoRows(id),[{code:'ST15PCT',discount_amount:'5000'}]);
+      await assert.rejects(sales.applyPromotion(user,id,'ST15OTHER2'),(e:any)=>e.getStatus?.()===409&&e.getResponse?.().code==='PROMOTION_ALREADY_APPLIED');
+      assert.deepEqual(await promoRows(id),[{code:'ST15PCT',discount_amount:'5000'}]);
+      const removed=await sales.removePromotion(user,id);
+      assert.equal(removed.promotionCode,null);assert.equal(removed.totalAmount,100000);
+      assert.deepEqual(await promoRows(id),[]);
+      assert.deepEqual(await totals(id),{subtotal:'100000',discount_amount:'0',total_amount:'100000',fresh:true});
+    });
+    await t.test('test_ST15_AC2_percent_without_cap_or_minimum',async()=>{
+      await promoCode('ST15NOCAP','PERCENT',10,null,null);
+      const id=await order100k();
+      const detail=await sales.applyPromotion(user,id,'ST15NOCAP');
+      assert.equal(detail.discountAmount,10000);assert.equal(detail.totalAmount,90000);
+      assert.deepEqual(await promoRows(id),[{code:'ST15NOCAP',discount_amount:'10000'}]);
+    });
+    await t.test('test_ST15_AC3_unknown_foreign_store_and_unmet_minimum_leave_no_row',async()=>{
+      const foreign=randomUUID();
+      await db.query('INSERT INTO stores(id,name) VALUES($1,$2)',[foreign,'ST15 foreign']);
+      await promoCode('ST15FOREIGN','FIXED',1000,null,null,foreign);await promoCode('ST15MIN','FIXED',1000,null,500000);
+      const id=await order100k();
+      for(const code of ['ST15FOREIGN','ST15MISSING'])
+        await assert.rejects(sales.applyPromotion(user,id,code),(e:any)=>e.getStatus?.()===404&&e.getResponse?.().code==='NOT_FOUND');
+      await assert.rejects(sales.applyPromotion(user,id,'ST15MIN'),(e:any)=>e.getStatus?.()===422&&e.getResponse?.().code==='PROMOTION_NOT_APPLICABLE');
+      assert.deepEqual(await promoRows(id),[]);
+      assert.deepEqual(await totals(id),{subtotal:'100000',discount_amount:'0',total_amount:'100000',fresh:true});
+    });
   } finally {
     if(db.isInitialized)await db.destroy();
     await dataSource.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`); await dataSource.destroy();
@@ -1059,6 +1267,90 @@ test('ST-5.AC-1/2 bank account and QR attempts use live HTTP and isolated Postgr
       const pending=await fetch(`${base}/invoices/${invoiceId}/transfer-attempts`,{headers:cashierHeaders});
       assert.equal((await pending.json() as any).data,null);
     });
+    const ensureAccount=()=>db.query(`INSERT INTO store_bank_accounts(store_id,bank_bin,account_number,account_name) VALUES($1,$2,$3,$4) ON CONFLICT (store_id) DO NOTHING`,
+      [store,account.bankBin,account.accountNumber,account.accountName]);
+    const promoFor=async(code:string,value:number)=>db.query(`INSERT INTO promotion_codes(id,store_id,code,discount_type,discount_value,start_at,end_at,usage_limit)
+      VALUES($1,$2,$3,'FIXED',$4,now()-interval '1 day',now()+interval '1 day',5)`,[randomUUID(),store,code,value]);
+    const ownerUser={id:owner,storeId:store,branchId:null,username:'st5_owner',fullName:'Owner',role:'OWNER',permissions:['branch.access_all','transfer.confirm_manual'],mustChangePassword:false};
+    const attempts=new TransferAttemptsService(db,sales);
+    const qrCreate=(invoiceId:string,key=randomUUID())=>fetch(`${base}/invoices/${invoiceId}/transfer-attempts`,{method:'POST',headers:{...cashierHeaders,'Idempotency-Key':key},body:JSON.stringify({amount:50000})});
+    const manualConfirm=(attemptId:string,key=randomUUID(),transactionRef='FT-ST10')=>fetch(`${base}/transfer-attempts/${attemptId}/confirm-manual`,{method:'POST',
+      headers:{...ownerHeaders,'Idempotency-Key':key},body:JSON.stringify({transactionRef,actualReceivedAmount:50000,reason:'Đã đối chiếu'})});
+    const qrCancel=(attemptId:string)=>fetch(`${base}/transfer-attempts/${attemptId}/cancel`,{method:'POST',headers:cancelHeaders});
+    await t.test('test_ST10_AC1_transfer_lock_sequences',async t=>{
+      await ensureAccount();await promoFor('ST10LOCK',5000);
+      const invoiceId=await order();await sales.applyPromotion(user,invoiceId,'ST10LOCK');
+      const sql=captureSql(t);
+      const locks=()=>{const sequence=lockSequence(sql);sql.length=0;return sequence;};
+      const first=await attempts.createTransferAttempt(user,invoiceId,45000,randomUUID());
+      assert.deepEqual(locks(),['advisory','UPDATE:stores','UPDATE:work_shifts','UPDATE:invoices','UPDATE:promotion_codes']);
+      await attempts.cancelTransferAttempt(user,first.id);
+      assert.deepEqual(locks(),['UPDATE:work_shifts','UPDATE:invoices','UPDATE:transfer_attempts']);
+      const second=await attempts.createTransferAttempt(user,invoiceId,45000,randomUUID());locks();
+      await attempts.confirmTransferManually(ownerUser,second.id,{transactionRef:'FT-ST10-LOCK',actualReceivedAmount:45000,reason:'Đã đối chiếu'},randomUUID());
+      // Only the prefix owned by this service; finalizeInvoice locks belong to ST-16.
+      assert.deepEqual(locks().slice(0,5),['advisory','UPDATE:work_shifts','UPDATE:invoices','UPDATE:transfer_attempts','UPDATE:promotion_codes']);
+    });
+    await t.test('test_ST10_AC3_key_reused_across_tables',async()=>{
+      await ensureAccount();await promoFor('ST10ZERO',50000);
+      const reused=async(response:Response)=>{
+        assert.equal(response.status,409);const error=(await response.json() as any).error;
+        assert.equal(error.code,'IDEMPOTENCY_KEY_REUSED');assert.equal(error.message,'Mã yêu cầu đã được dùng cho nội dung khác.');
+      };
+      const zeroKey=randomUUID(),cashKey=randomUUID(),qrKey=randomUUID(),zeroId=await order(),cashId=await order();
+      await sales.applyPromotion(user,zeroId,'ST10ZERO');await sales.completeZero(user,zeroId,zeroKey);
+      await sales.payCash(user,cashId,{method:'CASH',amount:50000,tenderedAmount:50000},cashKey);
+      const target=await order(),otherOrder=await order();
+      const otherQr=await qrCreate(otherOrder,qrKey);assert.equal(otherQr.status,201);
+      await reused(await qrCreate(target,zeroKey));
+      await reused(await qrCreate(target,cashKey));
+      await reused(await qrCreate(target,qrKey));
+      const created=await qrCreate(target);assert.equal(created.status,201);
+      const attemptId=(await created.json() as any).data.id;
+      for(const key of [zeroKey,cashKey,qrKey])await reused(await manualConfirm(attemptId,key));
+      assert.equal((await db.query('SELECT count(*)::int AS n FROM payments WHERE invoice_id=ANY($1::uuid[])',[[target,otherOrder]]))[0].n,0);
+      assert.equal((await db.query('SELECT count(*)::int AS n FROM transfer_attempts WHERE invoice_id=$1',[target]))[0].n,1);
+      for(const id of [attemptId,(await otherQr.json() as any).data.id])assert.equal((await qrCancel(id)).status,204);
+    });
+    await t.test('test_ST10_AC4_exceptions_cursor_keeps_microseconds',async()=>{
+      const newer='00000000-0000-4000-8000-000000000001',older='ffffffff-ffff-4fff-8fff-ffffffffffff';
+      const add=(id:string,event:string,micro:string,disposition:string)=>db.query(`INSERT INTO bank_transfer_events
+        (id,provider_event_id,account_number,transfer_amount,received_at,disposition,store_id,branch_id) VALUES($1,$2,'123456789',30000,$3::timestamptz,$4,$5,$6)`,
+        [id,event,`2026-11-17T01:00:00.${micro}Z`,disposition,store,branch]);
+      try{
+        await add(older,'st10-000001','000001','UNDERPAID');await add(newer,'st10-000002','000002','UNDERPAID');await add(randomUUID(),'st10-paid','000003','PAID');
+        const get=async(query:string)=>(await (await fetch(`${base}/bank-transfer-exceptions${query}`,{headers:ownerHeaders})).json() as any);
+        const first=await get('?limit=1');
+        assert.deepEqual(first.data.map((v:any)=>v.id),[newer]);assert.equal(first.meta.total,2);assert.ok(first.meta.nextCursor);
+        const second=await get(`?limit=1&cursor=${first.meta.nextCursor}`);
+        assert.deepEqual(second.data.map((v:any)=>v.id),[older]);assert.equal(second.meta.nextCursor,null);assert.equal(second.meta.total,2);
+      }finally{await db.query(`DELETE FROM bank_transfer_events WHERE provider_event_id IN ('st10-000001','st10-000002','st10-paid')`);}
+    });
+    await t.test('test_ST10_AC6_on_conflict_target_unchanged',async t=>{
+      await ensureAccount();
+      const invoiceId=await order(),sql=captureSql(t);
+      const created=await attempts.createTransferAttempt(user,invoiceId,50000,randomUUID());
+      await attempts.confirmTransferManually(ownerUser,created.id,{transactionRef:'FT-ST10-CONFLICT',actualReceivedAmount:50000,reason:'Đã đối chiếu'},randomUUID());
+      const statements=sql.map(text=>text.replace(/"/g,'').replace(/\s+/g,' '));
+      const insert=(table:string)=>{const found=statements.filter(text=>text.startsWith(`INSERT INTO ${table}`));assert.equal(found.length,1,`one INSERT INTO ${table}`);return found[0];};
+      assert.match(insert('transfer_attempts'),/ON CONFLICT \(transfer_reference\) DO NOTHING RETURNING /);
+      assert.match(insert('payments'),/ON CONFLICT \(receiving_account_number,transaction_ref_kind,transaction_ref\) WHERE method='TRANSFER' AND transaction_ref IS NOT NULL DO NOTHING RETURNING /);
+    });
+    await t.test('test_ST10_AC7_bank_ref_reused_db_state',async()=>{
+      await ensureAccount();
+      const first=await order(),second=await order();
+      const created=async(invoiceId:string)=>{const response=await qrCreate(invoiceId);assert.equal(response.status,201);return (await response.json() as any).data;};
+      const a=await created(first),b=await created(second);
+      assert.equal((await manualConfirm(a.id,randomUUID(),'FT-ST10-REUSED')).status,201);
+      const denied=await manualConfirm(b.id,randomUUID(),'FT-ST10-REUSED');assert.equal(denied.status,409);
+      const error=(await denied.json() as any).error;
+      assert.equal(error.code,'BANK_TRANSACTION_REUSED');assert.equal(error.message,'Giao dịch ngân hàng đã được dùng để xác nhận đơn khác.');
+      assert.deepEqual(await db.query(`SELECT i.status AS invoice,a.status AS attempt,(SELECT count(*)::int FROM payments WHERE invoice_id=i.id) AS payments,
+        (SELECT count(*)::int FROM stock_movements WHERE invoice_id=i.id) AS movements FROM invoices i JOIN transfer_attempts a ON a.invoice_id=i.id WHERE i.id=$1`,[second]),
+        [{invoice:'OPEN',attempt:'PENDING',payments:0,movements:0}]);
+      assert.equal((await db.query('SELECT count(*)::int AS n FROM payments WHERE invoice_id=$1',[first]))[0].n,1);
+      assert.equal((await qrCancel(b.id)).status,204);
+    });
     await t.test('test_ST5_account_permission_race',async()=>{
       const invoiceId=await order();
       const gate=db.createQueryRunner();await gate.connect();
@@ -1080,10 +1372,10 @@ test('ST-5.AC-1/2 bank account and QR attempts use live HTTP and isolated Postgr
       try{
         create=fetch(`${base}/invoices/${invoiceId}/transfer-attempts`,{method:'POST',
           headers:{...cashierHeaders,'Idempotency-Key':randomUUID()},body:JSON.stringify({amount:50000})});
-        assert.equal(await waiting('INSERT INTO transfer_attempts'),true,'QR insert reached held advisory gate');
+        assert.equal(await waiting('INSERT INTO "transfer_attempts"'),true,'QR insert reached held advisory gate');
         patch=fetch(`${base}/store-bank-account`,{method:'PATCH',headers:ownerHeaders,
           body:JSON.stringify({...account,accountName:'RACE UPDATED'})});
-        assert.equal(await waiting('SELECT id FROM stores'),true,'bank change must wait for QR store lock');
+        assert.equal(await waiting('FROM "stores" "Store"'),true,'bank change must wait for QR store lock');
       }finally{
         await gate.query('SELECT pg_advisory_unlock(97531)');await gate.release();
       }
@@ -1441,6 +1733,28 @@ test('ST-6.AC-1 SePay authentication, quarantine and deduplication on PostgreSQL
       assert.equal((await db.query('SELECT count(*)::int AS n FROM bank_transfer_events WHERE provider_event_id=$1',['6207']))[0].n,1);
       assert.equal((await db.query('SELECT count(*)::int AS n FROM payments WHERE invoice_id=$1',[qr.invoiceId]))[0].n,1);
       assert.equal((await db.query('SELECT count(*)::int AS n FROM stock_movements WHERE invoice_id=$1',[qr.invoiceId]))[0].n,1);
+    });
+    await t.test('test_ST11_AC1_webhook_lock_sequence',async t=>{
+      const promotion=randomUUID();
+      await db.query(`INSERT INTO promotion_codes(id,store_id,code,discount_type,discount_value,start_at,end_at,usage_limit)
+        VALUES($1,$2,'ST11LOCK','FIXED',10000,now()-interval '1 day',now()+interval '1 day',5)`,[promotion,store]);
+      const qr=await makePending(40000,promotion),sql=captureSql(t);
+      const response=await post(JSON.stringify(payload(6301,{code:qr.transferReference,content:qr.transferReference,transferAmount:40000})));
+      assert.equal(response.status,200);
+      assert.deepEqual(lockSequence(sql),['advisory','UPDATE:work_shifts','UPDATE:invoices','UPDATE:transfer_attempts','UPDATE:promotion_codes','UPDATE:invoices','UPDATE:promotion_codes']);
+      assert.equal((await db.query('SELECT disposition FROM bank_transfer_events WHERE provider_event_id=$1',['6301']))[0].disposition,'PAID');
+    });
+    await t.test('test_ST11_AC4_on_conflict_target_unchanged',async t=>{
+      const first=await makePending(),second=await makePending(),sql=captureSql(t);
+      const send=(id:number,qr:any)=>post(JSON.stringify(payload(id,{code:qr.transferReference,content:qr.transferReference,referenceCode:'FT-ST11-SAME'})));
+      assert.equal((await send(6302,first)).status,200);
+      const statements=sql.map(text=>text.replace(/"/g,'').replace(/\s+/g,' '));
+      const inserts=statements.filter(text=>text.startsWith('INSERT INTO payments'));
+      assert.equal(inserts.length,1);
+      assert.match(inserts[0],/ON CONFLICT \(receiving_account_number,transaction_ref_kind,transaction_ref\) WHERE method='TRANSFER' AND transaction_ref IS NOT NULL DO NOTHING RETURNING /);
+      assert.equal((await send(6303,second)).status,200);
+      assert.equal((await db.query('SELECT disposition FROM bank_transfer_events WHERE provider_event_id=$1',['6303']))[0].disposition,'DUPLICATE');
+      assert.equal((await db.query('SELECT count(*)::int AS n FROM payments WHERE invoice_id=$1',[second.invoiceId]))[0].n,0);
     });
     await t.test('test_ST6_promo_invalid_on_arrival',async()=>{
       const promotion=randomUUID();

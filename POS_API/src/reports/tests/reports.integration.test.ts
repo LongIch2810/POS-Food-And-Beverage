@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test, mock } from 'node:test';
 import { Logger } from '@nestjs/common';
+import { PostgresQueryRunner } from 'typeorm/driver/postgres/PostgresQueryRunner';
+import { captureSql } from '../../database/tests/sql-capture';
 import { defaultQuery, getWithBody, InvoiceSeed, withWorld, World } from './reports.fixture';
 
 const D14 = '2026-11-14';
@@ -158,6 +160,9 @@ test('test_ST2_AC3_scope_permissions_http', { timeout: 180_000 }, async () => {
     assert.equal(await total('owner_a', { branchId: w.id.a2 }), 20000);
     assert.equal(await total('owner_a', { branchId: w.id.a1.toUpperCase() }), 10000);
     assert.equal(await total('owner_a', { branchId: w.id.b1 }), 404);
+    const foreignBranch = await ownerGet(w, defaultQuery({ branchId: w.id.b1 }));
+    assert.equal(foreignBranch.body.error.code, 'NOT_FOUND');
+    assert.equal(foreignBranch.body.error.message, 'Không tìm thấy tài nguyên.');
     assert.equal(await total('owner_b'), 40000);
     // Restricted branch users: client branchId (other branch, foreign branch, garbage) is ignored.
     assert.equal(await total('mgr_a1'), 10000);
@@ -357,9 +362,10 @@ test('test_ST2_AC7_consistent_statement', { timeout: 180_000 }, async () => {
     const headers = await w.login('owner_a');
     const original = w.db.query.bind(w.db) as (...args: any[]) => Promise<any>;
     let reportStatements = 0, beforeStatement: (() => Promise<void>) | undefined;
-    const spy = mock.method(w.db, 'query', async (sql: string, params?: unknown[]) => {
-      if (isReportSql(sql)) { reportStatements++; await beforeStatement?.(); }
-      return original(sql, params);
+    const originalRunner = PostgresQueryRunner.prototype.query;
+    const spy = mock.method(PostgresQueryRunner.prototype, 'query', async function (this: PostgresQueryRunner, sql: string, params?: any[], structured?: boolean) {
+      if (this.connection === w.db && /^\s*(SELECT|WITH)\b/i.test(sql) && isReportSql(sql)) { reportStatements++; await beforeStatement?.(); }
+      return originalRunner.call(this, sql, params, structured);
     });
     try {
       // Barrier: a cancel commits after the request is accepted but before the single statement runs.
@@ -397,10 +403,10 @@ test('test_ST2_AC7_failure_readonly', { timeout: 180_000 }, async () => {
       [t, (await w.db.query(`SELECT count(*)::int AS n, md5(COALESCE(string_agg(x::text,'' ORDER BY x::text),'')) AS h FROM ${t} x`))[0]])));
     const before = await digest();
 
-    const original = w.db.query.bind(w.db) as (...args: any[]) => Promise<any>;
-    const spy = mock.method(w.db, 'query', async (sql: string, params?: unknown[]) => {
-      if (isReportSql(sql)) throw new Error('relation "secret_ledger" does not exist; SELECT password_hash FROM users');
-      return original(sql, params);
+    const original = PostgresQueryRunner.prototype.query;
+    const spy = mock.method(PostgresQueryRunner.prototype, 'query', async function (this: PostgresQueryRunner, sql: string, params?: any[], structured?: boolean) {
+      if (this.connection === w.db && /^\s*(SELECT|WITH)\b/i.test(sql) && isReportSql(sql)) throw new Error('relation "secret_ledger" does not exist; SELECT password_hash FROM users');
+      return original.call(this, sql, params, structured);
     });
     try {
       const response = await fetch(`${w.base}/reports/revenue?${new URLSearchParams(defaultQuery())}`, { headers: { Cookie: headers.Cookie, 'X-Request-Id': 'req-reports-500' } });
@@ -468,5 +474,36 @@ test('[B-56] test_ST2_AC3_permission_before_validation', { timeout: 180_000 }, a
     assert.equal(await status('mgr_a1'), 403, 'manager without report permission');
     await w.db.query(`DELETE FROM role_permissions WHERE role_id=(SELECT id FROM roles WHERE name='CASHIER') AND permission_id=(SELECT id FROM permissions WHERE code='report.view_shift')`);
     assert.equal(await status('cash_a1'), 403, 'cashier without report permission');
+  });
+});
+
+
+test('test_ST6_AC4_best_sellers_limit_and_ties', { timeout: 120_000 }, async () => {
+  await withWorld(async w => {
+    const shift = await w.shift({ user: 'cash_a1', branch: w.id.a1 });
+    const items = [];
+    for (let i = 0; i < 12; i++) {
+      const name = `Product${String(i).padStart(2, '0')}`;
+      const ps = await w.productSize(w.id.storeA, name, 'M');
+      const qty = i < 9 ? 12 - i : 2;
+      items.push({ ps, name, size: 'M', qty, line: qty * 1000 });
+    }
+    await w.invoice({ branch: w.id.a1, shift, user: 'cash_a1', method: 'CASH', amount: items.reduce((sum, item) => sum + item.line, 0), items });
+    const r = await ownerGet(w);
+    assert.equal(r.status, 200, r.text);
+    assert.deepEqual(r.body.data.bestSellers, items.slice(0, 10).map(item => ({ productSizeId: item.ps, productName: item.name, sizeName: item.size, quantity: item.qty, revenue: item.line })));
+  });
+});
+
+test('test_ST6_AC5_revenue_single_statement', { timeout: 120_000 }, async t => {
+  await withWorld(async w => {
+    const shift = await w.shift({ user: 'cash_a1', branch: w.id.a1 });
+    const headers = await w.login('owner_a');
+    const sql = captureSql(t);
+    const r = await w.get(defaultQuery({ branchId: w.id.a1, shiftId: shift }), headers);
+    assert.equal(r.status, 200, r.text);
+    const statements = sql.filter(s => /FROM\s+"?invoices"?|\bscoped\b/i.test(s));
+    assert.equal(statements.length, 1);
+    assert.match(statements[0].trimStart(), /^WITH\b/i);
   });
 });

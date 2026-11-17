@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, In, IsNull, Not } from 'typeorm';
+import { normalizeUsername } from '../auth/auth.service';
 import { httpError } from '../http/http-error';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { Role } from '../auth/entities/role.entity';
@@ -33,7 +34,7 @@ export class PlatformService {
   private async createOwner(manager: EntityManager, input: { storeId: string; username: string; fullName: string }) {
     const role = await manager.getRepository(Role).findOneBy({ name: 'OWNER' });
     if (!role) throw httpError(503, 'SERVICE_UNAVAILABLE', 'Vai trò chủ cửa hàng chưa sẵn sàng.');
-    const [{ username }] = await manager.query('SELECT lower(btrim($1::text)) AS username', [input.username]);
+    const username = normalizeUsername(input.username);
     const temporaryPassword = randomBytes(18).toString('base64url');
     const owner = manager.getRepository(User).create({
       store_id: input.storeId, branch_id: null, role_id: role.id, username,
@@ -51,8 +52,9 @@ export class PlatformService {
   }
 
   async listStores(page: PlatformPage) {
+    const total = await this.db.getRepository(Store).count();
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
     const query = this.db.getRepository(Store).createQueryBuilder('s');
-    const total = await query.getCount();
     if (page.after) query.where('(s.created_at, s.id) < (:createdAt::timestamptz, :id::uuid)', page.after);
     const rows = await query.select(['s.id AS id', 's.name AS name', 's.phone AS phone', 's.email AS email',
       's.address AS address', 's.status AS status', 's.suspended_at AS "suspendedAt"',
@@ -80,7 +82,7 @@ export class PlatformService {
     actorId: string, requestId: string) {
     const store = await this.db.transaction(async (manager) => {
       const repo = manager.getRepository(Store);
-      const current = await repo.createQueryBuilder('s').where('s.id = :id', { id }).setLock('pessimistic_write').getOne();
+      const current = await repo.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
       if (!current) throw httpError(404, 'NOT_FOUND', 'Không tìm thấy cửa hàng.');
       if (current.status === status) throw httpError(409, status === 'ACTIVE' ? 'STORE_ALREADY_ACTIVE' : 'STORE_ALREADY_SUSPENDED',
         'Cửa hàng đã ở trạng thái này.');
@@ -89,10 +91,8 @@ export class PlatformService {
       current.suspended_reason = status === 'SUSPENDED' ? reason! : null;
       const updated = await repo.save(current);
       if (status === 'SUSPENDED') {
-        await manager.getRepository(RefreshToken).createQueryBuilder().update(RefreshToken)
-          .set({ revoked_at: () => 'now()' })
-          .where('revoked_at IS NULL AND user_id IN (SELECT id FROM users WHERE store_id = :id)', { id })
-          .execute();
+        const userIds = (await manager.getRepository(User).find({ where: { store_id: id }, select: { id: true } })).map(u => u.id);
+        await manager.getRepository(RefreshToken).update({ user_id: In(userIds), revoked_at: IsNull() }, { revoked_at: () => 'now()' });
       }
       return storeView(updated);
     });
@@ -101,10 +101,11 @@ export class PlatformService {
   }
 
   async listOwners(page: PlatformPage) {
+    const total = await this.db.getRepository(User).count({ where: { role: { name: 'OWNER' }, store_id: Not(IsNull()) } });
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
     const query = this.db.getRepository(User).createQueryBuilder('u')
       .innerJoin('u.role', 'r', 'r.name = :role', { role: 'OWNER' })
       .innerJoin('u.store', 's');
-    const total = await query.getCount();
     if (page.after) query.andWhere('(u.created_at, u.id) < (:createdAt::timestamptz, :id::uuid)', page.after);
     const rows = await query.select(['u.id AS id', 'u.store_id AS "storeId"', 'u.username AS username',
         'u.full_name AS "fullName"', 'u.is_active AS "isActive"',
@@ -128,16 +129,14 @@ export class PlatformService {
 
   async resetOwnerPassword(id: string, actorId: string, requestId: string) {
     const result = await this.db.transaction(async (manager) => {
-      const user = await manager.getRepository(User).createQueryBuilder('u')
-        .innerJoinAndSelect('u.role', 'r').where('u.id = :id AND r.name = :role', { id, role: 'OWNER' })
-        .setLock('pessimistic_write', undefined, ['u']).getOne();
+      const user = (await manager.getRepository(User).find({ where: { id, role: { name: 'OWNER' } },
+        relations: { role: true }, lock: { mode: 'pessimistic_write', tables: ['users'] } }))[0] ?? null;
       if (!user) throw httpError(404, 'NOT_FOUND', 'Không tìm thấy tài khoản chủ cửa hàng.');
       const temporaryPassword = randomBytes(18).toString('base64url');
       user.password_hash = await bcrypt.hash(temporaryPassword, 12);
       user.must_change_password = true;
       const owner = await manager.getRepository(User).save(user);
-      await manager.getRepository(RefreshToken).createQueryBuilder().update(RefreshToken)
-        .set({ revoked_at: () => 'now()' }).where('user_id = :id AND revoked_at IS NULL', { id }).execute();
+      await manager.getRepository(RefreshToken).update({ user_id: id, revoked_at: IsNull() }, { revoked_at: () => 'now()' });
       return { owner: ownerView(owner), temporaryPassword };
     });
     this.log('owner.reset_password', actorId, id, requestId);

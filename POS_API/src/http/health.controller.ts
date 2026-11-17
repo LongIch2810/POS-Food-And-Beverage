@@ -9,7 +9,8 @@ export class HealthController {
   @Get('health')
   async health(): Promise<{ data: { status: 'ok' } }> {
     try {
-      await this.db.query('SELECT 1');
+      // QueryBuilder: table-less SELECT (advisory lock or probe); no repository method runs it
+      await this.db.createQueryBuilder().select('1', 'ok').fromDummy().getRawOne();
     } catch {
       throw new ServiceUnavailableException();
     }

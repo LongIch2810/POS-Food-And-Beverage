@@ -7,6 +7,7 @@ import * as bcrypt from 'bcryptjs';
 import { AppModule } from '../../app.module';
 import { bootstrapAdmin } from '../../bootstrap-admin';
 import { dataSource } from '../../database/data-source';
+import { captureSql, lockSequence } from '../../database/tests/sql-capture';
 
 test('[S9-03/S9-04/S9-05] cancel PAID invoices over HTTP with PostgreSQL', { timeout: 180_000 }, async (t) => {
   const name = `pos_s9_cancel_${randomBytes(6).toString('hex')}`;
@@ -667,6 +668,30 @@ test('[S9-03/S9-04/S9-05] cancel PAID invoices over HTTP with PostgreSQL', { tim
         assert.equal(stockOf(afterB, milk), '900.000', order);
         assert.equal(stockOf(afterB, sugar), '980.000', order);
       }
+    });
+
+    await t.test('test_ST17_AC1_cancel_paid_lock_sequence', async (t) => {
+      const { cashier, manager } = await freshShift();
+      const sold = await paidCashInvoice(cashier, { quantity: 2, promoCode: 'S9PROMO', tendered: 50000 });
+      const sql = captureSql(t);
+      const response = await cancel(manager, sold.id);
+      assert.equal(response.status, 200, await response.clone().text());
+      assert.deepEqual(lockSequence(sql), ['UPDATE:work_shifts', 'UPDATE:invoices', 'UPDATE:promotion_codes']);
+      // Stock rows are read in a fixed order so concurrent cancels cannot deadlock on SALE_REVERSAL inserts.
+      assert.ok(sql.some((q) => /FROM "stock_movements".*ORDER BY "StockMovement_ingredient_id" ASC, "StockMovement_id" ASC/s.test(q)));
+    });
+
+    await t.test('test_ST17_AC1_cancel_paid_reverses_only_sale_rows', async () => {
+      const { cashier, cashierId, manager, branchId } = await freshShift();
+      const sold = await paidCashInvoice(cashier, { quantity: 1 });
+      await db.query(
+        `INSERT INTO stock_movements(id,branch_id,ingredient_id,type,quantity,balance_after,invoice_id,created_by)
+         VALUES($1,$2,$3,'ADJUST',7,0,$4,$5)`,
+        [randomUUID(), branchId, milk, sold.id, cashierId],
+      );
+      assert.equal((await cancel(manager, sold.id)).status, 200);
+      const reversed = reversals(await snapshot(sold.id));
+      assert.deepEqual(reversed.map((m: any) => [m.ingredient_id, m.quantity]).sort(), [[milk, '100.000'], [sugar, '20.000']].sort());
     });
   } finally {
     if (app) await app.close();

@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import * as bcrypt from 'bcryptjs';
 import { NestFactory } from '@nestjs/core';
 import { DataSource } from 'typeorm';
+import { PostgresQueryRunner } from 'typeorm/driver/postgres/PostgresQueryRunner';
 import { AppModule } from './app.module';
 import { bootstrapAdmin } from './bootstrap-admin';
 import { dataSource } from './database/data-source';
@@ -111,9 +112,14 @@ test('PB-01 migration, bootstrap and database constraints', async () => {
       assert.equal(health.status, 200);
       assert.deepEqual(await health.json(), { data: { status: 'ok' } });
       assert.match(health.headers.get('X-Request-Id') ?? '', /^[0-9a-f-]{36}$/);
-      const query = dataSource.query;
-      dataSource.query = async () => { throw new Error('database unavailable'); };
+      const query = PostgresQueryRunner.prototype.query;
       try {
+        PostgresQueryRunner.prototype.query = async function (this: PostgresQueryRunner, ...args: Parameters<PostgresQueryRunner['query']>) {
+          if (args[0].replace(/\s+/g, ' ').trim() === 'SELECT 1 AS "ok" FROM (SELECT 1 AS dummy_column) "dummy_table"') {
+            throw new Error('database unavailable');
+          }
+          return query.apply(this, args);
+        };
         const unavailable = await fetch(`${baseUrl}/api/v1/health`, { headers: { 'X-Request-Id': 'pb01-health-down' } });
         assert.equal(unavailable.status, 503);
         assert.equal(unavailable.headers.get('X-Request-Id'), 'pb01-health-down');
@@ -122,7 +128,7 @@ test('PB-01 migration, bootstrap and database constraints', async () => {
             details: [], requestId: 'pb01-health-down' },
         });
       } finally {
-        dataSource.query = query;
+        PostgresQueryRunner.prototype.query = query;
       }
       const missing = await fetch(`${baseUrl}/api/v1/does-not-exist`, { headers: { 'X-Request-Id': 'pb01-test' } });
       assert.equal(missing.status, 404);

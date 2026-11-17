@@ -3,6 +3,11 @@ import { DataSource } from 'typeorm';
 import type { UserSummary } from '../auth/auth.service';
 import { httpError } from '../http/http-error';
 import type { RevenueQueryDto, RevenueReportDto } from './http/reports.dto';
+import { Branch } from '../organization/entities/branch.entity';
+import { WorkShift } from '../shifts/entities/work-shift.entity';
+import { Invoice } from '../sales/entities/invoice.entity';
+import { InvoiceItem } from '../sales/entities/invoice-item.entity';
+import { Payment } from '../sales/entities/payment.entity';
 
 const MAX_RANGE_DAYS = 31;
 
@@ -35,42 +40,6 @@ const invalid = (field: string) => new HttpException({
 const forbidden = () => httpError(403, 'PERMISSION_DENIED', 'Bạn không có quyền thực hiện thao tác này.');
 const notFound = () => httpError(404, 'NOT_FOUND', 'Không tìm thấy tài nguyên.');
 
-// One statement = one snapshot: totals, chart points and best sellers cannot disagree.
-const REVENUE_SQL = `
-WITH bounds AS (
-  SELECT LEAST($4::date, $5::date)::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh' AS lo,
-         (GREATEST($4::date, $6::date) + 1)::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh' AS hi
-), scoped AS (
-  SELECT i.id, i.paid_at, (i.paid_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AS day, p.method, p.amount
-  FROM invoices i
-  JOIN branches b ON b.id = i.branch_id
-  CROSS JOIN bounds
-  LEFT JOIN payments p ON p.invoice_id = i.id
-  WHERE b.store_id = $1 AND i.status = 'PAID' AND i.paid_at >= bounds.lo AND i.paid_at < bounds.hi
-    AND ($2::uuid IS NULL OR i.branch_id = $2::uuid) AND ($3::uuid IS NULL OR i.work_shift_id = $3::uuid)
-), totals AS (
-  SELECT count(*) AS cnt,
-    COALESCE(SUM(amount) FILTER (WHERE method = 'CASH'), 0) AS cash,
-    COALESCE(SUM(amount) FILTER (WHERE method = 'TRANSFER'), 0) AS transfer
-  FROM scoped WHERE day = $4::date
-), daily AS (
-  SELECT d.day, COALESCE(SUM(s.amount), 0) AS revenue
-  FROM (SELECT ($5::date + g)::date AS day FROM generate_series(0, $6::date - $5::date) g) d
-  LEFT JOIN scoped s ON s.day = d.day GROUP BY d.day
-), sizes AS (
-  SELECT ii.product_size_id, SUM(ii.quantity) AS quantity, SUM(ii.line_total) AS revenue,
-    (ARRAY_AGG(ii.product_name ORDER BY s.paid_at DESC, ii.id DESC))[1] AS product_name,
-    (ARRAY_AGG(ii.size_name ORDER BY s.paid_at DESC, ii.id DESC))[1] AS size_name
-  FROM scoped s JOIN invoice_items ii ON ii.invoice_id = s.id
-  WHERE s.day = $4::date GROUP BY ii.product_size_id
-), top AS (
-  SELECT * FROM sizes ORDER BY quantity DESC, product_name ASC, size_name ASC, product_size_id ASC LIMIT 10
-)
-SELECT (SELECT cnt::text FROM totals) AS cnt, (SELECT cash::text FROM totals) AS cash, (SELECT transfer::text FROM totals) AS transfer,
-  (SELECT COALESCE(json_agg(json_build_object('date', to_char(day, 'YYYY-MM-DD'), 'revenue', revenue::text) ORDER BY day), '[]'::json) FROM daily) AS daily,
-  (SELECT COALESCE(json_agg(json_build_object('productSizeId', product_size_id, 'productName', product_name, 'sizeName', size_name,
-    'quantity', quantity::text, 'revenue', revenue::text) ORDER BY quantity DESC, product_name ASC, size_name ASC, product_size_id ASC), '[]'::json) FROM top) AS best`;
-
 type Level = 'all' | 'branch' | 'shift';
 
 /** Store identity and report permission, decided before any query validation. */
@@ -96,20 +65,59 @@ export class ReportsService {
     let branchId: string | null;
     if (level === 'all') {
       branchId = query.branchId ?? null;
-      if (branchId && !(await this.db.query('SELECT 1 FROM branches WHERE id = $1::uuid AND store_id = $2', [branchId, storeId])).length) throw notFound();
+      if (branchId && !(await this.db.getRepository(Branch).existsBy({ id: branchId, store_id: storeId }))) throw notFound();
     } else {
       if (!user.branchId) throw forbidden();
       branchId = user.branchId;
     }
     if (level === 'shift' && !query.shiftId) throw invalid('shiftId');
     if (query.shiftId) {
-      const [shift] = await this.db.query(`SELECT w.user_id FROM work_shifts w JOIN branches b ON b.id = w.branch_id
-        WHERE w.id = $1::uuid AND b.store_id = $2 AND ($3::uuid IS NULL OR w.branch_id = $3::uuid)`, [query.shiftId, storeId, branchId]);
+      const shift = await this.db.getRepository(WorkShift).findOne({
+        where: { id: query.shiftId, branch: { store_id: storeId }, ...(branchId !== null ? { branch_id: branchId } : {}) },
+        select: { id: true, user_id: true },
+      });
       if (!shift) throw notFound();
       if (level === 'shift' && shift.user_id !== user.id) throw forbidden();
     }
 
-    const [row] = await this.db.query(REVENUE_SQL, [storeId, branchId, query.shiftId ?? null, query.date, query.fromDate, query.toDate]);
+    // One statement = one snapshot: totals, chart points and best sellers cannot disagree.
+    // QueryBuilder: CTE or sub-query in one statement; find() cannot express it
+    const bounds = this.db.createQueryBuilder()
+      .select("LEAST(CAST(:reportDate AS date), CAST(:fromDate AS date))::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'", 'lo')
+      .addSelect("(GREATEST(CAST(:reportDate AS date), CAST(:toDate AS date)) + 1)::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh'", 'hi').fromDummy();
+    const scoped = this.db.createQueryBuilder().select('i.id', 'id').addSelect('i.paid_at', 'paid_at')
+      .addSelect("(i.paid_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date", 'day').addSelect('p.method', 'method').addSelect('p.amount', 'amount')
+      .from(Invoice, 'i').innerJoin(Branch, 'b', 'b.id = i.branch_id').innerJoin('bounds', 'bounds', 'true')
+      .leftJoin(Payment, 'p', 'p.invoice_id = i.id')
+      .where("b.store_id = :storeId AND i.status = 'PAID' AND i.paid_at >= bounds.lo AND i.paid_at < bounds.hi")
+      .andWhere('(CAST(:branchId AS uuid) IS NULL OR i.branch_id = CAST(:branchId AS uuid))')
+      .andWhere('(CAST(:shiftId AS uuid) IS NULL OR i.work_shift_id = CAST(:shiftId AS uuid))');
+    const totals = this.db.createQueryBuilder().select('count(*)', 'cnt')
+      .addSelect("COALESCE(SUM(amount) FILTER (WHERE method = 'CASH'), 0)", 'cash')
+      .addSelect("COALESCE(SUM(amount) FILTER (WHERE method = 'TRANSFER'), 0)", 'transfer')
+      .from('scoped', 'scoped').where('day = CAST(:reportDate AS date)');
+    const daily = this.db.createQueryBuilder().select('d.day', 'day').addSelect('COALESCE(SUM(s.amount), 0)', 'revenue')
+      .from(qb => qb.select('(CAST(:fromDate AS date) + g)::date', 'day')
+        .from(qb2 => qb2.select('generate_series(0, CAST(:toDate AS date) - CAST(:fromDate AS date))', 'g').fromDummy(), 'gs'), 'd')
+      .leftJoin('scoped', 's', 's.day = d.day').groupBy('d.day');
+    const sizes = this.db.createQueryBuilder().select('ii.product_size_id', 'product_size_id')
+      .addSelect('SUM(ii.quantity)', 'quantity').addSelect('SUM(ii.line_total)', 'revenue')
+      .addSelect('(ARRAY_AGG(ii.product_name ORDER BY s.paid_at DESC, ii.id DESC))[1]', 'product_name')
+      .addSelect('(ARRAY_AGG(ii.size_name ORDER BY s.paid_at DESC, ii.id DESC))[1]', 'size_name')
+      .from('scoped', 's').innerJoin(InvoiceItem, 'ii', 'ii.invoice_id = s.id')
+      .where('s.day = CAST(:reportDate AS date)').groupBy('ii.product_size_id');
+    const top = this.db.createQueryBuilder().select('*').from('sizes', 'sizes').orderBy('quantity', 'DESC')
+      .addOrderBy('product_name', 'ASC').addOrderBy('size_name', 'ASC').addOrderBy('product_size_id', 'ASC').limit(10);
+    const row = await this.db.createQueryBuilder().fromDummy()
+      .addCommonTableExpression(bounds, 'bounds').addCommonTableExpression(scoped, 'scoped')
+      .addCommonTableExpression(totals, 'totals').addCommonTableExpression(daily, 'daily')
+      .addCommonTableExpression(sizes, 'sizes').addCommonTableExpression(top, 'top')
+      .select(qb => qb.select('cnt::text').from('totals', 'totals'), 'cnt')
+      .addSelect(qb => qb.select('cash::text').from('totals', 'totals'), 'cash')
+      .addSelect(qb => qb.select('transfer::text').from('totals', 'totals'), 'transfer')
+      .addSelect(qb => qb.select("COALESCE(json_agg(json_build_object('date', to_char(day, 'YYYY-MM-DD'), 'revenue', revenue::text) ORDER BY day), '[]'::json)").from('daily', 'daily'), 'daily')
+      .addSelect(qb => qb.select("COALESCE(json_agg(json_build_object('productSizeId', product_size_id, 'productName', product_name, 'sizeName', size_name, 'quantity', quantity::text, 'revenue', revenue::text) ORDER BY quantity DESC, product_name ASC, size_name ASC, product_size_id ASC), '[]'::json)").from('top', 'top'), 'best')
+      .setParameters({ storeId, branchId, shiftId: query.shiftId ?? null, reportDate: query.date, fromDate: query.fromDate, toDate: query.toDate }).getRawOne();
     const cash = toSafeMoney(row.cash, 'cashRevenue'), transfer = toSafeMoney(row.transfer, 'transferRevenue');
     return {
       date: query.date,

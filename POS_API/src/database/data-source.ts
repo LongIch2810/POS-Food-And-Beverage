@@ -21,6 +21,19 @@ import { Invoice } from '../sales/entities/invoice.entity';
 import { InvoiceItem } from '../sales/entities/invoice-item.entity';
 import { InvoiceItemTopping } from '../sales/entities/invoice-item-topping.entity';
 
+import { Ingredient } from '../inventory/entities/ingredient.entity';
+import { ProductSizeIngredient } from '../inventory/entities/product-size-ingredient.entity';
+import { ToppingIngredient } from '../inventory/entities/topping-ingredient.entity';
+import { BranchIngredientStock } from '../inventory/entities/branch-ingredient-stock.entity';
+import { StockMovement } from '../inventory/entities/stock-movement.entity';
+import { PromotionCode } from '../promotions/entities/promotion-code.entity';
+import { InvoicePromotionCode } from '../sales/entities/invoice-promotion-code.entity';
+import { Payment } from '../sales/entities/payment.entity';
+import { TransferAttempt } from '../sales/entities/transfer-attempt.entity';
+import { BankTransferEvent } from '../sales/entities/bank-transfer-event.entity';
+import { StoreBankAccount } from '../sales/entities/store-bank-account.entity';
+import { ShiftExpense } from '../shifts/entities/shift-expense.entity';
+
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is required');
 
@@ -45,6 +58,18 @@ export const entities = [
   Invoice,
   InvoiceItem,
   InvoiceItemTopping,
+  Ingredient,
+  ProductSizeIngredient,
+  ToppingIngredient,
+  BranchIngredientStock,
+  StockMovement,
+  PromotionCode,
+  InvoicePromotionCode,
+  Payment,
+  TransferAttempt,
+  BankTransferEvent,
+  StoreBankAccount,
+  ShiftExpense,
 ];
 
 export const dataSource = new DataSource({

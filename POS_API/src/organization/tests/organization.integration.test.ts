@@ -1,3 +1,5 @@
+import { UsersService } from '../../users/users.service';
+import { OrganizationService } from '../organization.service';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { test } from 'node:test';
@@ -7,6 +9,7 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../../app.module';
 import { bootstrapAdmin } from '../../bootstrap-admin';
 import { dataSource } from '../../database/data-source';
+import { captureSql, lockSequence } from '../../database/tests/sql-capture';
 
 test('PB-04 organization and staff HTTP with PostgreSQL', { timeout: 180_000 }, async (t) => {
   const name = `pos_pb04_test_${randomBytes(6).toString('hex')}`;
@@ -349,4 +352,198 @@ test('PB-04 organization and staff HTTP with PostgreSQL', { timeout: 180_000 }, 
     if (created) await dataSource.query(`DROP DATABASE "${name}" WITH (FORCE)`);
     await dataSource.destroy();
   }
+});
+
+test('test_ST3_AC5_create_staff_username_normalized', { timeout: 90_000 }, async (t) => {
+  const name = `pos_st3_${randomBytes(6).toString('hex')}`;
+  const url = new URL(process.env.DATABASE_URL!); url.pathname = `/${name}`;
+  const db = new DataSource({ type: 'postgres', url: url.toString(), entities: dataSource.options.entities, migrations: dataSource.options.migrations });
+  await dataSource.initialize();
+  let created = false;
+  try {
+    await dataSource.query(`CREATE DATABASE "${name}"`); created = true;
+    await db.initialize(); await db.runMigrations();
+    const [store] = await db.query("INSERT INTO stores (id,name) VALUES (gen_random_uuid(),'ST3') RETURNING id");
+    const [branch] = await db.query("INSERT INTO branches (id,store_id,code,name) VALUES (gen_random_uuid(),$1,'ST3','ST3') RETURNING id", [store.id]);
+    const actor = { id: randomBytes(16).toString('hex'), username: 'owner', fullName: 'Owner', role: 'OWNER', storeId: store.id, branchId: null, permissions: ['branch.access_all'], mustChangePassword: false };
+    const service = new UsersService(db, new OrganizationService(db));
+    const ids = [];
+    for (const username of ['  NV.An  ', '\tNV2']) {
+      const result = await service.createStaff(actor, { username, fullName: 'Staff', role: 'CASHIER', branchId: branch.id }, 'ST3');
+      ids.push(result.user.id);
+    }
+    const rows = await db.query('SELECT username FROM users WHERE id = ANY($1::uuid[]) ORDER BY username', [ids]);
+    assert.deepEqual(rows.map((row: { username: string }) => row.username).sort(), ['\tnv2', 'nv.an'].sort());
+    t.diagnostic(JSON.stringify(rows));
+  } finally {
+    if (db.isInitialized) await db.destroy();
+    if (created) await dataSource.query(`DROP DATABASE "${name}"`);
+    await dataSource.destroy();
+  }
+});
+
+async function withStaffDb(prefix: string, run: (db: DataSource) => Promise<void>): Promise<void> {
+  const name = `${prefix}_${randomBytes(6).toString('hex')}`;
+  const url = new URL(process.env.DATABASE_URL!); url.pathname = `/${name}`;
+  const db = new DataSource({ type: 'postgres', url: url.toString(), entities: dataSource.options.entities, migrations: dataSource.options.migrations });
+  await dataSource.initialize();
+  let created = false;
+  try {
+    await dataSource.query(`CREATE DATABASE "${name}"`); created = true;
+    await db.initialize(); await db.runMigrations();
+    await run(db);
+  } finally {
+    if (db.isInitialized) await db.destroy();
+    if (created) await dataSource.query(`DROP DATABASE "${name}" WITH (FORCE)`);
+    await dataSource.destroy();
+  }
+}
+
+async function staffFixture(db: DataSource) {
+  const hash = await bcrypt.hash('temporary-password-12', 4);
+  const [store] = await db.query("INSERT INTO stores (id,name) VALUES (gen_random_uuid(),'ST20 A') RETURNING id");
+  const [other] = await db.query("INSERT INTO stores (id,name) VALUES (gen_random_uuid(),'ST20 B') RETURNING id");
+  const branch = async (storeId: string, code: string) => (await db.query(
+    'INSERT INTO branches (id,store_id,code,name) VALUES (gen_random_uuid(),$1,$2,$2) RETURNING id', [storeId, code]))[0].id;
+  const [b1, b2, ob] = [await branch(store.id, 'B1'), await branch(store.id, 'B2'), await branch(other.id, 'OB')];
+  const user = async (storeId: string, branchId: string | null, role: string, username: string) => (await db.query(
+    `INSERT INTO users (id,store_id,branch_id,role_id,full_name,username,password_hash,must_change_password)
+     SELECT gen_random_uuid(),$1,$2,r.id,$3,$3,$4,false FROM roles r WHERE r.name=$5 RETURNING id`,
+    [storeId, branchId, username, hash, role]))[0].id;
+  const ids = {
+    cashier1: await user(store.id, b1, 'CASHIER', 'st20_c1'), cashier2: await user(store.id, b2, 'CASHIER', 'st20_c2'),
+    manager1: await user(store.id, b1, 'MANAGER', 'st20_m1'), owner2: await user(store.id, null, 'OWNER', 'st20_o2'),
+    foreign: await user(other.id, ob, 'CASHIER', 'st20_f1'),
+  };
+  const session = async (userId: string) => db.query(`INSERT INTO refresh_tokens (id,user_id,session_id,token_hash,expires_at)
+    VALUES (gen_random_uuid(),$1,gen_random_uuid(),$2,now()+interval '1 day')`, [userId, randomBytes(32).toString('hex')]);
+  const actor = (role: string, storeId: string | null, branchId: string | null, permissions: string[]) => ({
+    id: randomBytes(16).toString('hex'), username: 'actor', fullName: 'Actor', role, storeId, branchId, permissions, mustChangePassword: false });
+  return { store: store.id, b1, b2, ids, session, actor, service: new UsersService(db, new OrganizationService(db)) };
+}
+
+test('test_ST20_AC1_lock_sequences_staff', { timeout: 90_000 }, async (t) => {
+  await withStaffDb('pos_st20o1', async (db) => {
+    const f = await staffFixture(db);
+    const owner = f.actor('OWNER', f.store, null, ['branch.access_all']);
+    const sqlPatch = captureSql(t);
+    await f.service.patchStaff(owner, f.ids.cashier1, { role: 'MANAGER' }, 'req');
+    assert.deepEqual(lockSequence(sqlPatch), ['UPDATE:users']);
+    t.mock.restoreAll();
+    const sqlReset = captureSql(t);
+    await f.service.resetStaffPassword(owner, f.ids.cashier1, 'req');
+    assert.deepEqual(lockSequence(sqlReset), ['UPDATE:users']);
+    t.mock.restoreAll();
+  });
+});
+
+test('test_ST20_AC4_staff_scope_null_identity', { timeout: 90_000 }, async () => {
+  await withStaffDb('pos_st20o4', async (db) => {
+    const f = await staffFixture(db);
+    const notFound = (error: any) => {
+      assert.equal(error.getStatus(), 404);
+      assert.deepEqual(error.getResponse(), { code: 'NOT_FOUND', message: 'Không tìm thấy tài khoản nhân viên.' });
+      return true;
+    };
+    const denied = [
+      ['manager without branchId', f.actor('MANAGER', f.store, null, []), f.ids.cashier1],
+      ['actor without storeId (access_all)', f.actor('OWNER', null, null, ['branch.access_all']), f.ids.cashier1],
+      ['actor without storeId and branchId', f.actor('MANAGER', null, null, []), f.ids.cashier1],
+      ['owner, staff of another store', f.actor('OWNER', f.store, null, ['branch.access_all']), f.ids.foreign],
+      ['manager, staff of another branch', f.actor('MANAGER', f.store, f.b1, []), f.ids.cashier2],
+      ['owner, target OWNER', f.actor('OWNER', f.store, null, ['branch.access_all']), f.ids.owner2],
+    ] as const;
+    for (const [label, actor, id] of denied) {
+      await assert.rejects(f.service.patchStaff(actor, id, { isActive: false }, 'req'), notFound, `patch: ${label}`);
+      await assert.rejects(f.service.resetStaffPassword(actor, id, 'req'), notFound, `reset: ${label}`);
+    }
+    const stored = await db.query('SELECT id, is_active FROM users WHERE is_active = false');
+    assert.deepEqual(stored, [], 'no denied call changed a user');
+    // Positive controls: in-scope targets still work (manager in own branch, owner in whole store).
+    await f.session(f.ids.cashier1);
+    await f.session(f.ids.manager1);
+    await db.query(`INSERT INTO refresh_tokens (id,user_id,session_id,token_hash,expires_at,revoked_at)
+      VALUES (gen_random_uuid(),$1,gen_random_uuid(),$2,now()+interval '1 day','2000-01-01T00:00:00Z')`, [f.ids.cashier1, randomBytes(32).toString('hex')]);
+    assert.equal((await f.service.patchStaff(f.actor('MANAGER', f.store, f.b1, []), f.ids.cashier1, { isActive: false }, 'req')).isActive, false);
+    assert.equal((await f.service.resetStaffPassword(f.actor('OWNER', f.store, null, ['branch.access_all']), f.ids.cashier2, 'req')).user.id, f.ids.cashier2);
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM refresh_tokens WHERE user_id=$1 AND revoked_at IS NULL', [f.ids.cashier1]))[0].n, 0);
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM refresh_tokens WHERE revoked_at = '2000-01-01T00:00:00Z'"))[0].n, 1, 'old revoked_at kept');
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM refresh_tokens WHERE user_id=$1 AND revoked_at IS NULL', [f.ids.manager1]))[0].n, 1, 'other staff session untouched');
+  });
+});
+
+async function orgScopeFixture(db: DataSource) {
+  const f = await staffFixture(db);
+  const table = async (branchId: string, name: string) => (await db.query(
+    'INSERT INTO dining_tables (id,branch_id,name) VALUES (gen_random_uuid(),$1,$2) RETURNING id', [branchId, name]))[0].id;
+  return { ...f, t1: await table(f.b1, 'T1'), t2: await table(f.b2, 'T2'), org: new OrganizationService(db) };
+}
+
+test('test_ST21_AC1_lock_sequences', { timeout: 90_000 }, async (t) => {
+  await withStaffDb('pos_st21o1', async (db) => {
+    const f = await orgScopeFixture(db);
+    const owner = f.actor('OWNER', f.store, null, ['branch.access_all']);
+    const manager = f.actor('MANAGER', f.store, f.b1, []);
+    for (const [label, actor, input] of [['owner', owner, { branchId: f.b1, name: 'N1' }], ['manager', manager, { name: 'N2' }]] as const) {
+      const sql = captureSql(t);
+      await f.org.createTable(actor, input);
+      assert.deepEqual(lockSequence(sql), ['SHARE:branches'], `createTable ${label}`);
+      t.mock.restoreAll();
+    }
+    for (const [label, actor] of [['owner', owner], ['manager', manager]] as const) {
+      const sqlBranch = captureSql(t);
+      await f.org.patchBranch(actor, f.b1, { name: 'B1x' });
+      assert.deepEqual(lockSequence(sqlBranch), ['UPDATE:branches'], `patchBranch ${label}`);
+      t.mock.restoreAll();
+      const sqlTable = captureSql(t);
+      await f.org.patchTable(actor, f.t1, { name: 'T1x' });
+      assert.deepEqual(lockSequence(sqlTable), ['UPDATE:dining_tables'], `patchTable ${label}`);
+      assert.ok(sqlTable.some(s => /FOR UPDATE OF /.test(s)), `patchTable ${label} locks only dining_tables, not the joined branch`);
+      t.mock.restoreAll();
+    }
+  });
+});
+
+test('test_ST21_AC2_scope_characterization', { timeout: 90_000 }, async () => {
+  await withStaffDb('pos_st21o2', async (db) => {
+    const f = await orgScopeFixture(db);
+    const notFound = (error: any) => {
+      assert.equal(error.getStatus(), 404);
+      assert.deepEqual(error.getResponse(), { code: 'NOT_FOUND', message: 'Không tìm thấy tài nguyên.' });
+      return true;
+    };
+    const owner = f.actor('OWNER', f.store, null, ['branch.access_all']);
+    const manager = f.actor('MANAGER', f.store, f.b1, []);
+    const noBranch = f.actor('MANAGER', f.store, null, []);
+    const noStore = f.actor('OWNER', null, null, ['branch.access_all']);
+    const noStoreStaff = f.actor('MANAGER', null, null, []);
+    const [{ id: foreignBranch }] = await db.query("SELECT b.id FROM branches b JOIN stores s ON s.id=b.store_id WHERE s.name='ST20 B'");
+    const [{ id: foreignTable }] = await db.query('INSERT INTO dining_tables (id,branch_id,name) VALUES (gen_random_uuid(),$1,$2) RETURNING id', [foreignBranch, 'FT']);
+    for (const [label, actor] of [['manager of branch A', manager], ['manager without branchId', noBranch]] as const) {
+      await assert.rejects(f.org.patchBranch(actor, f.b2, { name: 'x' }), notFound, `patchBranch B: ${label}`);
+      await assert.rejects(f.org.patchTable(actor, f.t2, { name: 'x' }), notFound, `patchTable B: ${label}`);
+      await assert.rejects(db.transaction(m => f.org.branchInScope(m, f.b2, actor, true)), notFound, `create table in B: ${label}`);
+    }
+    for (const [label, actor] of [['manager without branchId', noBranch], ['owner without storeId', noStore],
+      ['manager without storeId', noStoreStaff]] as const) {
+      await assert.rejects(f.org.patchBranch(actor, f.b1, { name: 'x' }), notFound, `patchBranch A: ${label}`);
+      await assert.rejects(f.org.patchTable(actor, f.t1, { name: 'x' }), notFound, `patchTable A: ${label}`);
+      await assert.rejects(f.org.branchInScope(db.manager, f.b1, actor), notFound, `branchInScope A: ${label}`);
+      await assert.rejects(db.transaction(m => f.org.branchInScope(m, f.b1, actor, true)), notFound, `branchInScope lock A: ${label}`);
+    }
+    await assert.rejects(f.org.patchBranch(owner, foreignBranch, { name: 'x' }), notFound, 'owner, other-store branch');
+    await assert.rejects(f.org.patchTable(owner, foreignTable, { name: 'x' }), notFound, 'owner, other-store table');
+    await assert.rejects(f.org.createTable(owner, { branchId: foreignBranch, name: 'x' }), notFound, 'owner creates in other-store branch');
+    await assert.rejects(f.org.createTable(manager, { branchId: f.b2, name: 'x' }), (e: any) => e.getStatus() === 422, 'manager gives branchId: 422');
+    await assert.rejects(f.org.createTable(noBranch, { name: 'x' }), (e: any) => e.getStatus() === 422, 'manager without branch: 422');
+    const rows = await db.query('SELECT (SELECT string_agg(name, \',\' ORDER BY name) FROM branches) AS b, (SELECT string_agg(name, \',\' ORDER BY name) FROM dining_tables) AS t');
+    assert.deepEqual(rows, [{ b: 'B1,B2,OB', t: 'FT,T1,T2' }], 'no denied call changed data');
+    // Positive controls.
+    assert.equal((await f.org.patchBranch(manager, f.b1, { name: 'B1m' })).name, 'B1m');
+    assert.equal((await f.org.patchTable(manager, f.t1, { name: 'T1m' })).name, 'T1m');
+    assert.equal((await f.org.patchBranch(owner, f.b2, { name: 'B2o' })).name, 'B2o');
+    assert.equal((await f.org.patchTable(owner, f.t2, { name: 'T2o' })).name, 'T2o');
+    assert.equal((await db.transaction(m => f.org.branchInScope(m, f.b1, manager, true))).id, f.b1);
+    assert.equal((await f.org.patchBranch(manager, f.b1.toUpperCase(), { name: 'B1u' })).name, 'B1u', 'uuid compared by DB, not by JS string');
+  });
 });
