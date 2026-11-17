@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { UserSummary } from '../auth/auth.service';
 import { httpError } from '../http/http-error';
 import { Category } from './entities/category.entity';
@@ -104,6 +104,7 @@ export class MenuService {
 
   async listCategories(user: UserSummary, page: MenuPage) {
     const storeId = this.storeId(user);
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
     const qb = this.categoryRepo
       .createQueryBuilder('c')
       .where('c.store_id = :storeId', { storeId });
@@ -272,6 +273,7 @@ export class MenuService {
 
   async listProducts(user: UserSummary, page: MenuPage) {
     const storeId = this.storeId(user);
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
     const qb = this.productRepo
       .createQueryBuilder('p')
       .innerJoin('categories', 'c', 'c.id = p.category_id')
@@ -297,13 +299,11 @@ export class MenuService {
     const productIds = pageResult.data.map((row: any) => row.id);
     let sizesByProduct: Record<string, any[]> = {};
     if (productIds.length > 0) {
-      const psList = await this.productSizeRepo
-        .createQueryBuilder('ps')
-        .innerJoinAndSelect('ps.size', 's')
-        .where('ps.product_id IN (:...productIds)', { productIds })
-        .orderBy('s.sort_order', 'ASC')
-        .addOrderBy('s.name', 'ASC')
-        .getMany();
+      const psList = await this.productSizeRepo.find({
+        where: { product_id: In(productIds) },
+        relations: { size: true },
+        order: { size: { sort_order: 'ASC', name: 'ASC' } },
+      });
 
       for (const ps of psList) {
         if (!sizesByProduct[ps.product_id]) sizesByProduct[ps.product_id] = [];
@@ -338,20 +338,18 @@ export class MenuService {
 
   async getProduct(user: UserSummary, id: string): Promise<ProductDetailDto> {
     const storeId = this.storeId(user);
-    const product = await this.productRepo
-      .createQueryBuilder('p')
-      .innerJoinAndSelect('p.category', 'c')
-      .where('p.id = :id AND c.store_id = :storeId', { id, storeId })
-      .getOne();
+    const product = await this.productRepo.findOne({
+      where: { id, category: { store_id: storeId } },
+      relations: { category: true },
+    });
 
     if (!product) throw httpError(404, 'NOT_FOUND', 'Món ăn không tồn tại.');
 
-    const psList = await this.productSizeRepo
-      .createQueryBuilder('ps')
-      .innerJoinAndSelect('ps.size', 's')
-      .where('ps.product_id = :id', { id })
-      .orderBy('s.sort_order', 'ASC')
-      .getMany();
+    const psList = await this.productSizeRepo.find({
+      where: { product_id: id },
+      relations: { size: true },
+      order: { size: { sort_order: 'ASC' } },
+    });
 
     return {
       id: product.id,
@@ -405,11 +403,10 @@ export class MenuService {
 
   async patchProduct(user: UserSummary, id: string, input: PatchProductDto): Promise<ProductOutputDto> {
     const storeId = this.storeId(user);
-    const product = await this.productRepo
-      .createQueryBuilder('p')
-      .innerJoinAndSelect('p.category', 'c')
-      .where('p.id = :id AND c.store_id = :storeId', { id, storeId })
-      .getOne();
+    const product = await this.productRepo.findOne({
+      where: { id, category: { store_id: storeId } },
+      relations: { category: true },
+    });
 
     if (!product) throw httpError(404, 'NOT_FOUND', 'Món ăn không tồn tại.');
 
@@ -444,11 +441,7 @@ export class MenuService {
     const saved = await this.withConstraintHandling(() => this.productRepo.save(product), 'Tên món đã tồn tại trong danh mục này.');
 
     // Get sizes
-    const psList = await this.productSizeRepo
-      .createQueryBuilder('ps')
-      .innerJoinAndSelect('ps.size', 's')
-      .where('ps.product_id = :id', { id: saved.id })
-      .getMany();
+    const psList = await this.productSizeRepo.find({ where: { product_id: saved.id }, relations: { size: true } });
 
     return {
       id: saved.id,
@@ -472,11 +465,7 @@ export class MenuService {
 
   async deleteProduct(user: UserSummary, id: string): Promise<void> {
     const storeId = this.storeId(user);
-    const product = await this.productRepo
-      .createQueryBuilder('p')
-      .innerJoin('p.category', 'c')
-      .where('p.id = :id AND c.store_id = :storeId', { id, storeId })
-      .getOne();
+    const product = await this.productRepo.findOne({ where: { id, category: { store_id: storeId } } });
 
     if (!product) throw httpError(404, 'NOT_FOUND', 'Món ăn không tồn tại.');
 
@@ -500,11 +489,7 @@ export class MenuService {
     file: { buffer: Buffer; mimetype: string; size: number },
   ): Promise<{ imageUrl: string }> {
     const storeId = this.storeId(user);
-    const product = await this.productRepo
-      .createQueryBuilder('p')
-      .innerJoin('p.category', 'c')
-      .where('p.id = :id AND c.store_id = :storeId', { id: productId, storeId })
-      .getOne();
+    const product = await this.productRepo.findOne({ where: { id: productId, category: { store_id: storeId } } });
 
     if (!product) throw httpError(404, 'NOT_FOUND', 'Món ăn không tồn tại.');
 
@@ -529,12 +514,10 @@ export class MenuService {
 
   async getProductImage(user: UserSummary, productId: string): Promise<{ buffer: Buffer; mime: string }> {
     const storeId = this.storeId(user);
-    const product = await this.productRepo
-      .createQueryBuilder('p')
-      .addSelect('p.image_base64')
-      .innerJoin('p.category', 'c')
-      .where('p.id = :id AND c.store_id = :storeId', { id: productId, storeId })
-      .getOne();
+    const product = await this.productRepo.findOne({
+      where: { id: productId, category: { store_id: storeId } },
+      select: { id: true, image_base64: true, image_mime: true },
+    });
 
     if (!product || !product.image_base64 || !product.image_mime) {
       throw httpError(404, 'NOT_FOUND', 'Ảnh món không tồn tại.');
@@ -546,11 +529,7 @@ export class MenuService {
 
   async deleteProductImage(user: UserSummary, productId: string): Promise<void> {
     const storeId = this.storeId(user);
-    const product = await this.productRepo
-      .createQueryBuilder('p')
-      .innerJoin('p.category', 'c')
-      .where('p.id = :id AND c.store_id = :storeId', { id: productId, storeId })
-      .getOne();
+    const product = await this.productRepo.findOne({ where: { id: productId, category: { store_id: storeId } } });
 
     if (!product) throw httpError(404, 'NOT_FOUND', 'Món ăn không tồn tại.');
 
@@ -567,11 +546,7 @@ export class MenuService {
     input: CreateProductSizeDto,
   ): Promise<ProductSizeOutputDto> {
     const storeId = this.storeId(user);
-    const product = await this.productRepo
-      .createQueryBuilder('p')
-      .innerJoin('p.category', 'c')
-      .where('p.id = :id AND c.store_id = :storeId', { id: productId, storeId })
-      .getOne();
+    const product = await this.productRepo.findOne({ where: { id: productId, category: { store_id: storeId } } });
     if (!product) throw httpError(404, 'NOT_FOUND', 'Món ăn không tồn tại.');
 
     const size = await this.sizeRepo.findOne({ where: { id: input.sizeId, store_id: storeId } });
@@ -603,12 +578,9 @@ export class MenuService {
 
   async patchProductSize(user: UserSummary, id: string, input: PatchProductSizeDto): Promise<ProductSizeOutputDto> {
     const storeId = this.storeId(user);
-    const productSize = await this.productSizeRepo
-      .createQueryBuilder('ps')
-      .innerJoin('ps.product', 'p')
-      .innerJoin('p.category', 'c')
-      .where('ps.id = :id AND c.store_id = :storeId', { id, storeId })
-      .getOne();
+    const productSize = await this.productSizeRepo.findOne({
+      where: { id, product: { category: { store_id: storeId } } },
+    });
 
     if (!productSize) throw httpError(404, 'NOT_FOUND', 'Cấu hình giá theo kích cỡ không tồn tại.');
 
@@ -629,12 +601,9 @@ export class MenuService {
 
   async deleteProductSize(user: UserSummary, id: string): Promise<void> {
     const storeId = this.storeId(user);
-    const productSize = await this.productSizeRepo
-      .createQueryBuilder('ps')
-      .innerJoin('ps.product', 'p')
-      .innerJoin('p.category', 'c')
-      .where('ps.id = :id AND c.store_id = :storeId', { id, storeId })
-      .getOne();
+    const productSize = await this.productSizeRepo.findOne({
+      where: { id, product: { category: { store_id: storeId } } },
+    });
 
     if (!productSize) throw httpError(404, 'NOT_FOUND', 'Cấu hình kích cỡ không tồn tại.');
 
@@ -649,6 +618,7 @@ export class MenuService {
 
   async listToppings(user: UserSummary, page: MenuPage) {
     const storeId = this.storeId(user);
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
     const qb = this.toppingRepo
       .createQueryBuilder('t')
       .where('t.store_id = :storeId', { storeId });
@@ -743,12 +713,11 @@ export class MenuService {
     const category = await this.categoryRepo.findOne({ where: { id: categoryId, store_id: storeId } });
     if (!category) throw httpError(404, 'NOT_FOUND', 'Danh mục không tồn tại.');
 
-    const links = await this.categoryToppingRepo
-      .createQueryBuilder('ct')
-      .innerJoinAndSelect('ct.topping', 't')
-      .where('ct.category_id = :categoryId AND t.store_id = :storeId', { categoryId, storeId })
-      .orderBy('t.name', 'ASC')
-      .getMany();
+    const links = await this.categoryToppingRepo.find({
+      where: { category_id: categoryId, topping: { store_id: storeId } },
+      relations: { topping: true },
+      order: { topping: { name: 'ASC' } },
+    });
 
     return links
       .filter((link) => link.topping != null)

@@ -6,6 +6,7 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../../app.module';
 import { bootstrapAdmin } from '../../bootstrap-admin';
 import { dataSource } from '../../database/data-source';
+import { captureSql, lockSequence } from '../../database/tests/sql-capture';
 
 test('PB-06 shifts and cash reconciliation HTTP with PostgreSQL', { timeout: 180_000 }, async (t) => {
   const name = `pos_pb06_test_${randomBytes(6).toString('hex')}`;
@@ -458,6 +459,166 @@ test('PB-06 shifts and cash reconciliation HTTP with PostgreSQL', { timeout: 180
         assert.equal(closed.status, 200);
         assert.equal(closed.json.data.reconciliation.status, 'OVERAGE');
         assert.equal(closed.json.data.reconciliation.difference, 1000);
+      });
+
+      // --- ST-23: characterization of the QueryBuilder -> method conversion in shifts.service.ts ---
+      const ownerBId = storeResB.json.data.owner.id as string;
+      const st23Branch = async (code: string, initialCash = 100000) => {
+        const res = await request(ownerB, '/branches', 'POST', { code, name: `ST23 ${code}`, initialCash });
+        assert.equal(res.status, 201);
+        return res.json.data.id as string;
+      };
+      // Closed shift with explicit end/creation time; `counted` null means no reconciliation row.
+      const st23Closed = async (branchId: string, type: 'CASHIER' | 'STAFF', endedAt: string, createdAt: string, counted: number | null) => {
+        const id = randomUUID();
+        await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,started_at,ended_at,status,closed_by,created_at)
+          VALUES($1,$2,$3,$4,$5::timestamptz - interval '1 hour',$5,'CLOSED',$3,$6)`, [id, branchId, ownerBId, type, endedAt, createdAt]);
+        if (counted != null) {
+          await db.query(`INSERT INTO cash_reconciliations(id,work_shift_id,opening_cash,counted_cash,status) VALUES($1,$2,0,$3,'MATCHED')`, [randomUUID(), id, counted]);
+        }
+        return id;
+      };
+      const st23Preview = async (branchId: string) => {
+        const res = await request(ownerB, `/work-shifts/opening-cash-info?branchId=${branchId}`);
+        assert.equal(res.status, 200);
+        return { amount: res.json.data.amount, source: res.json.data.source };
+      };
+
+      await t.test('test_ST23_AC1_lock_sequences', async (st) => {
+        const branchId = await st23Branch('ST23L');
+        let sql = captureSql(st);
+        const opened = await request(ownerB, '/work-shifts', 'POST', { shiftType: 'CASHIER', branchId });
+        assert.equal(opened.status, 201);
+        assert.deepEqual(lockSequence(sql), ['UPDATE:users', 'UPDATE:branches']);
+        st.mock.restoreAll();
+
+        sql = captureSql(st);
+        const closed = await request(ownerB, `/work-shifts/${opened.json.data.id}/close`, 'POST', { countedCash: opened.json.data.reconciliation.openingCash });
+        assert.equal(closed.status, 200);
+        assert.deepEqual(lockSequence(sql), ['UPDATE:work_shifts']);
+        st.mock.restoreAll();
+
+        const second = await request(ownerB, '/work-shifts', 'POST', { shiftType: 'CASHIER', branchId });
+        assert.equal(second.status, 201);
+        sql = captureSql(st);
+        const forced = await request(ownerB, `/work-shifts/${second.json.data.id}/force-close`, 'POST', { countedCash: second.json.data.reconciliation.openingCash, reason: 'ST23' });
+        assert.equal(forced.status, 200);
+        assert.deepEqual(lockSequence(sql), ['UPDATE:work_shifts']);
+        st.mock.restoreAll();
+      });
+
+      await t.test('test_ST23_AC3_opening_cash_source', async () => {
+        const branchId = await st23Branch('ST23C');
+        const first = await request(ownerB, '/work-shifts', 'POST', { shiftType: 'CASHIER', branchId });
+        assert.equal(first.status, 201);
+        assert.equal(first.json.data.reconciliation.openingCash, 100000);
+        const closed = await request(ownerB, `/work-shifts/${first.json.data.id}/close`, 'POST', { countedCash: 150000, note: 'Thừa tiền' });
+        assert.equal(closed.status, 200);
+        assert.deepEqual(await st23Preview(branchId), { amount: 150000, source: 'PREVIOUS_SHIFT' });
+        // Newer closed shift without reconciliation: preview follows the newest shift, opening follows the newest reconciled one.
+        await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,started_at,ended_at,status,closed_by)
+          VALUES($1,$2,$3,'CASHIER',now(),now() + interval '1 minute','CLOSED',$3)`, [randomUUID(), branchId, ownerBId]);
+        assert.deepEqual(await st23Preview(branchId), { amount: 100000, source: 'BRANCH_INITIAL_CASH' });
+        const reopened = await request(ownerB, '/work-shifts', 'POST', { shiftType: 'CASHIER', branchId });
+        assert.equal(reopened.status, 201);
+        assert.equal(reopened.json.data.reconciliation.openingCash, 150000);
+        assert.equal((await request(ownerB, `/work-shifts/${reopened.json.data.id}/close`, 'POST', { countedCash: 150000 })).status, 200);
+      });
+
+      await t.test('test_ST23_opening_cash_filters', async () => {
+        const branchId = await st23Branch('ST23F');
+        const reconciled = await st23Closed(branchId, 'CASHIER', '2026-01-02T00:00:00Z', '2026-01-02T00:00:00Z', 150000);
+        // Newer closed STAFF shift (no reconciliation) must not hide the cashier shift.
+        await st23Closed(branchId, 'STAFF', '2026-01-03T00:00:00Z', '2026-01-03T00:00:00Z', null);
+        assert.ok(reconciled);
+        assert.deepEqual(await st23Preview(branchId), { amount: 150000, source: 'PREVIOUS_SHIFT' });
+        const open = await request(ownerB, '/work-shifts', 'POST', { shiftType: 'CASHIER', branchId });
+        assert.equal(open.status, 201);
+        assert.equal(open.json.data.reconciliation.openingCash, 150000);
+        // An OPEN cashier shift (ended_at NULL sorts first) must not be taken as the previous shift.
+        assert.deepEqual(await st23Preview(branchId), { amount: 150000, source: 'PREVIOUS_SHIFT' });
+        assert.equal((await request(ownerB, `/work-shifts/${open.json.data.id}/close`, 'POST', { countedCash: 150000 })).status, 200);
+      });
+
+      await t.test('test_ST23_opening_cash_order_tiebreak', async () => {
+        // Six ties on ended_at; the newest created_at (222000) is inserted at each position in turn,
+        // so the result does not depend on heap or index scan order.
+        for (const position of [0, 1, 2, 3, 4, 5]) {
+          const branchId = await st23Branch(`ST23T${position}`);
+          // Older end time but newest creation time: ended_at wins over created_at.
+          await st23Closed(branchId, 'CASHIER', '2026-02-01T00:00:00Z', '2026-02-25T00:00:00Z', 333000);
+          const ties = [[10, 111000], [11, 444000], [12, 555000], [13, 666000], [14, 777000]];
+          ties.splice(position, 0, [20, 222000]);
+          for (const [day, counted] of ties) {
+            await st23Closed(branchId, 'CASHIER', '2026-02-05T00:00:00Z', `2026-02-${day}T00:00:00Z`, counted);
+          }
+          assert.deepEqual(await st23Preview(branchId), { amount: 222000, source: 'PREVIOUS_SHIFT' }, `position ${position}`);
+          const open = await request(ownerB, '/work-shifts', 'POST', { shiftType: 'CASHIER', branchId });
+          assert.equal(open.status, 201);
+          assert.equal(open.json.data.reconciliation.openingCash, 222000, `position ${position}`);
+          assert.equal((await request(ownerB, `/work-shifts/${open.json.data.id}/close`, 'POST', { countedCash: 222000 })).status, 200);
+        }
+      });
+
+      await t.test('test_ST23_detail_list_and_scope', async () => {
+        const branchId = await st23Branch('ST23D');
+        const staff = await request(ownerB, '/users', 'POST', { branchId, username: 'st23_staff', fullName: 'ST23 Nhan Vien', role: 'CASHIER' });
+        assert.equal(staff.status, 201);
+        const staffId = staff.json.data.user.id as string;
+        const closedId = await st23Closed(branchId, 'CASHIER', '2026-03-01T00:00:00Z', '2026-03-01T00:00:00Z', 70000);
+        await db.query('UPDATE work_shifts SET user_id=$1 WHERE id=$2', [staffId, closedId]);
+        const openId = randomUUID();
+        await db.query(`INSERT INTO work_shifts(id,branch_id,user_id,shift_type,started_at,status) VALUES($1,$2,$3,'STAFF',now(),'OPEN')`, [openId, branchId, staffId]);
+
+        const detail = await request(ownerB, `/work-shifts/${closedId}`);
+        assert.equal(detail.status, 200);
+        assert.equal(detail.json.data.branchName, 'ST23 ST23D');
+        assert.equal(detail.json.data.userName, 'ST23 Nhan Vien');
+        assert.equal(detail.json.data.closedByName, 'Owner B');
+        assert.equal(detail.json.data.reconciliation.countedCash, 70000);
+        const listed = await request(ownerB, '/work-shifts?limit=100');
+        const row = listed.json.data.find((shift: { id: string }) => shift.id === closedId);
+        assert.equal(row.branchName, 'ST23 ST23D');
+        assert.equal(row.userName, 'ST23 Nhan Vien');
+        assert.equal(row.closedByName, 'Owner B');
+        assert.equal(row.reconciliation.countedCash, 70000);
+
+        const storeB = storeResB.json.data.store.id as string;
+        const dbTotal = async (where: string, params: unknown[] = []) =>
+          (await db.query(`SELECT count(*)::int AS n FROM work_shifts s JOIN branches b ON b.id=s.branch_id WHERE b.store_id=$1 ${where}`, [storeB, ...params]))[0].n as number;
+        const all = await dbTotal('');
+        const cases: [string, string, unknown[]][] = [
+          ['', '', []],
+          [`branchId=${branchId}`, 'AND s.branch_id=$2', [branchId]],
+          [`userId=${staffId}`, 'AND s.user_id=$2', [staffId]],
+          ['status=OPEN', "AND s.status='OPEN'", []],
+          ['status=CLOSED', "AND s.status='CLOSED'", []],
+          ['shiftType=STAFF', "AND s.shift_type='STAFF'", []],
+          ['shiftType=CASHIER', "AND s.shift_type='CASHIER'", []],
+          [`branchId=${branchId}&userId=${staffId}&status=OPEN&shiftType=STAFF`, "AND s.branch_id=$2 AND s.user_id=$3 AND s.status='OPEN' AND s.shift_type='STAFF'", [branchId, staffId]],
+        ];
+        for (const [query, where, params] of cases) {
+          const res = await request(ownerB, `/work-shifts?limit=1${query ? `&${query}` : ''}`);
+          assert.equal(res.status, 200, query);
+          const expected = await dbTotal(where, params);
+          assert.equal(res.json.meta.total, expected, query);
+          if (query) assert.ok(expected < all, `filter ${query} must narrow the list`);
+        }
+        // Other store: counts and rows stay inside the caller's store.
+        const other = await request(ownerA, '/work-shifts?limit=100');
+        assert.ok(other.json.data.every((shift: { id: string }) => shift.id !== closedId && shift.id !== openId));
+
+        // closeShift / forceCloseShift never reach another store's shift.
+        const closeOther = await request(ownerA, `/work-shifts/${openId}/close`, 'POST', {});
+        assert.equal(closeOther.status, 404);
+        assert.equal(closeOther.json.error.code, 'SHIFT_NOT_FOUND');
+        const forceOther = await request(ownerA, `/work-shifts/${openId}/force-close`, 'POST', { countedCash: 0, reason: 'ST23' });
+        assert.equal(forceOther.status, 404);
+        assert.equal(forceOther.json.error.code, 'SHIFT_NOT_FOUND');
+        assert.equal((await db.query('SELECT status FROM work_shifts WHERE id=$1', [openId]))[0].status, 'OPEN');
+        // Same-store close of an open shift of another user works only via force-close.
+        const forced = await request(ownerB, `/work-shifts/${openId}/force-close`, 'POST', { countedCash: 0, reason: 'ST23' });
+        assert.equal(forced.status, 200);
       });
 
       // --- SHIFT-08: Phân quyền, Danh sách ca và Cô lập Multi-tenant ---

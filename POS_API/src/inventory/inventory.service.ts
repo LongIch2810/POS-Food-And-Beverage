@@ -1,9 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, ILike, In, ObjectLiteral } from 'typeorm';
 import { UserSummary } from '../auth/auth.service';
 import { httpError } from '../http/http-error';
 import { uuidPattern } from '../http/request-validation';
+import { ProductSize } from '../menu/entities/product-size.entity';
+import { Topping } from '../menu/entities/topping.entity';
+import { Branch } from '../organization/entities/branch.entity';
+import { Invoice } from '../sales/entities/invoice.entity';
+import { BranchIngredientStock } from './entities/branch-ingredient-stock.entity';
+import { Ingredient } from './entities/ingredient.entity';
+import { ProductSizeIngredient } from './entities/product-size-ingredient.entity';
+import { StockMovement } from './entities/stock-movement.entity';
+import { ToppingIngredient } from './entities/topping-ingredient.entity';
 
 type Input = Record<string, unknown>;
 const invalid = () => httpError(422, 'VALIDATION_ERROR', 'Dữ liệu kho không hợp lệ.');
@@ -37,14 +46,10 @@ export class InventoryService {
   }
 
   private async checkScope(store: string, branch: string | null, ingredient: unknown) {
-    if (branch) {
-      const rows = await this.db.query('SELECT 1 FROM branches WHERE id=$1 AND store_id=$2',[branch,store]);
-      if (!rows.length) throw httpError(404,'NOT_FOUND','Không tìm thấy chi nhánh.');
-    }
-    if (ingredient) {
-      const rows = await this.db.query('SELECT 1 FROM ingredients WHERE id=$1 AND store_id=$2',[ingredient,store]);
-      if (!rows.length) throw httpError(404,'NOT_FOUND','Không tìm thấy nguyên liệu.');
-    }
+    if (branch && !await this.db.getRepository(Branch).existsBy({ id: branch, store_id: store }))
+      throw httpError(404,'NOT_FOUND','Không tìm thấy chi nhánh.');
+    if (ingredient && !await this.db.getRepository(Ingredient).existsBy({ id: ingredient as string, store_id: store }))
+      throw httpError(404,'NOT_FOUND','Không tìm thấy nguyên liệu.');
   }
 
   private ingredientView(row: any) {
@@ -81,14 +86,15 @@ export class InventoryService {
     if (query.isActive !== undefined && query.isActive !== 'true' && query.isActive !== 'false') throw invalid();
     if (query.q !== undefined && (typeof query.q !== 'string' || query.q.length > 100)) throw invalid();
     const page = await this.page(query, ['limit','cursor','isActive','q'], JSON.stringify(['ingredients',store,query.isActive ?? null,query.q ?? null]));
-    const params: unknown[] = [store];
-    let where = 'store_id=$1';
-    if (query.isActive !== undefined) { params.push(query.isActive === 'true'); where += ` AND is_active=$${params.length}`; }
-    if (query.q !== undefined) { params.push(`%${query.q}%`); where += ` AND name ILIKE $${params.length}`; }
-    const [{ count }] = await this.db.query(`SELECT count(*)::int AS count FROM ingredients WHERE ${where}`, params);
-    if (page.cursor) { params.push(page.cursor.key,page.cursor.id); where += ` AND (lower(name),id)>($${params.length-1},$${params.length}::uuid)`; }
-    params.push(page.limit+1);
-    const rows = await this.db.query(`SELECT * FROM ingredients WHERE ${where} ORDER BY lower(name),id LIMIT $${params.length}`, params);
+    const count = await this.db.getRepository(Ingredient).count({ where: { store_id: store,
+      ...(query.isActive !== undefined ? { is_active: query.isActive === 'true' } : {}),
+      ...(query.q !== undefined ? { name: ILike(`%${query.q}%`) } : {}) } });
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
+    const builder = this.db.getRepository(Ingredient).createQueryBuilder('i').where('i.store_id = :store', { store });
+    if (query.isActive !== undefined) builder.andWhere('i.is_active = :active', { active: query.isActive === 'true' });
+    if (query.q !== undefined) builder.andWhere('i.name ILIKE :q', { q: `%${query.q}%` });
+    if (page.cursor) builder.andWhere('(lower(i.name), i.id) > (:key, CAST(:id AS uuid))', { key: page.cursor.key, id: page.cursor.id });
+    const rows = await builder.orderBy('lower(i.name)').addOrderBy('i.id').limit(page.limit+1).getMany();
     return this.finish(rows,count,page,row => row.name.toLowerCase(),row => this.ingredientView(row));
   }
 
@@ -98,9 +104,10 @@ export class InventoryService {
     const name = typeof input.name === 'string' ? input.name.trim() : '';
     if (!name || name.length > 100 || typeof input.unit !== 'string' || !['g','ml','piece'].includes(input.unit)) throw invalid();
     try {
-      const [row] = await this.db.query('INSERT INTO ingredients(id,store_id,name,unit) VALUES ($1,$2,$3,$4) RETURNING *',
-        [randomUUID(),store,name,input.unit]);
-      return this.ingredientView(row);
+      const repo = this.db.getRepository(Ingredient);
+      const id = randomUUID();
+      await repo.insert({ id, store_id: store, name, unit: input.unit as Ingredient['unit'] });
+      return this.ingredientView(await repo.findOneByOrFail({ id }));
     } catch (error: any) {
       if (error.code === '23505') throw httpError(409,'DUPLICATE_INGREDIENT_NAME','Tên nguyên liệu đã tồn tại.');
       throw error;
@@ -111,24 +118,23 @@ export class InventoryService {
     const store = this.store(user);
     fields(input,['name','unit','isActive']);
     return this.db.transaction(async manager => {
-      const [old] = await manager.query('SELECT * FROM ingredients WHERE id=$1 AND store_id=$2 FOR UPDATE',[id,store]);
+      const old = await manager.getRepository(Ingredient).findOne({ where: { id, store_id: store }, lock: { mode: 'pessimistic_write' } });
       if (!old) throw httpError(404,'NOT_FOUND','Không tìm thấy nguyên liệu.');
       const name = input.name === undefined ? old.name : typeof input.name === 'string' ? input.name.trim() : '';
       const unit = input.unit === undefined ? old.unit : input.unit;
       const active = input.isActive === undefined ? old.is_active : input.isActive;
       if (!name || name.length > 100 || typeof unit !== 'string' || !['g','ml','piece'].includes(unit) || typeof active !== 'boolean') throw invalid();
       if (unit !== old.unit) {
-        const [usage] = await manager.query(`SELECT
-          EXISTS(SELECT 1 FROM product_size_ingredients WHERE ingredient_id=$1) OR
-          EXISTS(SELECT 1 FROM topping_ingredients WHERE ingredient_id=$1) OR
-          EXISTS(SELECT 1 FROM branch_ingredient_stocks WHERE ingredient_id=$1) OR
-          EXISTS(SELECT 1 FROM stock_movements WHERE ingredient_id=$1) AS used`,[id]);
-        if (usage.used) throw httpError(409,'RESOURCE_IN_USE','Đơn vị gốc đã được dùng, không thể thay đổi.');
+        const used = await manager.getRepository(ProductSizeIngredient).existsBy({ ingredient_id: id }) ||
+          await manager.getRepository(ToppingIngredient).existsBy({ ingredient_id: id }) ||
+          await manager.getRepository(BranchIngredientStock).existsBy({ ingredient_id: id }) ||
+          await manager.getRepository(StockMovement).existsBy({ ingredient_id: id });
+        if (used) throw httpError(409,'RESOURCE_IN_USE','Đơn vị gốc đã được dùng, không thể thay đổi.');
       }
       try {
-        const [rows] = await manager.query('UPDATE ingredients SET name=$3,unit=$4,is_active=$5,updated_at=now() WHERE id=$1 AND store_id=$2 RETURNING *',
-          [id,store,name,unit,active]);
-        return this.ingredientView(rows[0]);
+        const result = await manager.getRepository(Ingredient).update({ id, store_id: store },
+          { name, unit: unit as Ingredient['unit'], is_active: active, updated_at: () => 'now()' }, { returning: '*' });
+        return this.ingredientView(result.raw[0]);
       } catch (error: any) {
         if (error.code === '23505') throw httpError(409,'DUPLICATE_INGREDIENT_NAME','Tên nguyên liệu đã tồn tại.');
         throw error;
@@ -137,21 +143,24 @@ export class InventoryService {
   }
 
   private async parent(manager: EntityManager, store: string, kind: 'product'|'topping', id: string) {
-    const rows = kind === 'product'
-      ? await manager.query(`SELECT ps.id FROM product_sizes ps JOIN products p ON p.id=ps.product_id
-        JOIN categories c ON c.id=p.category_id WHERE ps.id=$1 AND c.store_id=$2 FOR UPDATE OF ps`,[id,store])
-      : await manager.query('SELECT id FROM toppings WHERE id=$1 AND store_id=$2 FOR UPDATE',[id,store]);
-    if (!rows.length) throw httpError(404,'NOT_FOUND','Không tìm thấy món hoặc topping.');
+    const found = kind === 'product'
+      ? (await manager.getRepository(ProductSize).find({ where: { id, product: { category: { store_id: store } } }, select: { id: true },
+        lock: { mode: 'pessimistic_write', tables: ['product_sizes'] } }))[0]
+      : await manager.getRepository(Topping).findOne({ where: { id, store_id: store }, select: { id: true }, lock: { mode: 'pessimistic_write' } });
+    if (!found) throw httpError(404,'NOT_FOUND','Không tìm thấy món hoặc topping.');
   }
 
   private recipeTable(kind: 'product'|'topping') {
-    return kind === 'product' ? { table: 'product_size_ingredients', key: 'product_size_id' } : { table: 'topping_ingredients', key: 'topping_id' };
+    return kind === 'product' ? { entity: ProductSizeIngredient, key: 'product_size_id' } : { entity: ToppingIngredient, key: 'topping_id' };
   }
 
   private async recipeRows(manager: EntityManager, kind: 'product'|'topping', id: string) {
-    const {table,key} = this.recipeTable(kind);
-    const rows = await manager.query(`SELECT r.ingredient_id, r.quantity, i.name, i.unit, i.is_active
-      FROM ${table} r JOIN ingredients i ON i.id=r.ingredient_id WHERE r.${key}=$1 ORDER BY lower(i.name),i.id`,[id]);
+    const {entity,key} = this.recipeTable(kind);
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
+    const rows = await manager.createQueryBuilder().select('r.ingredient_id', 'ingredient_id').addSelect('r.quantity', 'quantity')
+      .addSelect('i.name', 'name').addSelect('i.unit', 'unit').addSelect('i.is_active', 'is_active')
+      .from(entity, 'r').innerJoin(Ingredient, 'i', 'i.id = r.ingredient_id').where(`r.${key} = :id`, { id })
+      .orderBy('lower(i.name)').addOrderBy('i.id').getRawMany();
     return rows.map((row: any) => ({ ingredientId: row.ingredient_id, ingredientName: row.name, unit: row.unit,
       quantity: row.quantity }));
   }
@@ -176,17 +185,19 @@ export class InventoryService {
     if (new Set(ingredients.map(item => item.id)).size !== ingredients.length) throw invalid();
     return this.db.transaction(async manager => {
       await this.parent(manager,store,kind,id);
-      const {table,key} = this.recipeTable(kind);
-      const old = await manager.query(`SELECT ingredient_id,quantity FROM ${table} WHERE ${key}=$1`,[id]);
+      const {entity,key} = this.recipeTable(kind);
+      const recipe = manager.getRepository<ObjectLiteral>(entity);
+      const old = await recipe.find({ where: { [key]: id }, select: { [key]: true, ingredient_id: true, quantity: true } });
       for (const item of [...ingredients].sort((a,b) => a.id.localeCompare(b.id))) {
-        const [row] = await manager.query('SELECT id,is_active FROM ingredients WHERE id=$1 AND store_id=$2 FOR UPDATE',[item.id,store]);
+        const row = await manager.getRepository(Ingredient).findOne({ where: { id: item.id, store_id: store },
+          select: { id: true, is_active: true }, lock: { mode: 'pessimistic_write' } });
         if (!row) throw httpError(404,'NOT_FOUND','Không tìm thấy nguyên liệu.');
         const prior = old.find((r: any) => r.ingredient_id === item.id);
         if (!row.is_active && (!prior || Number(prior.quantity) !== Number(item.quantity)))
           throw httpError(409,'INGREDIENT_INACTIVE','Nguyên liệu đã ngưng dùng.');
       }
-      await manager.query(`DELETE FROM ${table} WHERE ${key}=$1`,[id]);
-      for (const item of ingredients) await manager.query(`INSERT INTO ${table}(${key},ingredient_id,quantity) VALUES($1,$2,$3)`,[id,item.id,item.quantity]);
+      await recipe.delete({ [key]: id });
+      for (const item of ingredients) await recipe.insert({ [key]: id, ingredient_id: item.id, quantity: item.quantity });
       return this.recipeRows(manager,kind,id);
     });
   }
@@ -198,17 +209,18 @@ export class InventoryService {
     await this.checkScope(store,branch,query.ingredientId);
     const page = await this.page(query,['limit','cursor','branchId','ingredientId'],JSON.stringify(['stocks',store,branch,query.ingredientId ?? null]));
     if (page.cursor && !uuidPattern.test(page.cursor.key)) throw invalid();
-    const params: unknown[] = [store];
-    let where = 'b.store_id=$1';
-    if (branch) { params.push(branch); where += ` AND b.id=$${params.length}`; }
-    if (query.ingredientId) { params.push(query.ingredientId); where += ` AND i.id=$${params.length}`; }
-    const [{count}] = await this.db.query(`SELECT count(*)::int AS count FROM branches b CROSS JOIN ingredients i WHERE ${where} AND i.store_id=$1`,params);
-    if (page.cursor) { params.push(page.cursor.key,page.cursor.id); where += ` AND (b.id::text,i.id) > ($${params.length-1},$${params.length}::uuid)`; }
-    params.push(page.limit+1);
-    const rows = await this.db.query(`SELECT i.id, b.id AS branch_id, i.id AS ingredient_id, i.name AS ingredient_name, i.unit,
-      COALESCE(s.current_stock,0) AS current_stock,COALESCE(s.min_stock,0) AS min_stock
-      FROM branches b CROSS JOIN ingredients i LEFT JOIN branch_ingredient_stocks s ON s.branch_id=b.id AND s.ingredient_id=i.id
-      WHERE ${where} AND i.store_id=$1 ORDER BY b.id,i.id LIMIT $${params.length}`,params);
+    const count = (await this.db.getRepository(Branch).count({ where: { store_id: store, ...(branch ? { id: branch } : {}) } })) *
+      (await this.db.getRepository(Ingredient).count({ where: { store_id: store, ...(query.ingredientId ? { id: query.ingredientId as string } : {}) } }));
+    // QueryBuilder: joins and DISTINCT over many rows; separate find() calls would load every row
+    const builder = this.db.getRepository(Branch).createQueryBuilder('b').innerJoin(Ingredient, 'i', 'i.store_id = b.store_id')
+      .leftJoin(BranchIngredientStock, 's', 's.branch_id = b.id AND s.ingredient_id = i.id')
+      .select('i.id', 'id').addSelect('b.id', 'branch_id').addSelect('i.id', 'ingredient_id').addSelect('i.name', 'ingredient_name')
+      .addSelect('i.unit', 'unit').addSelect('COALESCE(s.current_stock,0)', 'current_stock').addSelect('COALESCE(s.min_stock,0)', 'min_stock')
+      .where('b.store_id = :store', { store });
+    if (branch) builder.andWhere('b.id = :branch', { branch });
+    if (query.ingredientId) builder.andWhere('i.id = :ingredientId', { ingredientId: query.ingredientId });
+    if (page.cursor) builder.andWhere('(b.id::text, i.id) > (:key, CAST(:id AS uuid))', { key: page.cursor.key, id: page.cursor.id });
+    const rows = await builder.orderBy('b.id').addOrderBy('i.id').limit(page.limit+1).getRawMany();
     return this.finish(rows,count,page,row => row.branch_id,row => ({ branchId:row.branch_id,ingredientId:row.ingredient_id,
       ingredientName:row.ingredient_name,unit:row.unit,currentStock:row.current_stock,minStock:row.min_stock }));
   }
@@ -219,14 +231,14 @@ export class InventoryService {
     const branch = this.branch(user,input.branchId,true)!;
     const min = decimal(input.minStock,true);
     return this.db.transaction(async manager => {
-      const [row] = await manager.query(`SELECT b.id AS branch_id,i.id AS ingredient_id,i.name AS ingredient_name,i.unit
-        FROM branches b JOIN ingredients i ON i.store_id=b.store_id WHERE b.id=$1 AND i.id=$2 AND b.store_id=$3
-        FOR UPDATE OF b,i`,[branch,ingredientId,store]);
+      const found = await manager.getRepository(Branch).findOne({ where: { id: branch, store_id: store }, select: { id: true }, lock: { mode: 'pessimistic_write' } });
+      const row = found && await manager.getRepository(Ingredient).findOne({ where: { id: ingredientId, store_id: store },
+        select: { id: true, name: true, unit: true }, lock: { mode: 'pessimistic_write' } });
       if (!row) throw httpError(404,'NOT_FOUND','Không tìm thấy chi nhánh hoặc nguyên liệu.');
-      const [stock] = await manager.query(`INSERT INTO branch_ingredient_stocks(branch_id,ingredient_id,min_stock)
-        VALUES($1,$2,$3) ON CONFLICT (branch_id,ingredient_id)
-        DO UPDATE SET min_stock=EXCLUDED.min_stock,updated_at=now() RETURNING current_stock,min_stock`,[branch,ingredientId,min]);
-      return { branchId:branch,ingredientId,ingredientName:row.ingredient_name,unit:row.unit,
+      const { raw: [stock] } = await manager.getRepository(BranchIngredientStock).upsert(
+        { branch_id: branch, ingredient_id: ingredientId, min_stock: min, updated_at: () => 'now()' },
+        { conflictPaths: ['branch_id','ingredient_id'], returning: ['current_stock','min_stock'] });
+      return { branchId:branch,ingredientId,ingredientName:row.name,unit:row.unit,
         currentStock:stock.current_stock,minStock:stock.min_stock };
     });
   }
@@ -241,19 +253,23 @@ export class InventoryService {
     if (page.cursor && (!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z$/.test(page.cursor.key) ||
         !Number.isFinite(new Date(page.cursor.key).getTime()) ||
         new Date(page.cursor.key).toISOString().slice(0,19) !== page.cursor.key.slice(0,19))) throw invalid();
-    const params: unknown[] = [store];
-    let where = 'b.store_id=$1';
-    if (branch) { params.push(branch); where += ` AND m.branch_id=$${params.length}`; }
-    if (query.ingredientId) { params.push(query.ingredientId); where += ` AND m.ingredient_id=$${params.length}`; }
-    if (query.type) { params.push(query.type); where += ` AND m.type=$${params.length}`; }
-    const [{count}] = await this.db.query(`SELECT count(*)::int AS count FROM stock_movements m JOIN branches b ON b.id=m.branch_id WHERE ${where}`,params);
-    if (page.cursor) { params.push(page.cursor.key,page.cursor.id); where += ` AND (m.created_at,m.id)<($${params.length-1}::timestamptz,$${params.length}::uuid)`; }
-    params.push(page.limit+1);
-    const rows = await this.db.query(`SELECT m.*,to_char(m.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time,
-      b.name AS branch_name,inv.invoice_code,i.name AS ingredient_name,i.unit FROM stock_movements m
-      JOIN branches b ON b.id=m.branch_id JOIN ingredients i ON i.id=m.ingredient_id
-      LEFT JOIN invoices inv ON inv.id=m.invoice_id AND inv.branch_id=m.branch_id
-      WHERE ${where} ORDER BY m.created_at DESC,m.id DESC LIMIT $${params.length}`,params);
+    const branchIds = branch ? [branch] : (await this.db.getRepository(Branch).find({ where: { store_id: store }, select: { id: true } })).map(b => b.id);
+    const count = await this.db.getRepository(StockMovement).count({ where: { branch_id: In(branchIds),
+      ...(query.ingredientId ? { ingredient_id: query.ingredientId as string } : {}),
+      ...(query.type ? { type: query.type as StockMovement['type'] } : {}) } });
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
+    const builder = this.db.getRepository(StockMovement).createQueryBuilder('m').innerJoin(Branch, 'b', 'b.id = m.branch_id')
+      .innerJoin(Ingredient, 'i', 'i.id = m.ingredient_id').leftJoin(Invoice, 'inv', 'inv.id = m.invoice_id AND inv.branch_id = m.branch_id')
+      .select(['m.id AS id', 'm.branch_id AS branch_id', 'm.ingredient_id AS ingredient_id', 'm.type AS type', 'm.quantity AS quantity',
+        'm.balance_after AS balance_after', 'm.invoice_id AS invoice_id', 'm.note AS note', 'm.created_at AS created_at'])
+      .addSelect(`to_char(m.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`, 'cursor_time')
+      .addSelect('b.name', 'branch_name').addSelect('inv.invoice_code', 'invoice_code').addSelect('i.name', 'ingredient_name').addSelect('i.unit', 'unit')
+      .where('b.store_id = :store', { store });
+    if (branch) builder.andWhere('m.branch_id = :branch', { branch });
+    if (query.ingredientId) builder.andWhere('m.ingredient_id = :ingredientId', { ingredientId: query.ingredientId });
+    if (query.type) builder.andWhere('m.type = :type', { type: query.type });
+    if (page.cursor) builder.andWhere('(m.created_at, m.id) < (CAST(:key AS timestamptz), CAST(:id AS uuid))', { key: page.cursor.key, id: page.cursor.id });
+    const rows = await builder.orderBy('m.created_at', 'DESC').addOrderBy('m.id', 'DESC').limit(page.limit+1).getRawMany();
     return this.finish(rows,count,page,row => row.cursor_time,row => ({ id:row.id,branchId:row.branch_id,branchName:row.branch_name,
       ingredientId:row.ingredient_id,ingredientName:row.ingredient_name,unit:row.unit,type:row.type,
       quantity:row.quantity,balanceAfter:row.balance_after,invoiceId:row.invoice_id,invoiceCode:row.invoice_code ?? null,note:row.note,

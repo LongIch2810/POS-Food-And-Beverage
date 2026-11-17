@@ -121,3 +121,5 @@
 [ui, products, router, state] B-66/V1-2 dialog Thực đơn còn mở sau Back → 20261116-products-dialog-persists-after-tab-change.md
 
 [ui, reports, date] O-1 nhãn ngày Báo cáo thiếu năm, trái dd/MM/yyyy → 20261116-reports-short-date-label.md
+
+[testing, refactor, tdd] tdd sửa/xóa dòng test cũ khi thêm test mới, trái E2E-AC-6 (R1-1) → 20261117-orm-refactor-existing-test-lines-edited.md

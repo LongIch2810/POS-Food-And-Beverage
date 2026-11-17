@@ -1,3 +1,4 @@
+import { PlatformService } from '../platform.service';
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { test } from 'node:test';
@@ -7,6 +8,7 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../../app.module';
 import { bootstrapAdmin } from '../../bootstrap-admin';
 import { dataSource } from '../../database/data-source';
+import { captureSql, lockSequence } from '../../database/tests/sql-capture';
 
 test('PB-03 store, OWNER, suspension, reset and access boundaries', { timeout: 120_000 }, async () => {
   const name = `pos_pb03_test_${randomBytes(6).toString('hex')}`;
@@ -220,4 +222,110 @@ test('PB-03 store, OWNER, suspension, reset and access boundaries', { timeout: 1
     if (created) await dataSource.query(`DROP DATABASE "${name}" WITH (FORCE)`);
     if (dataSource.isInitialized) await dataSource.destroy();
   }
+});
+
+test('test_ST3_AC6_create_owner_username_normalized', { timeout: 90_000 }, async (t) => {
+  const name = `pos_st3_${randomBytes(6).toString('hex')}`;
+  const url = new URL(process.env.DATABASE_URL!); url.pathname = `/${name}`;
+  const db = new DataSource({ type: 'postgres', url: url.toString(), entities: dataSource.options.entities, migrations: dataSource.options.migrations });
+  await dataSource.initialize();
+  let created = false;
+  try {
+    await dataSource.query(`CREATE DATABASE "${name}"`); created = true;
+    await db.initialize(); await db.runMigrations();
+    const [store] = await db.query("INSERT INTO stores (id,name) VALUES (gen_random_uuid(),'ST3') RETURNING id");
+    const result = await new PlatformService(db).addOwner({ storeId: store.id, username: '  CHU.Quan  ', fullName: 'Owner' }, 'ST3', 'ST3');
+    const [row] = await db.query('SELECT username FROM users WHERE id=$1', [result.owner.id]);
+    assert.equal(row.username, 'chu.quan');
+    t.diagnostic(JSON.stringify(row));
+  } finally {
+    if (db.isInitialized) await db.destroy();
+    if (created) await dataSource.query(`DROP DATABASE "${name}"`);
+    await dataSource.destroy();
+  }
+});
+
+async function withPlatformDb(prefix: string, run: (db: DataSource) => Promise<void>): Promise<void> {
+  const name = `${prefix}_${randomBytes(6).toString('hex')}`;
+  const url = new URL(process.env.DATABASE_URL!); url.pathname = `/${name}`;
+  const db = new DataSource({ type: 'postgres', url: url.toString(), entities: dataSource.options.entities, migrations: dataSource.options.migrations });
+  await dataSource.initialize();
+  let created = false;
+  try {
+    await dataSource.query(`CREATE DATABASE "${name}"`); created = true;
+    await db.initialize(); await db.runMigrations();
+    await run(db);
+  } finally {
+    if (db.isInitialized) await db.destroy();
+    if (created) await dataSource.query(`DROP DATABASE "${name}" WITH (FORCE)`);
+    await dataSource.destroy();
+  }
+}
+
+async function addSession(db: DataSource, userId: string, revokedAt: string | null = null): Promise<void> {
+  await db.query(`INSERT INTO refresh_tokens (id, user_id, session_id, token_hash, expires_at, revoked_at)
+    VALUES (gen_random_uuid(), $1, gen_random_uuid(), $2, now() + interval '1 day', $3)`,
+  [userId, randomBytes(32).toString('hex'), revokedAt]);
+}
+
+test('test_ST20_AC1_lock_sequences_platform', { timeout: 90_000 }, async (t) => {
+  await withPlatformDb('pos_st20p1', async (db) => {
+    const service = new PlatformService(db);
+    const { store, owner } = await service.createStore({ name: 'ST20 A', owner: { username: 'st20_owner', fullName: 'Owner' } }, 'actor', 'req');
+    const sqlSuspend = captureSql(t);
+    await service.setStoreStatus(store.id, 'SUSPENDED', 'ST20', 'actor', 'req');
+    assert.deepEqual(lockSequence(sqlSuspend), ['UPDATE:stores']);
+    t.mock.restoreAll();
+    const sqlReset = captureSql(t);
+    await service.resetOwnerPassword(owner.id, 'actor', 'req');
+    assert.deepEqual(lockSequence(sqlReset), ['UPDATE:users']);
+    t.mock.restoreAll();
+  });
+});
+
+test('test_ST20_AC3_suspend_revokes_only_store_sessions', { timeout: 90_000 }, async () => {
+  await withPlatformDb('pos_st20p3', async (db) => {
+    const service = new PlatformService(db);
+    const a = await service.createStore({ name: 'ST20 A', owner: { username: 'st20_a1', fullName: 'A1' } }, 'actor', 'req');
+    const a2 = await service.addOwner({ storeId: a.store.id, username: 'st20_a2', fullName: 'A2' }, 'actor', 'req');
+    const b = await service.createStore({ name: 'ST20 B', owner: { username: 'st20_b1', fullName: 'B1' } }, 'actor', 'req');
+    const [empty] = await db.query("INSERT INTO stores (id, name) VALUES (gen_random_uuid(), 'ST20 empty') RETURNING id");
+    for (const id of [a.owner.id, a.owner.id, a2.owner.id, b.owner.id]) await addSession(db, id);
+    await addSession(db, a.owner.id, '2000-01-01T00:00:00Z');
+    await addSession(db, a2.owner.id, '2000-01-01T00:00:00Z');
+    const count = async (storeId: string, revoked: boolean) => (await db.query(`SELECT count(*)::int AS n FROM refresh_tokens rt
+      JOIN users u ON u.id = rt.user_id WHERE u.store_id = $1 AND rt.revoked_at IS ${revoked ? 'NOT ' : ''}NULL`, [storeId]))[0].n;
+
+    await service.resetOwnerPassword(a2.owner.id, 'actor', 'req');
+    assert.equal(await count(a.store.id, false), 2, 'reset revokes only that owner');
+    assert.equal(await count(b.store.id, false), 1);
+    await service.setStoreStatus(a.store.id, 'SUSPENDED', 'ST20', 'actor', 'req');
+    assert.equal(await count(a.store.id, false), 0);
+    assert.equal(await count(a.store.id, true), 5);
+    assert.equal(await count(b.store.id, false), 1);
+    assert.equal(await count(b.store.id, true), 0);
+    const [old] = await db.query("SELECT count(*)::int AS n FROM refresh_tokens WHERE revoked_at = '2000-01-01T00:00:00Z'");
+    assert.equal(old.n, 2, 'already revoked sessions keep their timestamp');
+
+    // A store without users: In([]) must update nothing and not fail.
+    const suspendedEmpty = await service.setStoreStatus(empty.id, 'SUSPENDED', 'ST20', 'actor', 'req');
+    assert.equal(suspendedEmpty.status, 'SUSPENDED');
+    assert.equal(await count(b.store.id, false), 1);
+    // Suspending the other store then revokes its own session.
+    await service.setStoreStatus(b.store.id, 'SUSPENDED', 'ST20', 'actor', 'req');
+    assert.equal(await count(b.store.id, false), 0);
+  });
+});
+
+test('test_ST20_AC2_list_owners_total_matches_page', { timeout: 90_000 }, async () => {
+  await withPlatformDb('pos_st20p2', async (db) => {
+    const service = new PlatformService(db);
+    await service.createStore({ name: 'ST20 A', owner: { username: 'st20_t1', fullName: 'T1' } }, 'actor', 'req');
+    await db.query(`INSERT INTO users (id,role_id,full_name,username,password_hash)
+      SELECT gen_random_uuid(),id,'Storeless','st20_storeless','x' FROM roles WHERE name='OWNER'`);
+    const page = await service.listOwners({ limit: 10 });
+    assert.equal(page.data.length, 1);
+    assert.equal(page.meta.total, 1, 'storeless OWNER is not counted');
+    assert.equal((await service.listStores({ limit: 10 })).meta.total, 1);
+  });
 });

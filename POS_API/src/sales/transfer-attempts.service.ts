@@ -1,9 +1,20 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, In, IsNull, Not } from 'typeorm';
 import { UserSummary } from '../auth/auth.service';
 import { httpError } from '../http/http-error';
 import { uuidPattern } from '../http/request-validation';
+import { Branch } from '../organization/entities/branch.entity';
+import { Store } from '../platform/entities/store.entity';
+import { PromotionCode } from '../promotions/entities/promotion-code.entity';
+import { WorkShift } from '../shifts/entities/work-shift.entity';
+import { BankTransferEvent } from './entities/bank-transfer-event.entity';
+import { InvoiceItem } from './entities/invoice-item.entity';
+import { InvoicePromotionCode } from './entities/invoice-promotion-code.entity';
+import { Invoice } from './entities/invoice.entity';
+import { Payment } from './entities/payment.entity';
+import { StoreBankAccount } from './entities/store-bank-account.entity';
+import { TransferAttempt } from './entities/transfer-attempt.entity';
 import { ManualConfirmationDto, TransferAttemptDto } from './http/payment.dto';
 import { SalesService } from './sales.service';
 
@@ -19,16 +30,17 @@ export class TransferAttemptsService {
   }
 
   private async invoice(manager:EntityManager,user:UserSummary,id:string,lock=false):Promise<Row> {
-    const [row]=await manager.query(`SELECT i.*,b.store_id FROM invoices i JOIN branches b ON b.id=i.branch_id
-      WHERE i.id=$1 ${lock?'FOR UPDATE OF i':''}`,[id]);
+    const invoice=await manager.getRepository(Invoice).findOne({where:{id},...(lock?{lock:{mode:'pessimistic_write'}}:{})});
+    const branch=invoice?await manager.getRepository(Branch).findOne({where:{id:invoice.branch_id},select:{id:true,store_id:true}}):null;
+    const row:Row|null=invoice&&branch?{...invoice,store_id:branch.store_id}:null;
     if(!row||row.store_id!==this.store(user)||(!user.permissions.includes('branch.access_all')&&row.branch_id!==user.branchId))
       throw httpError(404,'NOT_FOUND','Không tìm thấy hóa đơn.');
     return row;
   }
 
   private async shift(manager:EntityManager,user:UserSummary):Promise<Row> {
-    const [row]=await manager.query(`SELECT s.id,s.branch_id FROM work_shifts s JOIN branches b ON b.id=s.branch_id
-      WHERE s.user_id=$1 AND s.status='OPEN' AND s.shift_type='CASHIER' AND b.store_id=$2 FOR UPDATE OF s`,[user.id,this.store(user)]);
+    const row=(await manager.getRepository(WorkShift).find({where:{user_id:user.id,status:'OPEN',shift_type:'CASHIER',branch:{store_id:this.store(user)}},
+      select:{id:true,branch_id:true},lock:{mode:'pessimistic_write',tables:['work_shifts']}}))[0];
     if(!row)throw httpError(409,'SHIFT_NOT_OPEN','Bạn cần mở ca thu ngân để bán hàng.');
     return row;
   }
@@ -44,7 +56,7 @@ export class TransferAttemptsService {
 
   async getPendingTransferAttempt(user:UserSummary,invoiceId:string):Promise<TransferAttemptDto|null> {
     await this.invoice(this.db.manager,user,invoiceId);
-    const [row]=await this.db.query(`SELECT * FROM transfer_attempts WHERE invoice_id=$1 AND status='PENDING'`,[invoiceId]);
+    const row=await this.db.getRepository(TransferAttempt).findOneBy({invoice_id:invoiceId,status:'PENDING'});
     return row?this.view(row):null;
   }
 
@@ -57,30 +69,29 @@ export class TransferAttemptsService {
     return this.db.transaction(async manager=>{
       const visible=await this.invoice(manager,user,invoiceId);
       const hash=createHash('sha256').update(JSON.stringify({invoiceId:visible.id,amount})).digest('hex');
-      await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[normalized]);
-      const [prior]=await manager.query('SELECT * FROM transfer_attempts WHERE idempotency_key=$1',[normalized]);
+      // QueryBuilder: table-less SELECT (advisory lock or probe); no repository method runs it
+      await manager.createQueryBuilder().select('pg_advisory_xact_lock(hashtextextended(:lockKey, 0))','locked').fromDummy().setParameter('lockKey',normalized).getRawOne();
+      const prior=await manager.getRepository(TransferAttempt).findOneBy({idempotency_key:normalized});
       if(prior){
         if(prior.invoice_id!==visible.id||prior.idempotency_request_hash!==hash)
           throw httpError(409,'IDEMPOTENCY_KEY_REUSED','Mã yêu cầu đã được dùng cho nội dung khác.');
         return this.view(prior,true);
       }
-      const used=await manager.query(`SELECT id FROM payments WHERE idempotency_key=$1 UNION ALL
-        SELECT id FROM invoices WHERE zero_completion_key=$1`,[normalized]);
-      if(used.length)throw httpError(409,'IDEMPOTENCY_KEY_REUSED','Mã yêu cầu đã được dùng cho nội dung khác.');
-      await manager.query('SELECT id FROM stores WHERE id=$1 FOR UPDATE',[this.store(user)]);
+      if(await manager.getRepository(Payment).existsBy({idempotency_key:normalized})||await manager.getRepository(Invoice).existsBy({zero_completion_key:normalized}))
+        throw httpError(409,'IDEMPOTENCY_KEY_REUSED','Mã yêu cầu đã được dùng cho nội dung khác.');
+      await manager.getRepository(Store).findOne({where:{id:this.store(user)},select:{id:true},lock:{mode:'pessimistic_write'}});
       const shift=await this.shift(manager,user);
       const invoice=await this.invoice(manager,user,invoiceId,true);
       if(invoice.status!=='OPEN')throw httpError(409,'INVOICE_NOT_OPEN','Đơn không còn mở.');
       if(invoice.branch_id!==shift.branch_id||invoice.work_shift_id!==shift.id)
         throw httpError(409,'SHIFT_NOT_OPEN','Đơn không thuộc ca thu ngân hiện tại.');
-      const pending=await manager.query(`SELECT id FROM transfer_attempts WHERE invoice_id=$1 AND status='PENDING'`,[invoiceId]);
-      if(pending.length)throw httpError(409,'TRANSFER_PENDING','Đơn đang chờ chuyển khoản. Hủy chờ trước khi sửa hoặc thanh toán.');
-      const [account]=await manager.query('SELECT * FROM store_bank_accounts WHERE store_id=$1',[this.store(user)]);
+      if(await manager.getRepository(TransferAttempt).existsBy({invoice_id:invoiceId,status:'PENDING'}))
+        throw httpError(409,'TRANSFER_PENDING','Đơn đang chờ chuyển khoản. Hủy chờ trước khi sửa hoặc thanh toán.');
+      const account=await manager.getRepository(StoreBankAccount).findOneBy({store_id:this.store(user)});
       if(!account)throw httpError(409,'BANK_ACCOUNT_REQUIRED','Cửa hàng chưa cài tài khoản nhận chuyển khoản.');
-      const items=await manager.query('SELECT id FROM invoice_items WHERE invoice_id=$1 LIMIT 1',[invoiceId]);
-      if(!items.length)throw httpError(422,'INVOICE_EMPTY','Đơn chưa có món để thanh toán.');
-      await manager.query(`SELECT p.id FROM promotion_codes p JOIN invoice_promotion_codes ip ON ip.promotion_code_id=p.id
-        WHERE ip.invoice_id=$1 FOR UPDATE OF p`,[invoiceId]);
+      if(!await manager.getRepository(InvoiceItem).existsBy({invoice_id:invoiceId}))throw httpError(422,'INVOICE_EMPTY','Đơn chưa có món để thanh toán.');
+      const linked=await manager.getRepository(InvoicePromotionCode).findOneBy({invoice_id:invoiceId});
+      if(linked)await manager.getRepository(PromotionCode).findOne({where:{id:linked.promotion_code_id},select:{id:true},lock:{mode:'pessimistic_write'}});
       const pricing=await this.sales.evaluateInvoicePricing(manager,invoiceId);
       if(!pricing.promotionApplicable)throw httpError(422,'PROMOTION_NOT_APPLICABLE','Mã giảm giá không còn đủ điều kiện. Đổi hoặc bỏ mã để thanh toán.');
       if(pricing.totalAmount===0n)throw httpError(422,'ZERO_TOTAL_REQUIRED','Đơn 0đ cần hoàn tất bằng thao tác riêng.');
@@ -88,11 +99,11 @@ export class TransferAttemptsService {
       const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       for(let attempt=0;attempt<5;attempt++){
         const reference=invoice.invoice_code+Array.from(randomBytes(8),byte=>alphabet[byte%alphabet.length]).join('');
-        const [row]=await manager.query(`INSERT INTO transfer_attempts
-          (id,invoice_id,store_id,bank_bin,account_number,account_name,amount,transfer_reference,idempotency_key,idempotency_request_hash,status)
-          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'PENDING') ON CONFLICT (transfer_reference) DO NOTHING RETURNING *`,
-          [randomUUID(),invoiceId,this.store(user),account.bank_bin,account.account_number,account.account_name,
-            amount,reference,normalized,hash]);
+        // QueryBuilder: ON CONFLICT (target) DO NOTHING; upsert() only does DO UPDATE and orIgnore() drops the target
+        const result=await manager.createQueryBuilder().insert().into(TransferAttempt).values({id:randomUUID(),invoice_id:invoiceId,store_id:this.store(user),
+          bank_bin:account.bank_bin,account_number:account.account_number,account_name:account.account_name,amount:String(amount),transfer_reference:reference,
+          idempotency_key:normalized,idempotency_request_hash:hash,status:'PENDING'}).onConflict('(transfer_reference) DO NOTHING').returning('*').updateEntity(false).execute();
+        const row=result.raw[0];
         if(row)return this.view(row);
       }
       throw httpError(409,'CONFLICT','Không tạo được mã chuyển khoản duy nhất. Vui lòng thử lại.');
@@ -103,18 +114,19 @@ export class TransferAttemptsService {
     await this.db.transaction(async manager=>{
       const branchId=user.permissions.includes('branch.access_all')?null:user.branchId;
       if(!user.permissions.includes('branch.access_all')&&!branchId)throw httpError(403,'PERMISSION_DENIED','Tài khoản chưa được gán chi nhánh.');
-      const [visible]=await manager.query(`SELECT a.invoice_id FROM transfer_attempts a JOIN invoices i ON i.id=a.invoice_id
-        JOIN branches b ON b.id=i.branch_id WHERE a.id=$1 AND b.store_id=$2 AND ($3::uuid IS NULL OR i.branch_id=$3)`,
-        [attemptId,this.store(user),branchId]);
+      const storeId=this.store(user);
+      const found=await manager.getRepository(TransferAttempt).findOne({where:{id:attemptId},select:{id:true,invoice_id:true}});
+      const scoped=found?await manager.getRepository(Invoice).findOne({where:{id:found.invoice_id,...(branchId!==null?{branch_id:branchId}:{})},select:{id:true,branch_id:true}}):null;
+      const visible=scoped&&await manager.getRepository(Branch).existsBy({id:scoped.branch_id,store_id:storeId})?scoped:null;
       if(!visible)throw httpError(404,'NOT_FOUND','Không tìm thấy lượt chuyển khoản.');
       const shift=await this.shift(manager,user);
-      const invoice=await this.invoice(manager,user,visible.invoice_id,true);
-      const [attempt]=await manager.query('SELECT * FROM transfer_attempts WHERE id=$1 FOR UPDATE',[attemptId]);
+      const invoice=await this.invoice(manager,user,visible.id,true);
+      const attempt=(await manager.getRepository(TransferAttempt).findOne({where:{id:attemptId},lock:{mode:'pessimistic_write'}}))!;
       if(invoice.status!=='OPEN')throw httpError(409,'INVOICE_NOT_OPEN','Đơn không còn mở.');
       if(invoice.branch_id!==shift.branch_id||invoice.work_shift_id!==shift.id)
         throw httpError(409,'SHIFT_NOT_OPEN','Đơn không thuộc ca thu ngân hiện tại.');
       if(attempt.status!=='PENDING')throw httpError(409,'TRANSFER_NOT_PENDING','Lượt chuyển khoản không còn chờ xác nhận.');
-      await manager.query(`UPDATE transfer_attempts SET status='CANCELLED',updated_at=now() WHERE id=$1`,[attemptId]);
+      await manager.getRepository(TransferAttempt).update({id:attemptId},{status:'CANCELLED',updated_at:()=>'now()'});
     });
   }
 
@@ -127,36 +139,42 @@ export class TransferAttemptsService {
     return this.db.transaction(async manager=>{
       const branchId=user.permissions.includes('branch.access_all')?null:user.branchId;
       if(!user.permissions.includes('branch.access_all')&&!branchId)throw httpError(403,'PERMISSION_DENIED','Tài khoản chưa được gán chi nhánh.');
-      const [visible]=await manager.query(`SELECT a.invoice_id,i.work_shift_id FROM transfer_attempts a JOIN invoices i ON i.id=a.invoice_id
-        JOIN branches b ON b.id=i.branch_id WHERE a.id=$1 AND b.store_id=$2 AND ($3::uuid IS NULL OR i.branch_id=$3)`,[attemptId,this.store(user),branchId]);
+      const storeId=this.store(user);
+      const found=await manager.getRepository(TransferAttempt).findOne({where:{id:attemptId},select:{id:true,invoice_id:true}});
+      const scoped=found?await manager.getRepository(Invoice).findOne({where:{id:found.invoice_id,...(branchId!==null?{branch_id:branchId}:{})},select:{id:true,branch_id:true,work_shift_id:true}}):null;
+      const visible=scoped&&await manager.getRepository(Branch).existsBy({id:scoped.branch_id,store_id:storeId})?scoped:null;
       if(!visible)throw httpError(404,'NOT_FOUND','Không tìm thấy lượt chuyển khoản.');
-      await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[normalized]);
-      const [previous]=await manager.query('SELECT * FROM payments WHERE idempotency_key=$1',[normalized]);
+      // QueryBuilder: table-less SELECT (advisory lock or probe); no repository method runs it
+      await manager.createQueryBuilder().select('pg_advisory_xact_lock(hashtextextended(:lockKey, 0))','locked').fromDummy().setParameter('lockKey',normalized).getRawOne();
+      const previous=await manager.getRepository(Payment).findOneBy({idempotency_key:normalized});
       if(previous){
         if(previous.transfer_attempt_id!==attemptId||previous.idempotency_request_hash!==hash)
           throw httpError(409,'IDEMPOTENCY_KEY_REUSED','Mã yêu cầu đã được dùng cho nội dung khác.');
         return this.manualView(previous,true);
       }
-      const used=await manager.query(`SELECT id FROM invoices WHERE zero_completion_key=$1 UNION ALL SELECT id FROM transfer_attempts WHERE idempotency_key=$1`,[normalized]);
-      if(used.length)throw httpError(409,'IDEMPOTENCY_KEY_REUSED','Mã yêu cầu đã được dùng cho nội dung khác.');
-      const [shift]=await manager.query('SELECT status FROM work_shifts WHERE id=$1 FOR UPDATE',[visible.work_shift_id]);
-      const invoice=await this.invoice(manager,{...user,branchId},visible.invoice_id,true);
-      const [attempt]=await manager.query('SELECT * FROM transfer_attempts WHERE id=$1 FOR UPDATE',[attemptId]);
+      if(await manager.getRepository(Invoice).existsBy({zero_completion_key:normalized})||await manager.getRepository(TransferAttempt).existsBy({idempotency_key:normalized}))
+        throw httpError(409,'IDEMPOTENCY_KEY_REUSED','Mã yêu cầu đã được dùng cho nội dung khác.');
+      const shift=await manager.getRepository(WorkShift).findOne({where:{id:visible.work_shift_id},select:{id:true,status:true},lock:{mode:'pessimistic_write'}});
+      const invoice=await this.invoice(manager,{...user,branchId},visible.id,true);
+      const attempt=(await manager.getRepository(TransferAttempt).findOne({where:{id:attemptId},lock:{mode:'pessimistic_write'}}))!;
       if(!shift||shift.status!=='OPEN')throw httpError(409,'SHIFT_CLOSED','Ca thu ngân đã đóng.');
       if(invoice.status!=='OPEN')throw httpError(409,'INVOICE_NOT_OPEN','Đơn không còn mở.');
       if(attempt.status!=='PENDING')throw httpError(409,'TRANSFER_NOT_PENDING','Lượt chuyển khoản không còn chờ xác nhận.');
-      await manager.query(`SELECT p.id FROM promotion_codes p JOIN invoice_promotion_codes ip ON ip.promotion_code_id=p.id WHERE ip.invoice_id=$1 FOR UPDATE OF p`,[invoice.id]);
+      const linked=await manager.getRepository(InvoicePromotionCode).findOneBy({invoice_id:invoice.id});
+      if(linked)await manager.getRepository(PromotionCode).findOne({where:{id:linked.promotion_code_id},select:{id:true},lock:{mode:'pessimistic_write'}});
       const pricing=await this.sales.evaluateInvoicePricing(manager,invoice.id);
       if(!pricing.promotionApplicable)throw httpError(422,'PROMOTION_NOT_APPLICABLE','Mã giảm giá không còn đủ điều kiện. Đổi hoặc bỏ mã để thanh toán.');
       if(BigInt(input.actualReceivedAmount)<pricing.totalAmount)throw httpError(422,'TRANSFER_AMOUNT_INSUFFICIENT','Số tiền thực nhận chưa đủ để thanh toán đơn.');
-      const [payment]=await manager.query(`INSERT INTO payments(id,invoice_id,method,amount,actual_received_amount,excess_amount,
-        transfer_attempt_id,receiving_account_number,transaction_ref,transaction_ref_kind,confirmation_source,confirmed_by,confirmation_reason,created_by,idempotency_key,idempotency_request_hash)
-        VALUES($1,$2,'TRANSFER',$3,$4,$5,$6,$7,$8,'BANK','MANUAL',$9,$10,$9,$11,$12)
-        ON CONFLICT (receiving_account_number,transaction_ref_kind,transaction_ref) WHERE method='TRANSFER' AND transaction_ref IS NOT NULL DO NOTHING RETURNING *`,
-        [randomUUID(),invoice.id,Number(pricing.totalAmount),input.actualReceivedAmount,input.actualReceivedAmount-Number(pricing.totalAmount),attempt.id,attempt.account_number,input.transactionRef,user.id,input.reason,normalized,hash]);
+      // QueryBuilder: ON CONFLICT (target) DO NOTHING; upsert() only does DO UPDATE and orIgnore() drops the target
+      const result=await manager.createQueryBuilder().insert().into(Payment).values({id:randomUUID(),invoice_id:invoice.id,method:'TRANSFER',amount:String(pricing.totalAmount),
+        actual_received_amount:String(input.actualReceivedAmount),excess_amount:String(BigInt(input.actualReceivedAmount)-pricing.totalAmount),transfer_attempt_id:attempt.id,
+        receiving_account_number:attempt.account_number,transaction_ref:input.transactionRef,transaction_ref_kind:'BANK',confirmation_source:'MANUAL',confirmed_by:user.id,
+        confirmation_reason:input.reason,created_by:user.id,idempotency_key:normalized,idempotency_request_hash:hash})
+        .onConflict("(receiving_account_number,transaction_ref_kind,transaction_ref) WHERE method='TRANSFER' AND transaction_ref IS NOT NULL DO NOTHING").returning('*').updateEntity(false).execute();
+      const payment=result.raw[0];
       if(!payment)throw httpError(409,'BANK_TRANSACTION_REUSED','Giao dịch ngân hàng đã được dùng để xác nhận đơn khác.');
       await this.sales.finalizeInvoice(manager,invoice.id,user.id);
-      await manager.query(`UPDATE transfer_attempts SET status='PAID',updated_at=now() WHERE id=$1`,[attempt.id]);
+      await manager.getRepository(TransferAttempt).update({id:attempt.id},{status:'PAID',updated_at:()=>'now()'});
       return this.manualView(payment,false);
     });
   }
@@ -183,17 +201,20 @@ export class TransferAttemptsService {
         after=parsed;
       }catch{throw httpError(422,'VALIDATION_ERROR','Cursor không hợp lệ.');}
     }
-    const where=`WHERE store_id=$1 AND ($2::uuid IS NULL OR branch_id=$2)
-      AND (disposition IN ('UNDERPAID','ATTEMPT_CANCELLED','INVOICE_NOT_OPEN','PROMOTION_INVALID','DUPLICATE')
-        OR (disposition='QUARANTINED' AND attempt_id IS NOT NULL))`;
-    const params=[storeId,branchId,after?.receivedAt??null,after?.id??null,limit+1];
-    const rows:Row[]=await this.db.query(`SELECT id,disposition,transfer_amount,received_at,invoice_id,
-      to_char(received_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_received_at
-      FROM bank_transfer_events ${where} AND ($3::timestamptz IS NULL OR (received_at,id)<($3::timestamptz,$4::uuid))
-      ORDER BY received_at DESC,id DESC LIMIT $5`,params);
-    const [count]=await this.db.query(`SELECT COUNT(*)::int AS total FROM bank_transfer_events ${where}`,params.slice(0,2));
+    const base={store_id:storeId,...(branchId!==null?{branch_id:branchId}:{})};
+    const total=await this.db.getRepository(BankTransferEvent).count({where:[
+      {...base,disposition:In(['UNDERPAID','ATTEMPT_CANCELLED','INVOICE_NOT_OPEN','PROMOTION_INVALID','DUPLICATE'])},
+      {...base,disposition:'QUARANTINED',attempt_id:Not(IsNull())}]});
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
+    const builder=this.db.getRepository(BankTransferEvent).createQueryBuilder('e').select('e.id','id').addSelect('e.disposition','disposition')
+      .addSelect('e.transfer_amount','transfer_amount').addSelect('e.received_at','received_at').addSelect('e.invoice_id','invoice_id')
+      .addSelect(`to_char(e.received_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,'cursor_received_at').where('e.store_id = :storeId',{storeId})
+      .andWhere(`(e.disposition IN ('UNDERPAID','ATTEMPT_CANCELLED','INVOICE_NOT_OPEN','PROMOTION_INVALID','DUPLICATE') OR (e.disposition = 'QUARANTINED' AND e.attempt_id IS NOT NULL))`);
+    if(branchId!==null)builder.andWhere('e.branch_id = :branchId',{branchId});
+    if(after)builder.andWhere('(e.received_at, e.id) < (CAST(:receivedAt AS timestamptz), CAST(:id AS uuid))',{receivedAt:after.receivedAt,id:after.id});
+    const rows:Row[]=await builder.orderBy('e.received_at','DESC').addOrderBy('e.id','DESC').limit(limit+1).getRawMany();
     const selected=rows.slice(0,limit),last=selected.at(-1);
     return {data:selected.map(row=>({id:row.id,reason:row.disposition==='QUARANTINED'?'WRONG_ACCOUNT':row.disposition,amount:Number(row.transfer_amount),receivedAt:row.received_at.toISOString(),invoiceId:row.invoice_id})),
-      meta:{limit,nextCursor:rows.length>limit&&last?Buffer.from(JSON.stringify({scope,receivedAt:last.cursor_received_at,id:last.id})).toString('base64url'):null,total:count.total}};
+      meta:{limit,nextCursor:rows.length>limit&&last?Buffer.from(JSON.stringify({scope,receivedAt:last.cursor_received_at,id:last.id})).toString('base64url'):null,total}};
   }
 }

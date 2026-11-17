@@ -2,12 +2,13 @@ import { HttpException, Inject, Injectable } from '@nestjs/common';
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, IsNull, Raw, SelectQueryBuilder } from 'typeorm';
 import { httpError } from '../http/http-error';
 import { AuthRateEvent } from './entities/auth-rate-event.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { RolePermission } from './entities/role-permission.entity';
 import { Store } from '../platform/entities/store.entity';
+import { Branch } from '../organization/entities/branch.entity';
 import { User } from './entities/user.entity';
 
 export interface UserSummary {
@@ -23,6 +24,13 @@ export interface UserSummary {
 
 export interface SessionUser extends UserSummary { branchName: string | null; }
 
+// Normalised by PostgreSQL itself (lower(btrim())) so stored usernames match the old SQL for every Unicode edge case.
+export async function normalizeUsername(db: { createQueryBuilder(): SelectQueryBuilder<any> }, value: string): Promise<string> {
+  // QueryBuilder: table-less SELECT (advisory lock or probe); no repository method runs it
+  const row = await db.createQueryBuilder().select('lower(btrim(CAST(:value AS text)))', 'u').setParameter('value', value).fromDummy().getRawOne();
+  return row.u;
+}
+
 export type AccessPermission = string | { platform: string; store: string };
 
 type AccessClaims = jwt.JwtPayload & { sub: string; sid: string };
@@ -34,26 +42,22 @@ export class AuthService {
   constructor(@Inject(DataSource) private readonly db: DataSource) {}
 
   private async userById(id: string): Promise<User | null> {
-    return this.db.getRepository(User).createQueryBuilder('u')
-      .leftJoinAndSelect('u.role', 'r')
-      .leftJoinAndSelect('u.store', 's')
-      .where('u.id = :id', { id })
-      .getOne();
+    return this.db.getRepository(User).findOne({ where: { id }, relations: { role: true, store: true } });
   }
 
   private async sessionUser(user: User): Promise<SessionUser> {
     const summary = await this.summary(user);
     if (!user.branch_id) return { ...summary, branchName: null };
-    const [row] = await this.db.query('SELECT name FROM branches WHERE id=$1', [user.branch_id]);
+    const row = await this.db.getRepository(Branch).findOne({ where: { id: user.branch_id }, select: { id: true, name: true } });
     return { ...summary, branchName: row?.name ?? null };
   }
 
   private async summary(user: User): Promise<UserSummary> {
-    const rolePermissions = await this.db.getRepository(RolePermission).createQueryBuilder('rp')
-      .innerJoinAndSelect('rp.permission', 'p')
-      .where('rp.role_id = :roleId', { roleId: user.role_id })
-      .orderBy('p.code', 'ASC')
-      .getMany();
+    const rolePermissions = await this.db.getRepository(RolePermission).find({
+      where: { role_id: user.role_id },
+      relations: { permission: true },
+      order: { permission: { code: 'ASC' } },
+    });
 
     return {
       id: user.id,
@@ -72,18 +76,17 @@ export class AuthService {
   }
 
   private async checkRate(manager: EntityManager, scope: string, key: string, limit: number, seconds: number): Promise<void> {
-    const row = await manager.getRepository(AuthRateEvent).createQueryBuilder('e')
-      .select('count(*)::int', 'count')
-      .addSelect('min(e.occurred_at)', 'oldest')
-      .where('e.scope = :scope AND e.key_hash = :key AND e.occurred_at > now() - (:seconds * interval \'1 second\')', {
-        scope,
-        key,
-        seconds,
-      })
-      .getRawOne<{ count: number; oldest: string | null }>();
+    const repo = manager.getRepository(AuthRateEvent);
+    const where = {
+      scope,
+      key_hash: key,
+      occurred_at: Raw((a) => `${a} > now() - (:seconds * interval '1 second')`, { seconds }),
+    };
+    const count = await repo.count({ where });
 
-    if (row && row.count >= limit) {
-      const retryAfter = Math.max(1, Math.ceil((new Date(row.oldest!).getTime() + seconds * 1000 - Date.now()) / 1000));
+    if (count >= limit) {
+      const oldest = await repo.findOne({ where, select: { id: true, occurred_at: true }, order: { occurred_at: 'ASC' } });
+      const retryAfter = oldest ? Math.max(1, Math.ceil((oldest.occurred_at.getTime() + seconds * 1000 - Date.now()) / 1000)) : 1; // oldest expired between the two reads
       throw new HttpException({ code: 'TOO_MANY_REQUESTS', message: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.', retryAfter }, 429);
     }
   }
@@ -96,48 +99,41 @@ export class AuthService {
   async recordRefreshAttempt(ip: string): Promise<void> {
     const key = this.rateKey('refresh_ip', ip);
     await this.db.transaction(async (manager) => {
-      await manager.getRepository(AuthRateEvent).createQueryBuilder()
-        .delete()
-        .where("occurred_at < now() - interval '15 minutes'")
-        .execute();
-      await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [key]);
+      await manager.getRepository(AuthRateEvent).delete({ occurred_at: Raw((a) => `${a} < now() - interval '15 minutes'`) });
+      // QueryBuilder: table-less SELECT (advisory lock or probe); no repository method runs it
+      await manager.createQueryBuilder().select('pg_advisory_xact_lock(hashtextextended(:lockKey, 0))', 'locked').fromDummy().setParameter('lockKey', key).getRawOne();
       await this.checkRate(manager, 'refresh_ip', key, 30, 60);
       await this.recordRate(manager, 'refresh_ip', key);
     });
   }
 
   async login(username: string, password: string, ip: string, userAgent?: string): Promise<{ user: SessionUser; access: string; refresh: string; csrf: string }> {
-    const [{ username: normalized }] = await this.db.query('SELECT lower(btrim($1::text)) AS username', [username]);
+    const normalized = await normalizeUsername(this.db, username);
     const keys = [this.rateKey('login_ip', ip), this.rateKey('login_username', normalized)];
     const sessionId = randomUUID();
     const refresh = randomBytes(32).toString('base64url');
     const outcome = await this.db.transaction(async (manager) => {
-      await manager.getRepository(AuthRateEvent).createQueryBuilder()
-        .delete()
-        .where("occurred_at < now() - interval '15 minutes'")
-        .execute();
-      for (const key of [...keys].sort()) await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [key]);
+      await manager.getRepository(AuthRateEvent).delete({ occurred_at: Raw((a) => `${a} < now() - interval '15 minutes'`) });
+      // QueryBuilder: table-less SELECT (advisory lock or probe); no repository method runs it
+      for (const key of [...keys].sort()) await manager.createQueryBuilder().select('pg_advisory_xact_lock(hashtextextended(:lockKey, 0))', 'locked').fromDummy().setParameter('lockKey', key).getRawOne();
       await this.checkRate(manager, 'login_ip', keys[0], 5, 900);
       await this.checkRate(manager, 'login_username', keys[1], 5, 900);
 
-      const identity = await manager.getRepository(User).createQueryBuilder('u')
-        .select('u.id')
-        .where('u.username = :username', { username: normalized })
-        .setLock('pessimistic_write')
-        .getOne();
+      const identity = await manager.getRepository(User).findOne({
+        where: { username: normalized }, select: { id: true }, lock: { mode: 'pessimistic_write' },
+      });
       // Đọc quan hệ sau khi lấy khóa để role đổi trong lúc chờ không làm JOIN dùng snapshot cũ.
-      const user = identity ? await manager.getRepository(User).createQueryBuilder('u')
-        .innerJoinAndSelect('u.role', 'r')
-        .leftJoinAndSelect('u.store', 's')
-        .where('u.id = :id', { id: identity.id })
-        .getOne() : null;
+      const user = identity ? await manager.getRepository(User).findOne({
+        where: { id: identity.id }, relations: { role: true, store: true },
+      }) : null;
 
       const matches = !bcrypt.truncates(password) && await bcrypt.compare(
         password,
         user?.password_hash ?? '$2b$12$u4II0P7LcnkphS2i0FfA7uN9lNZhpF.pQZwQlJS9GGWZrFYW7L5kK',
       );
-      const store = user?.store_id ? await manager.getRepository(Store).createQueryBuilder('s')
-        .where('s.id = :id', { id: user.store_id }).setLock('pessimistic_read').getOne() : null;
+      const store = user?.store_id ? await manager.getRepository(Store).findOne({
+        where: { id: user.store_id }, lock: { mode: 'pessimistic_read' },
+      }) : null;
       if (!matches || !user?.is_active || store?.status === 'SUSPENDED') {
         await this.recordRate(manager, 'login_ip', keys[0]);
         await this.recordRate(manager, 'login_username', keys[1]);
@@ -183,13 +179,10 @@ export class AuthService {
       throw httpError(401, 'UNAUTHENTICATED', 'Vui lòng đăng nhập để tiếp tục.');
     }
 
-    const active = await this.db.getRepository(RefreshToken).createQueryBuilder('rt')
-      .where('rt.user_id = :userId AND rt.session_id = :sessionId AND rt.revoked_at IS NULL AND rt.expires_at > now()', {
-        userId: claims.sub,
-        sessionId: claims.sid,
-      })
-      .select('rt.id')
-      .getOne();
+    const active = await this.db.getRepository(RefreshToken).findOne({
+      where: { user_id: claims.sub, session_id: claims.sid, revoked_at: IsNull(), expires_at: Raw((a) => `${a} > now()`) },
+      select: { id: true },
+    });
 
     if (!active) throw httpError(401, 'UNAUTHENTICATED', 'Vui lòng đăng nhập để tiếp tục.');
     const user = await this.userById(claims.sub);
@@ -249,35 +242,28 @@ export class AuthService {
       });
       if (!metadata) return { kind: 'invalid' as const };
 
-      await userRepo.createQueryBuilder('u')
-        .where('u.id = :id', { id: metadata.user_id })
-        .setLock('pessimistic_write')
-        .select('u.id')
-        .getOne();
+      await userRepo.findOne({ where: { id: metadata.user_id }, select: { id: true }, lock: { mode: 'pessimistic_write' } });
 
       const userForStore = await userRepo.findOne({ where: { id: metadata.user_id }, select: ['store_id'] });
-      const store = userForStore?.store_id ? await manager.getRepository(Store).createQueryBuilder('s')
-        .where('s.id = :id', { id: userForStore.store_id }).setLock('pessimistic_read').getOne() : null;
+      const store = userForStore?.store_id ? await manager.getRepository(Store).findOne({
+        where: { id: userForStore.store_id }, lock: { mode: 'pessimistic_read' },
+      }) : null;
 
-      await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [metadata.session_id]);
+      // QueryBuilder: table-less SELECT (advisory lock or probe); no repository method runs it
+      await manager.createQueryBuilder().select('pg_advisory_xact_lock(hashtextextended(:lockKey, 0))', 'locked').fromDummy().setParameter('lockKey', metadata.session_id).getRawOne();
 
-      const row = await rtRepo.createQueryBuilder('rt')
-        .innerJoinAndSelect('rt.user', 'u')
-        .innerJoinAndSelect('u.role', 'r')
-        .leftJoinAndSelect('u.store', 's')
-        .where('rt.token_hash = :tokenHash', { tokenHash: hash })
-        .setLock('pessimistic_write', undefined, ['rt'])
-        .getOne();
+      // find()[0], not findOne(): findOne + relations adds a DISTINCT/LIMIT pre-query that cannot carry FOR UPDATE.
+      const row = (await rtRepo.find({
+        where: { token_hash: hash },
+        relations: { user: { role: true, store: true } },
+        lock: { mode: 'pessimistic_write', tables: ['refresh_tokens'] },
+      }))[0] ?? null;
 
       if (!row) return { kind: 'invalid' as const };
       this.checkCsrf(row.session_id, csrfHeader, csrfCookie);
 
       if (row.replaced_at) {
-        await rtRepo.createQueryBuilder()
-          .update(RefreshToken)
-          .set({ revoked_at: () => 'COALESCE(revoked_at, now())' })
-          .where('session_id = :sessionId', { sessionId: row.session_id })
-          .execute();
+        await rtRepo.update({ session_id: row.session_id }, { revoked_at: () => 'COALESCE(revoked_at, now())' });
         return { kind: 'replay' as const };
       }
 
@@ -317,11 +303,10 @@ export class AuthService {
   async getCsrf(token?: string): Promise<string> {
     if (!token) throw httpError(401, 'UNAUTHENTICATED', 'Vui lòng đăng nhập để tiếp tục.');
     const hash = tokenHash(token);
-    const row = await this.db.getRepository(RefreshToken).createQueryBuilder('rt')
-      .innerJoinAndSelect('rt.user', 'u')
-      .leftJoinAndSelect('u.store', 's')
-      .where('rt.token_hash = :hash AND rt.revoked_at IS NULL AND rt.expires_at > now()', { hash })
-      .getOne();
+    const row = await this.db.getRepository(RefreshToken).findOne({
+      where: { token_hash: hash, revoked_at: IsNull(), expires_at: Raw((a) => `${a} > now()`) },
+      relations: { user: { store: true } },
+    });
 
     if (!row) throw httpError(401, 'UNAUTHENTICATED', 'Vui lòng đăng nhập để tiếp tục.');
     if (!row.user!.is_active) throw httpError(403, 'ACCOUNT_DISABLED', 'Tài khoản đã bị khóa.');
@@ -342,30 +327,20 @@ export class AuthService {
       });
       if (!metadata) return;
 
-      await userRepo.createQueryBuilder('u')
-        .where('u.id = :id', { id: metadata.user_id })
-        .setLock('pessimistic_write')
-        .select('u.id')
-        .getOne();
+      await userRepo.findOne({ where: { id: metadata.user_id }, select: { id: true }, lock: { mode: 'pessimistic_write' } });
 
-      await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [metadata.session_id]);
+      // QueryBuilder: table-less SELECT (advisory lock or probe); no repository method runs it
+      await manager.createQueryBuilder().select('pg_advisory_xact_lock(hashtextextended(:lockKey, 0))', 'locked').fromDummy().setParameter('lockKey', metadata.session_id).getRawOne();
 
-      const row = await rtRepo.createQueryBuilder('rt')
-        .where('rt.token_hash = :hash', { hash })
-        .setLock('pessimistic_write')
-        .getOne();
+      const row = await rtRepo.findOne({ where: { token_hash: hash }, lock: { mode: 'pessimistic_write' } });
 
       if (!row || row.expires_at <= new Date() || (row.revoked_at && !row.replaced_at)) return;
-      if (row.replaced_at && !await rtRepo.createQueryBuilder('rt')
-        .where('rt.session_id = :sessionId AND rt.revoked_at IS NULL AND rt.expires_at > now()', { sessionId: row.session_id })
-        .getExists()) return;
+      if (row.replaced_at && !await rtRepo.exists({
+        where: { session_id: row.session_id, revoked_at: IsNull(), expires_at: Raw((a) => `${a} > now()`) },
+      })) return;
       this.checkCsrf(row.session_id, csrfHeader, csrfCookie);
 
-      await rtRepo.createQueryBuilder()
-        .update(RefreshToken)
-        .set({ revoked_at: new Date() })
-        .where('session_id = :sessionId AND revoked_at IS NULL', { sessionId: row.session_id })
-        .execute();
+      await rtRepo.update({ session_id: row.session_id, revoked_at: IsNull() }, { revoked_at: new Date() });
     });
   }
 
@@ -381,22 +356,20 @@ export class AuthService {
       const userRepo = manager.getRepository(User);
       const rtRepo = manager.getRepository(RefreshToken);
 
-      const current = await userRepo.createQueryBuilder('u')
-        .comment('SELECT u.password_hash')
-        .leftJoinAndSelect('u.store', 's')
-        .where('u.id = :id', { id: user.id })
-        .setLock('pessimistic_write', undefined, ['u'])
-        .getOne();
+      // find()[0] for the same reason as in refresh; the comment is what the race test looks for in pg_stat_activity.
+      const current = (await userRepo.find({
+        where: { id: user.id },
+        relations: { store: true },
+        comment: 'SELECT u.password_hash',
+        lock: { mode: 'pessimistic_write', tables: ['users'] },
+      }))[0] ?? null;
 
       if (!current) throw httpError(401, 'UNAUTHENTICATED', 'Vui lòng đăng nhập để tiếp tục.');
 
-      const session = await rtRepo.createQueryBuilder('rt')
-        .where('rt.user_id = :userId AND rt.session_id = :sessionId AND rt.revoked_at IS NULL AND rt.expires_at > now()', {
-          userId: user.id,
-          sessionId: claims.sid,
-        })
-        .select('rt.id')
-        .getOne();
+      const session = await rtRepo.findOne({
+        where: { user_id: user.id, session_id: claims.sid, revoked_at: IsNull(), expires_at: Raw((a) => `${a} > now()`) },
+        select: { id: true },
+      });
 
       if (!session) throw httpError(401, 'UNAUTHENTICATED', 'Vui lòng đăng nhập để tiếp tục.');
       if (!current.is_active) throw httpError(403, 'ACCOUNT_DISABLED', 'Tài khoản đã bị khóa.');
@@ -413,11 +386,7 @@ export class AuthService {
         password_hash: hash,
         must_change_password: false,
       });
-      await rtRepo.createQueryBuilder()
-        .update(RefreshToken)
-        .set({ revoked_at: new Date() })
-        .where('user_id = :userId AND revoked_at IS NULL', { userId: user.id })
-        .execute();
+      await rtRepo.update({ user_id: user.id, revoked_at: IsNull() }, { revoked_at: new Date() });
     });
   }
 

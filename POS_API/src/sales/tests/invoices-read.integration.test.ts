@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import { DataSource } from 'typeorm';
+import { PostgresQueryRunner } from 'typeorm/driver/postgres/PostgresQueryRunner';
 import { Test } from '@nestjs/testing';
 import * as bcrypt from 'bcryptjs';
 import { AppModule } from '../../app.module';
@@ -245,17 +246,21 @@ test('Invoice read scope over HTTP', { timeout: 180_000 }, async (t) => {
       assert.deepEqual(scopedBody.data, []);
       assert.ok(!scopedBody.meta.filterOptions.tables.some((option: any) => option.id === table));
       assert.ok(!scopedBody.meta.filterOptions.cashiers.some((option: any) => option.id === owner));
-      const originalQuery = db.query.bind(db);
+      const originalRunnerQuery = PostgresQueryRunner.prototype.query;
       let queries = 0;
-      db.query = (async (...args: Parameters<typeof db.query>) => { queries++; return originalQuery(...args); }) as typeof db.query;
+      PostgresQueryRunner.prototype.query = async function (this: PostgresQueryRunner, ...args: Parameters<PostgresQueryRunner['query']>) {
+        if (this.connection === db) queries++;
+        return originalRunnerQuery.apply(this, args);
+      };
       try {
         await fetch(`${base}/invoices?branchId=${branch2}&status=ALL&limit=1`, { headers });
         const one = queries;
+        assert.ok(one > 0);
         queries = 0;
         await fetch(`${base}/invoices?branchId=${branch2}&status=ALL&limit=100`, { headers });
         assert.equal(queries, one);
       } finally {
-        db.query = originalQuery;
+        PostgresQueryRunner.prototype.query = originalRunnerQuery;
       }
     });
     await t.test('[ST-2.AC-1] combines date, table and shift cashier on the full filtered set', async () => {
@@ -381,6 +386,35 @@ test('Invoice read scope over HTTP', { timeout: 180_000 }, async (t) => {
       assert.deepEqual(body.data, []);
       assert.ok(body.meta.filterOptions.cashiers?.some((entry: any) => entry.id === b && entry.name === 'read_cashier_b'));
       assert.ok(!body.meta.filterOptions.cashiers.some((entry: any) => entry.id === otherCashier));
+    });
+    await t.test('test_ST13_AC3_item_count_sum', async () => {
+      const [{ id: productSize }] = await db.query('SELECT id FROM product_sizes LIMIT 1');
+      const counted = randomUUID();
+      await db.query(`INSERT INTO invoices(id,branch_id,work_shift_id,invoice_code,created_by,order_type,status,subtotal,total_amount)
+        VALUES($1,$2,$3,'HDITEM0001',$4,'TAKEAWAY','PAID',25000,25000)`, [counted, branch2, shift2, owner]);
+      for (const [qty, name] of [[2, 'Item two'], [3, 'Item three']] as [number, string][]) {
+        await db.query(`INSERT INTO invoice_items(id,invoice_id,product_size_id,product_name,size_name,unit_price,quantity,line_total)
+          VALUES($1,$2,$3,$4,'S',1000,$5,$6)`, [randomUUID(), counted, productSize, name, qty, qty * 1000]);
+      }
+      await db.query(`INSERT INTO payments(id,invoice_id,method,amount,idempotency_key,idempotency_request_hash,tendered_amount,change_amount,created_by)
+        VALUES($1,$2,'CASH',25000,$3,$4,25000,0,$5)`, [randomUUID(), counted, randomUUID(), 'd'.repeat(64), owner]);
+      const headers = await login('read_owner');
+      const res = await fetch(`${base}/invoices?branchId=${branch2}&status=ALL&limit=100`, { headers });
+      assert.equal(res.status, 200);
+      const rows: any[] = (await res.json() as any).data;
+      const row = rows.find(entry => entry.id === counted);
+      assert.strictEqual(row.itemCount, 5);
+      assert.equal(row.paymentMethod, 'CASH');
+      assert.strictEqual(rows.find(entry => entry.id === invoice2).itemCount, 0);
+    });
+    await t.test('test_ST13_AC4_total_and_options_scope', async () => {
+      const headers = await login('read_owner');
+      const all: any = await (await fetch(`${base}/invoices?status=ALL&limit=100`, { headers })).json();
+      assert.ok(all.data.length < 100);
+      assert.equal(all.meta.total, all.data.length);
+      const options: any = (await (await fetch(`${base}/invoices?branchId=${branch2}&status=ALL&limit=1`, { headers })).json()).meta.filterOptions;
+      assert.deepEqual(options.tables.map((entry: any) => entry.name), ['Old table', 'Other table']);
+      assert.deepEqual(options.cashiers.map((entry: any) => entry.name), ['read_cashier_a', 'read_owner']);
     });
     // RF-3: permissions, not role names, determine the readable scope.
     await t.test('[T1-permission] grant, revoke and migration rollback preserve business history', async () => {

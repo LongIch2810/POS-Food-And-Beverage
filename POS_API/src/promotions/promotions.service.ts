@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { DataSource } from 'typeorm';
+import { DataSource, ILike } from 'typeorm';
 import { UserSummary } from '../auth/auth.service';
 import { httpError } from '../http/http-error';
 import { uuidPattern } from '../http/request-validation';
 import { evaluatePromotion } from './promotion-calculation';
+import { PromotionCode } from './entities/promotion-code.entity';
 
 const invalid = () => httpError(422, 'VALIDATION_ERROR', 'Dữ liệu mã giảm giá không hợp lệ.');
 const money = (value: unknown, nullable = false): bigint | null => {
@@ -85,31 +86,36 @@ export class PromotionsService {
         after = value;
       } catch { throw invalid(); }
     }
-    const params: unknown[] = [store];
-    let where = 'store_id=$1';
-    if (query.isActive !== undefined) { params.push(query.isActive === 'true'); where += ` AND is_active=$${params.length}`; }
-    if (query.q !== undefined) { params.push(`%${query.q}%`); where += ` AND (code ILIKE $${params.length} OR name ILIKE $${params.length})`; }
-    const [{ count }] = await this.db.query(`SELECT count(*)::int AS count FROM promotion_codes WHERE ${where}`, params);
-    if (after) { params.push(after.createdAt, after.id); where += ` AND (created_at,id)<($${params.length - 1}::timestamptz,$${params.length}::uuid)`; }
-    params.push(limit + 1);
-    const rows = await this.db.query(`SELECT *,to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
-      FROM promotion_codes WHERE ${where} ORDER BY created_at DESC,id DESC LIMIT $${params.length}`, params);
-    const selected = rows.slice(0, limit);
+    const base = { store_id: store, ...(query.isActive !== undefined ? { is_active: query.isActive === 'true' } : {}) };
+    const where = query.q !== undefined ? [{ ...base, code: ILike(`%${query.q}%`) }, { ...base, name: ILike(`%${query.q}%`) }] : base;
+    const count = await this.db.getRepository(PromotionCode).count({ where });
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
+    const builder = this.db.getRepository(PromotionCode).createQueryBuilder('p').where('p.store_id = :store', { store });
+    if (query.isActive !== undefined) builder.andWhere('p.is_active = :active', { active: query.isActive === 'true' });
+    if (query.q !== undefined) builder.andWhere('(p.code ILIKE :q OR p.name ILIKE :q)', { q: `%${query.q}%` });
+    if (after) builder.andWhere('(p.created_at, p.id) < (CAST(:createdAt AS timestamptz), CAST(:id AS uuid))', after);
+    const { raw, entities } = await builder
+      .addSelect(`to_char(p.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`, 'cursor_time')
+      .orderBy('p.created_at', 'DESC').addOrderBy('p.id', 'DESC').limit(limit + 1).getRawAndEntities();
+    const selected = entities.slice(0, limit);
     const last = selected.at(-1);
-    const nextCursor = rows.length > limit && last ? Buffer.from(JSON.stringify({ scope, createdAt: last.cursor_time, id: last.id })).toString('base64url') : null;
-    return { data: selected.map((row: any) => this.view(row)), meta: { limit, nextCursor, total: count } };
+    const nextCursor = entities.length > limit && last ? Buffer.from(JSON.stringify({ scope, createdAt: raw[selected.length - 1].cursor_time, id: last.id })).toString('base64url') : null;
+    return { data: selected.map(row => this.view(row)), meta: { limit, nextCursor, total: count } };
   }
 
   async create(user: UserSummary, input: Input) {
     const store = this.store(user);
     const x = this.validate(input);
     try {
-      const [row] = await this.db.query(`INSERT INTO promotion_codes
-        (id,store_id,code,name,discount_type,discount_value,max_discount_amount,min_order_amount,start_at,end_at,usage_limit,is_active)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [randomUUID(), store, x.code, x.name, x.kind, x.discount.toString(), x.cap?.toString() ?? null,
-        x.minimum?.toString() ?? null, x.start, x.end, x.usage, x.active]);
-      return this.view(row);
+      const repo = this.db.getRepository(PromotionCode);
+      const id = randomUUID();
+      await repo.insert({
+        id, store_id: store, code: x.code, name: x.name as string | null, discount_type: x.kind,
+        discount_value: x.discount.toString(), max_discount_amount: x.cap?.toString() ?? null,
+        min_order_amount: x.minimum?.toString() ?? null, start_at: x.start, end_at: x.end,
+        usage_limit: x.usage as number | null, is_active: x.active,
+      });
+      return this.view(await repo.findOneByOrFail({ id }));
     } catch (error: any) {
       if (error.code === '23505') throw httpError(409, 'DUPLICATE_PROMOTION_CODE', 'Mã giảm giá đã tồn tại.');
       throw error;
@@ -119,15 +125,17 @@ export class PromotionsService {
   async patch(user: UserSummary, id: string, input: Input) {
     const store = this.store(user);
     return this.db.transaction(async manager => {
-      const [previous] = await manager.query('SELECT * FROM promotion_codes WHERE id=$1 AND store_id=$2 FOR UPDATE', [id, store]);
+      const previous = await manager.getRepository(PromotionCode).findOne({ where: { id, store_id: store }, lock: { mode: 'pessimistic_write' } });
       if (!previous) throw httpError(404, 'NOT_FOUND', 'Không tìm thấy mã giảm giá.');
       const x = this.validate(input, previous);
       try {
-        const [rows] = await manager.query(`UPDATE promotion_codes SET code=$3,name=$4,discount_type=$5,discount_value=$6,
-          max_discount_amount=$7,min_order_amount=$8,start_at=$9,end_at=$10,usage_limit=$11,is_active=$12,updated_at=now()
-          WHERE id=$1 AND store_id=$2 RETURNING *`, [id, store, x.code, x.name, x.kind, x.discount.toString(),
-            x.cap?.toString() ?? null, x.minimum?.toString() ?? null, x.start, x.end, x.usage, x.active]);
-        return this.view(rows[0]);
+        const result = await manager.getRepository(PromotionCode).update({ id, store_id: store }, {
+          code: x.code, name: x.name as string | null, discount_type: x.kind, discount_value: x.discount.toString(),
+          max_discount_amount: x.cap?.toString() ?? null, min_order_amount: x.minimum?.toString() ?? null,
+          start_at: x.start, end_at: x.end, usage_limit: x.usage as number | null, is_active: x.active,
+          updated_at: () => 'now()',
+        }, { returning: '*' });
+        return this.view(result.raw[0]);
       } catch (error: any) {
         if (error.code === '23505') throw httpError(409, 'DUPLICATE_PROMOTION_CODE', 'Mã giảm giá đã tồn tại.');
         throw error;

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { HttpException, Injectable } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, IsNull, Not } from 'typeorm';
 import { UserSummary } from '../auth/auth.service';
 import { httpError } from '../http/http-error';
 import { uuidPattern } from '../http/request-validation';
@@ -8,6 +8,9 @@ import { Branch } from '../organization/entities/branch.entity';
 import { User } from '../auth/entities/user.entity';
 import { WorkShift } from './entities/work-shift.entity';
 import { CashReconciliation } from './entities/cash-reconciliation.entity';
+import { ShiftExpense } from './entities/shift-expense.entity';
+import { Invoice } from '../sales/entities/invoice.entity';
+import { Payment } from '../sales/entities/payment.entity';
 import { CloseShiftDto, CreateShiftExpenseDto, ForceCloseShiftDto, OpenShiftDto } from './http/shifts.dto';
 import {
   CashReconciliationResponse,
@@ -41,7 +44,7 @@ function reconciliationView(r?: CashReconciliation | null): CashReconciliationRe
   };
 }
 
-function expenseView(row: Record<string, any>): ShiftExpenseResponse {
+function expenseView(row: ShiftExpense): ShiftExpenseResponse {
   return {
     id: row.id,
     workShiftId: row.work_shift_id,
@@ -78,23 +81,30 @@ export class ShiftsService {
   constructor(private readonly db: DataSource) {}
 
   private async cashSales(manager: EntityManager, shiftId: string): Promise<bigint> {
-    const [row] = await manager.query(`SELECT COALESCE(SUM(p.amount), 0)::text AS total
-      FROM payments p JOIN invoices i ON i.id=p.invoice_id
-      WHERE i.work_shift_id=$1 AND i.status='PAID' AND p.method='CASH'`, [shiftId]);
+    // QueryBuilder: SUM of money read as text; Repository.sum() returns a float
+    const row = await manager.getRepository(Payment).createQueryBuilder('p')
+      .innerJoin(Invoice, 'i', 'i.id = p.invoice_id')
+      .select('COALESCE(SUM(p.amount), 0)::text', 'total')
+      .where("i.work_shift_id = :shiftId AND i.status = 'PAID' AND p.method = 'CASH'", { shiftId })
+      .getRawOne();
     return BigInt(row.total);
   }
 
   private async drawerExpenses(manager: EntityManager, shiftId: string): Promise<bigint> {
-    const [row] = await manager.query(`SELECT COALESCE(SUM(amount), 0)::text AS total
-      FROM shift_expenses WHERE work_shift_id=$1 AND paid_from_drawer=true`, [shiftId]);
+    // QueryBuilder: SUM of money read as text; Repository.sum() returns a float
+    const row = await manager.getRepository(ShiftExpense).createQueryBuilder('e')
+      .select('COALESCE(SUM(e.amount), 0)::text', 'total')
+      .where('e.work_shift_id = :shiftId AND e.paid_from_drawer = true', { shiftId })
+      .getRawOne();
     return BigInt(row.total);
   }
 
   private async assertNoOpenInvoices(manager: EntityManager, shiftId: string): Promise<void> {
-    const rows: { invoice_code: string }[] = await manager.query(
-      "SELECT invoice_code FROM invoices WHERE work_shift_id=$1 AND status='OPEN' ORDER BY created_at,id",
-      [shiftId],
-    );
+    const rows = await manager.getRepository(Invoice).find({
+      where: { work_shift_id: shiftId, status: 'OPEN' },
+      select: { id: true, invoice_code: true },
+      order: { created_at: 'ASC', id: 'ASC' },
+    });
     if (rows.length) throw new HttpException({ code: 'SHIFT_HAS_OPEN_INVOICES',
       message: 'Cần thanh toán hoặc hủy mọi đơn đang mở trước khi đóng ca.',
       details: rows.map(row => ({ invoiceCode: row.invoice_code })) }, 409);
@@ -139,18 +149,11 @@ export class ShiftsService {
       throw httpError(404, 'BRANCH_NOT_FOUND', 'Chi nhánh không tồn tại trong cửa hàng');
     }
 
-    const lastShift = await this.db
-      .getRepository(WorkShift)
-      .createQueryBuilder('s')
-      .leftJoinAndSelect('s.reconciliation', 'r')
-      .where('s.branch_id = :branchId AND s.shift_type = :shiftType AND s.status = :status', {
-        branchId: branch.id,
-        shiftType: 'CASHIER',
-        status: 'CLOSED',
-      })
-      .orderBy('s.ended_at', 'DESC')
-      .addOrderBy('s.created_at', 'DESC')
-      .getOne();
+    const lastShift = await this.db.getRepository(WorkShift).findOne({
+      where: { branch_id: branch.id, shift_type: 'CASHIER', status: 'CLOSED' },
+      relations: { reconciliation: true },
+      order: { ended_at: 'DESC', created_at: 'DESC' },
+    });
 
     if (lastShift?.reconciliation?.counted_cash != null) {
       return {
@@ -184,16 +187,15 @@ export class ShiftsService {
 
     return this.db.transaction(async (manager) => {
       // Tuần tự hóa mở ca của cùng người dùng ở các chi nhánh khác nhau.
-      await manager.getRepository(User).createQueryBuilder('u')
-        .where('u.id = :id AND u.store_id = :storeId', { id: user.id, storeId: user.storeId })
-        .setLock('pessimistic_write').getOneOrFail();
+      await manager.getRepository(User).findOneOrFail({
+        where: { id: user.id, store_id: user.storeId! }, // checkTenant rejects an empty storeId
+        lock: { mode: 'pessimistic_write' },
+      });
       // 1. Khóa và kiểm tra chi nhánh
-      const branch = await manager
-        .getRepository(Branch)
-        .createQueryBuilder('b')
-        .where('b.id = :id AND b.store_id = :storeId', { id: branchId, storeId: user.storeId })
-        .setLock('pessimistic_write')
-        .getOne();
+      const branch = await manager.getRepository(Branch).findOne({
+        where: { id: branchId!, store_id: user.storeId! }, // branchId is set or rejected above
+        lock: { mode: 'pessimistic_write' },
+      });
 
       if (!branch) {
         throw httpError(404, 'BRANCH_NOT_FOUND', 'Chi nhánh không tồn tại trong cửa hàng');
@@ -221,18 +223,11 @@ export class ShiftsService {
         }
 
         // 4. Tính tiền đầu ca (BR-55, BR-89)
-        const lastClosedShift = await manager
-          .getRepository(WorkShift)
-          .createQueryBuilder('s')
-          .innerJoinAndSelect('s.reconciliation', 'r')
-          .where('s.branch_id = :branchId AND s.shift_type = :type AND s.status = :status', {
-            branchId: branch.id,
-            type: 'CASHIER',
-            status: 'CLOSED',
-          })
-          .orderBy('s.ended_at', 'DESC')
-          .addOrderBy('s.created_at', 'DESC')
-          .getOne();
+        const lastClosedShift = await manager.getRepository(WorkShift).findOne({
+          where: { branch_id: branch.id, shift_type: 'CASHIER', status: 'CLOSED', reconciliation: { id: Not(IsNull()) } },
+          relations: { reconciliation: true },
+          order: { ended_at: 'DESC', created_at: 'DESC' },
+        });
 
         if (lastClosedShift?.reconciliation?.counted_cash != null) {
           openingCash = lastClosedShift.reconciliation.counted_cash;
@@ -274,13 +269,10 @@ export class ShiftsService {
     this.checkTenant(user);
 
     return this.db.transaction(async (manager) => {
-      const shiftLock = await manager
-        .getRepository(WorkShift)
-        .createQueryBuilder('s')
-        .innerJoin('s.branch', 'b')
-        .where('s.id = :shiftId AND b.store_id = :storeId', { shiftId, storeId: user.storeId })
-        .setLock('pessimistic_write', undefined, ['s'])
-        .getOne();
+      const shiftLock = (await manager.getRepository(WorkShift).find({
+        where: { id: shiftId, branch: { store_id: user.storeId! } }, // checkTenant rejects an empty storeId
+        lock: { mode: 'pessimistic_write', tables: ['work_shifts'] }, // lock only work_shifts, not the joined branch
+      }))[0] ?? null;
 
       if (!shiftLock) {
         throw httpError(404, 'SHIFT_NOT_FOUND', 'Ca làm việc không tồn tại');
@@ -362,13 +354,10 @@ export class ShiftsService {
     }
 
     return this.db.transaction(async (manager) => {
-      const shiftLock = await manager
-        .getRepository(WorkShift)
-        .createQueryBuilder('s')
-        .innerJoin('s.branch', 'b')
-        .where('s.id = :shiftId AND b.store_id = :storeId', { shiftId, storeId: user.storeId })
-        .setLock('pessimistic_write', undefined, ['s'])
-        .getOne();
+      const shiftLock = (await manager.getRepository(WorkShift).find({
+        where: { id: shiftId, branch: { store_id: user.storeId! } }, // checkTenant rejects an empty storeId
+        lock: { mode: 'pessimistic_write', tables: ['work_shifts'] }, // lock only work_shifts, not the joined branch
+      }))[0] ?? null;
 
       if (!shiftLock) {
         throw httpError(404, 'SHIFT_NOT_FOUND', 'Ca làm việc không tồn tại');
@@ -443,9 +432,11 @@ export class ShiftsService {
     if (!reason) throw httpError(422, 'EXPENSE_REASON_REQUIRED', 'Cần nhập lý do chi.');
 
     return this.db.transaction(async (manager) => {
-      const [shift] = await manager.query(`SELECT s.id, s.branch_id, s.user_id, s.shift_type, s.status
-        FROM work_shifts s JOIN branches b ON b.id=s.branch_id
-        WHERE s.id=$1 AND b.store_id=$2 FOR UPDATE OF s`, [shiftId, user.storeId]);
+      const shift = (await manager.getRepository(WorkShift).find({
+        where: { id: shiftId, branch: { store_id: user.storeId! } },
+        select: { id: true, branch_id: true, user_id: true, shift_type: true, status: true },
+        lock: { mode: 'pessimistic_write', tables: ['work_shifts'] },
+      }))[0] ?? null;
       if (!shift || (!user.permissions.includes('branch.access_all') && shift.branch_id !== user.branchId)) {
         throw httpError(404, 'SHIFT_NOT_FOUND', 'Ca làm việc không tồn tại');
       }
@@ -457,16 +448,21 @@ export class ShiftsService {
 
       const paidFromDrawer = input.paidFromDrawer ?? true;
       if (paidFromDrawer) {
-        const [rec] = await manager.query('SELECT opening_cash::text AS opening_cash FROM cash_reconciliations WHERE work_shift_id=$1', [shift.id]);
+        const rec = await manager.getRepository(CashReconciliation).findOne({
+          where: { work_shift_id: shift.id },
+          select: { id: true, opening_cash: true },
+        });
         if (!rec) throw httpError(500, 'INTERNAL_ERROR', 'Không tìm thấy bản ghi đối soát của ca thu ngân');
         const expected = BigInt(rec.opening_cash) + await this.cashSales(manager, shift.id)
           - await this.drawerExpenses(manager, shift.id) - BigInt(input.amount);
         if (expected < 0n) throw httpError(422, 'EXPENSE_EXCEEDS_DRAWER', 'Số tiền chi vượt quá tiền mặt hiện có trong két.');
       }
 
-      const [row] = await manager.query(`INSERT INTO shift_expenses (id, work_shift_id, amount, reason, paid_from_drawer, created_by)
-        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`, [randomUUID(), shift.id, input.amount, reason, paidFromDrawer, user.id]);
-      return expenseView(row);
+      const id = randomUUID();
+      await manager.getRepository(ShiftExpense).insert({
+        id, work_shift_id: shift.id, amount: String(input.amount), reason, paid_from_drawer: paidFromDrawer, created_by: user.id,
+      });
+      return expenseView(await manager.getRepository(ShiftExpense).findOneByOrFail({ id }));
     });
   }
 
@@ -492,22 +488,23 @@ export class ShiftsService {
       } catch { throw invalid(); }
     }
 
-    const rows: Record<string, any>[] = await this.db.query(`SELECT e.*,
-        to_char(e.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_created_at
-      FROM shift_expenses e
-      WHERE e.work_shift_id=$1 AND ($2::timestamptz IS NULL OR (e.created_at,e.id) < ($2::timestamptz,$3::uuid))
-      ORDER BY e.created_at DESC, e.id DESC LIMIT $4`, [shift.id, after?.createdAt ?? null, after?.id ?? null, limit + 1]);
-    const [count] = await this.db.query('SELECT COUNT(*)::int AS total FROM shift_expenses WHERE work_shift_id=$1', [shift.id]);
-    const page = rows.slice(0, limit);
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
+    const builder = this.db.getRepository(ShiftExpense).createQueryBuilder('e').where('e.work_shift_id = :shiftId', { shiftId: shift.id });
+    if (after) builder.andWhere('(e.created_at, e.id) < (CAST(:createdAt AS timestamptz), CAST(:id AS uuid))', after);
+    const { raw, entities } = await builder
+      .addSelect(`to_char(e.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`, 'cursor_created_at')
+      .orderBy('e.created_at', 'DESC').addOrderBy('e.id', 'DESC').limit(limit + 1).getRawAndEntities();
+    const total = await this.db.getRepository(ShiftExpense).countBy({ work_shift_id: shift.id });
+    const page = entities.slice(0, limit);
     const last = page[page.length - 1];
     return {
       data: page.map(expenseView),
       meta: {
         limit,
-        nextCursor: rows.length > limit
-          ? Buffer.from(JSON.stringify({ scope: shift.id, createdAt: last.cursor_created_at, id: last.id })).toString('base64url')
+        nextCursor: entities.length > limit
+          ? Buffer.from(JSON.stringify({ scope: shift.id, createdAt: raw[page.length - 1].cursor_created_at, id: last.id })).toString('base64url')
           : null,
-        total: count.total,
+        total,
       },
     };
   }
@@ -515,15 +512,10 @@ export class ShiftsService {
   async getShiftDetail(user: UserSummary, shiftId: string): Promise<WorkShiftResponse> {
     this.checkTenant(user);
 
-    const shift = await this.db
-      .getRepository(WorkShift)
-      .createQueryBuilder('s')
-      .innerJoinAndSelect('s.branch', 'b')
-      .leftJoinAndSelect('s.user', 'u')
-      .leftJoinAndSelect('s.closed_by_user', 'cbu')
-      .leftJoinAndSelect('s.reconciliation', 'r')
-      .where('s.id = :shiftId AND b.store_id = :storeId', { shiftId, storeId: user.storeId })
-      .getOne();
+    const shift = await this.db.getRepository(WorkShift).findOne({
+      where: { id: shiftId, branch: { store_id: user.storeId! } },
+      relations: { branch: true, user: true, closed_by_user: true, reconciliation: true },
+    });
 
     if (!shift) {
       throw httpError(404, 'SHIFT_NOT_FOUND', 'Ca làm việc không tồn tại');
@@ -545,6 +537,7 @@ export class ShiftsService {
 
     const page = shiftsPage(rawQuery, user);
 
+    // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
     const query = this.db
       .getRepository(WorkShift)
       .createQueryBuilder('s')
@@ -567,7 +560,15 @@ export class ShiftsService {
       query.andWhere('s.shift_type = :shiftType', { shiftType: page.shiftType });
     }
 
-    const total = await query.getCount();
+    const total = await this.db.getRepository(WorkShift).count({
+      where: {
+        branch: { store_id: user.storeId! },
+        ...(page.branchId ? { branch_id: page.branchId } : {}),
+        ...(page.userId ? { user_id: page.userId } : {}),
+        ...(page.status ? { status: page.status } : {}),
+        ...(page.shiftType ? { shift_type: page.shiftType } : {}),
+      },
+    });
 
     if (page.after) {
       query.andWhere('(s.created_at, s.id) < (:createdAt::timestamptz, :id::uuid)', page.after);

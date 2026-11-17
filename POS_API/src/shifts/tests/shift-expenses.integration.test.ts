@@ -6,6 +6,7 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../../app.module';
 import { bootstrapAdmin } from '../../bootstrap-admin';
 import { dataSource } from '../../database/data-source';
+import { captureSql, lockSequence } from '../../database/tests/sql-capture';
 
 test('[S9-01/S9-02] shift expenses and reconciliation over HTTP with PostgreSQL', { timeout: 180_000 }, async (t) => {
   const name = `pos_s9_exp_${randomBytes(6).toString('hex')}`;
@@ -417,6 +418,83 @@ test('[S9-01/S9-02] shift expenses and reconciliation over HTTP with PostgreSQL'
         assert.deepEqual(first.json.data.map((e: any) => e.id), [highId]);
         const second = await request(session, `${path}?limit=1&cursor=${first.json.meta.nextCursor}`);
         assert.deepEqual(second.json.data.map((e: any) => e.id), [lowId]);
+      });
+
+      await t.test('test_ST7_AC1_add_expense_lock_sequence', async (st) => {
+        const { session, shiftId } = await freshCashierShift();
+        const sql = captureSql(st);
+        const res = await addExpense(session, shiftId, { amount: 1000, reason: 'Khóa ca' });
+        assert.equal(res.status, 201);
+        assert.deepEqual(lockSequence(sql), ['UPDATE:work_shifts']);
+      });
+
+      await t.test('test_ST7_AC2_transfer_not_counted_as_cash', async () => {
+        const { session, shiftId, branchId, userId } = await freshCashierShift();
+        await seedCashSale(branchId, shiftId, userId, 50000);
+        // PAID TRANSFER invoice in the same shift: near-miss row that the CASH filter must exclude.
+        const [{ store_id: storeId }] = await db.query('SELECT store_id FROM branches WHERE id=$1', [branchId]);
+        const invoice = randomUUID();
+        const attempt = randomUUID();
+        const code = `HD${randomBytes(4).toString('hex').toUpperCase()}`;
+        await db.query(
+          `INSERT INTO invoices(id,branch_id,work_shift_id,invoice_code,created_by,order_type,status,subtotal,total_amount,paid_at)
+           VALUES($1,$2,$3,$4,$5,'TAKEAWAY','PAID',70000,70000,now())`,
+          [invoice, branchId, shiftId, code, userId],
+        );
+        await db.query(
+          `INSERT INTO transfer_attempts(id,invoice_id,store_id,bank_bin,account_number,account_name,amount,transfer_reference,idempotency_key,idempotency_request_hash,status)
+           VALUES($1,$2,$3,'970422','123456789','STORE',70000,$4,$5,$6,'PAID')`,
+          [attempt, invoice, storeId, `${code}ABCDEFGH`, randomUUID(), 'c'.repeat(64)],
+        );
+        await db.query(
+          `INSERT INTO payments(id,invoice_id,method,amount,idempotency_key,idempotency_request_hash,actual_received_amount,excess_amount,transfer_attempt_id,receiving_account_number,transaction_ref,transaction_ref_kind,confirmation_source)
+           VALUES($1,$2,'TRANSFER',70000,$3,$4,70000,0,$5,'123456789',$6,'BANK','WEBHOOK')`,
+          [randomUUID(), invoice, randomUUID(), 'd'.repeat(64), attempt, randomUUID()],
+        );
+        // opening 100000 + CASH 50000 = 150000 in the drawer; TRANSFER 70000 is not cash.
+        const over = await addExpense(session, shiftId, { amount: 150001, reason: 'Mua đá' });
+        assert.equal(over.status, 422);
+        assert.equal(over.json.error.code, 'EXPENSE_EXCEEDS_DRAWER');
+        assert.equal(over.json.error.message, 'Số tiền chi vượt quá tiền mặt hiện có trong két.');
+        assert.equal(await countExpenses(shiftId), 0);
+        assert.equal((await addExpense(session, shiftId, { amount: 150000, reason: 'Mua đá' })).status, 201);
+      });
+
+      await t.test('test_ST7_AC3_expenses_cursor_keeps_microseconds', async () => {
+        const { session, shiftId, userId } = await freshCashierShift();
+        const olderId = randomUUID();
+        const newerId = randomUUID();
+        await db.query(
+          `INSERT INTO shift_expenses(id,work_shift_id,amount,reason,paid_from_drawer,created_by,created_at)
+           VALUES($1,$3,1000,'OLDER',true,$4,'2026-01-01T01:00:00.000001Z'),($2,$3,1000,'NEWER',true,$4,'2026-01-01T01:00:00.000002Z')`,
+          [olderId, newerId, shiftId, userId],
+        );
+        const path = `/work-shifts/${shiftId}/expenses`;
+        const first = await request(session, `${path}?limit=1`);
+        assert.deepEqual(first.json.data.map((e: any) => e.id), [newerId]);
+        assert.equal(first.json.meta.total, 2);
+        const second = await request(session, `${path}?limit=1&cursor=${first.json.meta.nextCursor}`);
+        assert.deepEqual(second.json.data.map((e: any) => e.id), [olderId]);
+        assert.equal(second.json.meta.total, 2);
+        assert.equal(second.json.meta.nextCursor, null);
+      });
+
+      await t.test('test_ST7_AC4_open_invoices_listed_by_created_at_then_id', async () => {
+        const { session, shiftId, branchId, userId } = await freshCashierShift();
+        const lowId = '00000000-0000-4000-8000-0000000000a1';
+        const highId = 'ffffffff-ffff-4fff-8fff-fffffffffff1';
+        // Invoice codes sort opposite to (created_at, id) so ordering by code would fail.
+        await db.query(
+          `INSERT INTO invoices(id,branch_id,work_shift_id,invoice_code,created_by,order_type,status,created_at)
+           VALUES($1,$4,$5,'HDOPEN0Z01',$6,'TAKEAWAY','OPEN','2026-01-01T00:00:00Z'),
+                 ($2,$4,$5,'HDOPEN0Y02',$6,'TAKEAWAY','OPEN','2026-01-01T00:00:01Z'),
+                 ($3,$4,$5,'HDOPEN0A03',$6,'TAKEAWAY','OPEN','2026-01-01T00:00:01Z')`,
+          [randomUUID(), lowId, highId, branchId, shiftId, userId],
+        );
+        const blocked = await request(session, `/work-shifts/${shiftId}/close`, 'POST', { countedCash: 100000 });
+        assert.equal(blocked.status, 409);
+        assert.equal(blocked.json.error.code, 'SHIFT_HAS_OPEN_INVOICES');
+        assert.deepEqual(blocked.json.error.details, [{ invoiceCode: 'HDOPEN0Z01' }, { invoiceCode: 'HDOPEN0Y02' }, { invoiceCode: 'HDOPEN0A03' }]);
       });
 
       await t.test('[S9-01][ST-2.AC-10] expense list follows shift detail scope', async () => {

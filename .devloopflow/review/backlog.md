@@ -1,7 +1,7 @@
 # Backlog lỗi nhẹ (Low, Very Low) chờ xử lý
 <!-- Do agent chính ghi vào .devloopflow/review/backlog.md khi user chọn "đưa vào backlog" ở bước 10 của run (hoặc khi review dùng rời và user muốn xử lý sau). Được commit nên chỉ ghi tóm tắt và trích đoạn ngắn không nhạy cảm, không secret. Chỉ thêm, không xoá mục cũ; đổi trạng thái khi xử lý và ghi thêm dòng lịch sử. Xử lý các mục bằng /devloopflow:fix-backlog. -->
 
-- Cập nhật lần cuối: 2026-11-16
+- Cập nhật lần cuối: 2026-11-17
 - Id `B-<n>` tăng dần trong toàn dự án, không dùng lại.
 
 ## Tổng hợp
@@ -28,7 +28,7 @@
 | B-20 | Very Low | 20261109-sprint08-payment (review vòng 8, R8-4) | `specs/invoices.md:85`; `POS_API/src/sales/transfer-attempts.service.ts:98` | Spec không liệt kê `409 CONFLICT` của POST transfer-attempts khi không tạo được mã duy nhất | 2026-11-10 | đã sửa |
 | B-21 | Low | 20261109-sprint08-payment (review vòng 9, R9-1) | `POS_UI/src/features/pos/LivePaymentDialog.tsx:40` | Lỗi tải lại preview khi đổi lượt QR bị nuốt: `.catch` chỉ gọi `setError` khi `active` còn true, nhưng cleanup effect đã đặt `active=false` khi `attempt?.id` đổi; dialog vẫn hiện số tiền cũ, không báo lỗi (server vẫn chặn đúng) | 2026-11-10 | đã sửa |
 | B-22 | Low | 20261109-sprint08-payment (review vòng 9, R9-2) | `POS_API/src/sales/tests/payment.integration.test.ts:1433` | Test `[B-13]` timestamp +301 giây có thể chập chờn ở ranh giới giây; nên dùng +302 | 2026-11-10 | đã sửa |
-| B-23 | Low | 20261109-sprint08-payment (review vòng 9, R9-3) | `POS_API/src/sales/tests/payment.integration.test.ts:166` | B-14 thiếu ca 403 khi hủy lượt QR (người không có chi nhánh hoặc thiếu `pos.sell`) | 2026-11-10 | đã sửa (một phần: thiếu ca `pos.sell`) |
+| B-23 | Low | 20261109-sprint08-payment (review vòng 9, R9-3) | `POS_API/src/sales/tests/payment.integration.test.ts:166` | B-14 thiếu ca 403 khi hủy lượt QR (người không có chi nhánh hoặc thiếu `pos.sell`) | 2026-11-10 | đã sửa |
 | B-24 | Low | 20261109-sprint08-payment (review vòng 9, R9-4) | `POS_API/src/sales/tests/payment.integration.test.ts:229,232,237` | B-15 dùng event id 7501 trùng `[V3-2]` và phải DELETE dữ liệu để tránh lệch; nên dùng id riêng | 2026-11-10 | đã sửa |
 | B-25 | Very Low | 20261109-sprint08-payment (review vòng 9, R9-5) | `THIRD_PARTY_INTEGRATIONS.md:3` | Nhãn ngày "09/11/2026" nhưng nội dung đã cập nhật 10/11/2026 | 2026-11-10 | đã sửa |
 | B-26 | Low | 20261109-sprint08-payment (review vòng 10, R10-1) | `POS_API/src/sales/tests/payment.integration.test.ts:203-204` | Test `[B-23]` dùng user `b16_nobranch` do test `[B-16]` tạo; chạy riêng sẽ lỗi | 2026-11-10 | đã sửa |
@@ -74,6 +74,11 @@
 | B-65 | Low | 20261115-sprint10-stock-ledger (review vòng 2, R2-1) | `POS_UI/src/features/inventory/InventoryScreen.tsx:46` | Dialog của tab cũ vẫn mở sau Back sang tab kho khác | 2026-11-16 | đã sửa |
 | B-66 | Low | 20261115-sprint10-stock-ledger (review vòng 3, R3-1) | `POS_UI/src/features/products/ProductsScreen.tsx:45,1358` | Dialog của tab Thực đơn cũ còn mở sau Back sang tab khác | 2026-11-16 | đã sửa |
 | B-67 | Low | 20261115-sprint10-stock-ledger (review vòng 3, R3-2) | `POS_UI/test/stock-ledger-router.browser.mjs:251` | Helper đổi tab còn race khi click trước khi tab mới render | 2026-11-16 | đã sửa |
+| B-68 | Low | 20261116-orm-entities-refactor (review vòng 1, R1-2) | `.devloopflow/.claude-st7-orig.ts` | File bản sao `shifts.service.ts` cũ (dấu vết làm việc) còn untracked, có thể bị `git add .` đưa vào commit | Hẹp | 2026-11-17 | đã sửa |
+| B-69 | Low | 20261116-orm-entities-refactor (review vòng 1, R1-4) | `POS_API/README.md` (mục Lưu ý, dòng `fromDummy()`) | Tài liệu nói `fromDummy()` chỉ cho advisory lock và health; `reports.service.ts` dùng thêm cho CTE L3 | Hẹp | 2026-11-17 | đã sửa |
+| B-70 | Very Low | 20261116-orm-entities-refactor (review vòng 1, R1-5) | `POS_API/src/organization/tests/organization.integration.test.ts`, `POS_API/src/platform/tests/platform.integration.test.ts` | Hai test trùng tên `test_ST20_AC1_lock_sequences`; `--test-name-pattern` chạy cả hai | Hẹp | 2026-11-17 | đã sửa |
+| B-71 | Low | 20261116-orm-entities-refactor (review vòng 1, R1-3) | `.devloopflow/plans/draft/20261113-sprint09-ui-r1-6.md` | File draft đã commit bị xóa trong working tree, thuộc task khác | Hẹp | 2026-11-17 | bỏ |
+| B-72 | Low | 20261116-orm-entities-refactor (review vòng 3, R3-1) | `.devloopflow/tasks/active/20261116-orm-entities-refactor.md` | Bảng File đã thay đổi và Đã đọc errors dừng ở ST-6, khối Trạng thái mâu thuẫn | Hẹp | 2026-11-17 | đã sửa |
 
 - Trạng thái: `chờ xử lý` | `đã sửa` | `bỏ` (finding sai, hoặc không còn áp dụng vì code đã đổi; ghi lý do trong lịch sử)
 
@@ -207,6 +212,8 @@
 ### B-23 — Thiếu ca 403 khi hủy lượt QR (Low)
 - Nguồn: review vòng 9, finding R9-3 (backlog B-14 yêu cầu ca này). File:dòng: `payment.integration.test.ts:166`; code `transfer-attempts.service.ts:105`, `transfer-attempts.controller.ts:50`.
 - Đề xuất: thêm test `[B-23] cancel QR without branch assignment returns 403` (user `b16_nobranch`) và một ca thiếu `pos.sell` → 403 `PERMISSION_DENIED`, attempt và invoice không đổi.
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-17 — đã sửa — fix-backlog chuẩn hóa ô trạng thái (trước ghi "đã sửa (một phần: thiếu ca `pos.sell`)"). Ca không có chi nhánh: test `[B-23] cancel QR without branch assignment returns 403` ở `payment.integration.test.ts:247`; ca thiếu `pos.sell` đã tách thành B-27 (đã sửa). Không đổi mã.
 
 ### B-24 — Event id 7501 trùng và phụ thuộc DELETE (Low)
 - Nguồn: review vòng 9, finding R9-4. File:dòng: `payment.integration.test.ts:229,232,237` (trùng `[V3-2]` ở ~dòng 377; `test_ST7_exception_visibility` ~317, 321).
@@ -604,3 +611,58 @@
 - Trạng thái: đã sửa
 - Lịch sử trạng thái: 2026-11-16 — chờ xử lý — review vòng 3, Low.
 - Lịch sử trạng thái: 2026-11-16 — đã sửa — helper `backAfterSwitch` trong `stock-ledger-router.browser.mjs` chờ pathname và tab Tồn kho `aria-current="true"` trước click Sổ kho; giữ assertion sau đổi phiên. BR-5/BR-5b 2/2 trước và sau thay đổi; agent chính chạy browser 34/34, UI 230/230, typecheck/build exit 0, API 256/256. Race không tái hiện ổn định trước sửa; fix lấp điều kiện chờ thiếu được reviewer chỉ ra, chưa chứng minh hết mọi flake. Hồ sơ: `.devloopflow/errors/20261115-browser-router-fixed-wait.md` (occurrences 2).
+
+### B-68 — R1-2 [Low]
+- Task nguồn: 20261116-orm-entities-refactor, review vòng 1.
+- File:dòng: `.devloopflow/.claude-st7-orig.ts`
+- Finding nguyên văn: File untracked 26 KB, bản sao `shifts.service.ts` cũ (dấu vết làm việc). Vi phạm `rules/coding-style.md:22` và có thể bị `git add .` đưa vào commit.
+- Đề xuất fix: xóa đúng file này, sau khi user duyệt theo quy tắc xóa file của dự án.
+- Phạm vi ảnh hưởng khi sửa: sẽ phải đổi: xóa một file duy nhất | nơi gọi/nơi dùng: không có (Grep không thấy tham chiếu; `tsconfig` chỉ include `src/**`) | test có thể bị ảnh hưởng: không | lan sang module khác: không | mức: Hẹp
+- Ngày ghi: 2026-11-17
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-17 — chờ xử lý — review vòng 1, Low.
+- Lịch sử trạng thái: 2026-11-17 — đã sửa — user yêu cầu "xóa file dư"; agent chính xóa `.devloopflow/.claude-st7-orig.ts` (untracked, 26498 byte).
+
+### B-69 — R1-4 [Low]
+- Task nguồn: 20261116-orm-entities-refactor, review vòng 1.
+- File:dòng: `POS_API/README.md` (mục "Lưu ý", dòng `fromDummy()`)
+- Finding nguyên văn: Tài liệu sai so với mã. `reports/reports.service.ts:488,502,512` dùng `fromDummy()` ba lần cho CTE, `generate_series` và câu cuối (mã L3 theo plan). Mã đúng plan, tài liệu sai.
+- Đề xuất fix: sửa câu thành "`fromDummy()` cho L5 (advisory lock, health) và L3 (câu cuối CTE, `generate_series`)".
+- Phạm vi ảnh hưởng khi sửa: sẽ phải đổi: một câu trong `POS_API/README.md` | nơi gọi/nơi dùng: không có | test: không (tài liệu) | lan sang module khác: không; cần semantic update Graphify cho Markdown đã sửa | mức: Hẹp
+- Ngày ghi: 2026-11-17
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-17 — chờ xử lý — review vòng 1, Low.
+- Lịch sử trạng thái: 2026-11-17 — đã sửa — fix-backlog: agent chính sửa một câu trong `POS_API/README.md` (mục Lưu ý, `fromDummy()` nêu thêm L3: CTE và `generate_series`); tài liệu, không đổi hành vi; `npm test` 350/350.
+
+### B-70 — R1-5 [Very Low]
+- Task nguồn: 20261116-orm-entities-refactor, review vòng 1.
+- File:dòng: `POS_API/src/organization/tests/organization.integration.test.ts`, `POS_API/src/platform/tests/platform.integration.test.ts`
+- Finding nguyên văn: Cả hai file có test cùng tên `test_ST20_AC1_lock_sequences`; `--test-name-pattern` theo tên đó chạy cả hai.
+- Đề xuất fix: đổi tên một test (thêm hậu tố `_users` / `_platform`).
+- Phạm vi ảnh hưởng khi sửa: sẽ phải đổi: tên test ở hai file | nơi gọi/nơi dùng: plan và task nhắc tên bằng chữ, cần đối chiếu | test: chỉ hai test này, chạy lại hai file | lan sang module khác: không | mức: Hẹp
+- Ngày ghi: 2026-11-17
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-17 — chờ xử lý — review vòng 1, Very Low.
+- Lịch sử trạng thái: 2026-11-17 — đã sửa — fix-backlog: `tdd` đổi tên hai test thành `test_ST20_AC1_lock_sequences_staff` (organization.integration.test.ts:425) và `test_ST20_AC1_lock_sequences_platform` (platform.integration.test.ts:271); không đổi hành vi, hai file 21/21 trước và sau, `npm test` 350/350 (agent chính chạy lại).
+
+### B-71 — R1-3 [Low]
+- Task nguồn: 20261116-orm-entities-refactor, review vòng 1.
+- File:dòng: `.devloopflow/plans/draft/20261113-sprint09-ui-r1-6.md`
+- Finding nguyên văn: File đã commit ở `096999c` bị xóa (`git status`: ` D`, 22 dòng), thuộc task `20261113-sprint09-ui` đã hoàn tất, không thuộc task này.
+- Đề xuất fix: nếu không chủ ý xóa thì `git restore` đúng file đó; nếu có chủ ý thì ghi vào task.
+- Phạm vi ảnh hưởng khi sửa: chỉ file đó | nơi dùng: không có | test: không | lan sang module khác: không | mức: Hẹp
+- Ngày ghi: 2026-11-17
+- Trạng thái: bỏ
+- Lịch sử trạng thái: 2026-11-17 — chờ xử lý — review vòng 1, Low.
+- Lịch sử trạng thái: 2026-11-17 — bỏ — thay đổi đã có trong `git status` đầu phiên, trước khi task này sửa file; không do task này tạo ra, không sửa. Báo user.
+
+### B-72 — R3-1 [Low]
+- Task nguồn: 20261116-orm-entities-refactor, review vòng 3.
+- File:dòng: `.devloopflow/tasks/active/20261116-orm-entities-refactor.md:21-24, 45-79, 82-96`
+- Finding nguyên văn: Bảng "File đã thay đổi" dừng ở ST-6, thiếu ST-7..ST-23; mục "Đã đọc errors" dừng ở ST-6; khối "Trạng thái" tự mâu thuẫn (dòng 21 ghi bước 8, dòng 23-24 ghi chờ user gọi). Căn cứ: `CLAUDE.md`, "Hồ sơ công việc".
+- Đề xuất fix: bổ sung bảng và mục "Đã đọc errors" từ `git status` và evidence, sửa khối Trạng thái trước khi đóng task. Không cần TDD.
+- Phạm vi ảnh hưởng khi sửa: chỉ file task | nơi dùng: không có | test: không | lan sang module khác: không | mức: Hẹp
+- Ngày ghi: 2026-11-17
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-17 — chờ xử lý — review vòng 3, Low.
+- Lịch sử trạng thái: 2026-11-17 — đã sửa — agent chính bổ sung bảng "File đã thay đổi", "Đã đọc errors" và khối "Trạng thái" của task, ngay trong bước 8.

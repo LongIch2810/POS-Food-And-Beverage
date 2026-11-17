@@ -1,3 +1,4 @@
+import { captureSql, lockSequence } from '../../database/tests/sql-capture';
 import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { test } from 'node:test';
@@ -8,6 +9,8 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../../app.module';
 import { assertSchemaCurrent } from '../auth-config';
 import { AuthService } from '../auth.service';
+import { PlatformService } from '../../platform/platform.service';
+import { normalizeUsername } from '../auth.service';
 import { dataSource } from '../../database/data-source';
 import { Foundation20261028000000 } from '../../database/migrations/20261028000000-Foundation';
 
@@ -536,4 +539,197 @@ test('PB-02 login creates a hashed refresh session and cookie-only tokens', { ti
     if (created) await dataSource.query(`DROP DATABASE "${name}" WITH (FORCE)`);
     await dataSource.destroy();
   }
+});
+
+test('test_ST3_AC7_login_lock_sequence', { timeout: 90_000 }, async (t) => {
+  const name = `pos_st3_${randomBytes(6).toString('hex')}`;
+  const url = new URL(process.env.DATABASE_URL!); url.pathname = `/${name}`;
+  const db = new DataSource({ type: 'postgres', url: url.toString(), entities: dataSource.options.entities, migrations: dataSource.options.migrations });
+  await dataSource.initialize();
+  let created = false;
+  try {
+    await dataSource.query(`CREATE DATABASE "${name}"`); created = true;
+    await db.initialize(); await db.runMigrations();
+    process.env.JWT_SECRET = 'j'.repeat(32); process.env.CSRF_SECRET = 'c'.repeat(32);
+    await db.query(`INSERT INTO users (id,role_id,full_name,username,password_hash) SELECT gen_random_uuid(),id,'ST3','st3_login',$1 FROM roles WHERE name='PLATFORM_ADMIN'`, [await bcrypt.hash('temporary-password-12', 12)]);
+    const sql = captureSql(t);
+    await new AuthService(db).login('st3_login', 'temporary-password-12', 'st3-ip');
+    const sequence = lockSequence(sql);
+    t.diagnostic(JSON.stringify(sequence));
+    assert.deepEqual(sequence, ['advisory', 'advisory', 'UPDATE:users']);
+    const advisory = sql.filter(statement => /pg_advisory_xact_lock/i.test(statement));
+    assert.equal(advisory.length, 2);
+    assert.ok(advisory.every(statement => /FROM \(SELECT 1 AS dummy_column\)/i.test(statement)));
+    assert.equal(sql.filter(statement => /lower\(btrim/i.test(statement)).length, 1);
+  } finally {
+    if (db.isInitialized) await db.destroy();
+    if (created) await dataSource.query(`DROP DATABASE "${name}"`);
+    await dataSource.destroy();
+  }
+});
+
+test('test_ST3b_AC2_normalize_username_matches_postgres', { timeout: 90_000 }, async () => {
+  await dataSource.initialize();
+  try {
+    for (const value of ['  NV.An  ', '\tNV2', '  \tADMIN  ', 'ADMIN\t', ' ', 'Nguyễn.VĂN', 'ĐỨC', 'Ánh Dương']) {
+      const [{ u }] = await dataSource.query('SELECT lower(btrim($1::text)) AS u', [value]);
+      assert.equal(await normalizeUsername(dataSource, value), u, JSON.stringify(value));
+    }
+  } finally {
+    await dataSource.destroy();
+  }
+});
+
+test('test_ST3b_AC2b_normalize_username_unicode_edge_cases', { timeout: 90_000 }, async () => {
+  await dataSource.initialize();
+  const qr = dataSource.createQueryRunner();
+  try {
+    const values = [
+      'İSTANBUL', 'iİ', 'ΑΣ', 'ΑΣΑ', 'ΣΑ', 'ΟΔΥΣΣΕΥΣ', 'ẞ', 'STRAẞE', 'Straße', 'K', 'Kelvin', 'Ω', 'ΩMEGA',
+      'ǅ', 'Ǆ', 'ǈ', 'ᏣᎳᎩ', 'Ꭰ', 'ა', 'Ა', 'ß', '𐐀', '𐐨', 'ÀÁẢÃẠ', 'ĐẶNG VĂN', 'Ǆ ', ' ΑΣ ', 'ǅ\t', 'ϴ', 'ᲀ', 'ſ', 'ǰ', 'ᾈ', 'ϑ',
+    ];
+    await qr.query('CREATE TEMP TABLE un_probe (username varchar(50) NOT NULL CHECK (username = lower(btrim(username))))');
+    for (const v of values) {
+      const [{ u }] = await qr.query('SELECT lower(btrim($1::text)) AS u', [v]);
+      const normalized = await normalizeUsername(dataSource, v);
+      assert.equal(normalized, u, JSON.stringify(v));
+      await qr.query('INSERT INTO un_probe (username) VALUES ($1)', [normalized]); // CHECK users_username_normalized must accept it
+    }
+  } finally {
+    await qr.release();
+    await dataSource.destroy();
+  }
+});
+
+test('test_ST3c_AC1_username_matches_postgres_for_unicode_edge_cases', { timeout: 90_000 }, async () => {
+  await dataSource.initialize();
+  try {
+    // First five differ between JS toLowerCase and PostgreSQL lower() (r3-username-unicode.log); the rest agree.
+    for (const value of ['İSTANBUL', 'iİ', 'ΑΣ', 'ΟΔΥΣΣΕΥΣ', ' ΑΣ ', 'ADMIN', '\tNV2', 'Nguyễn.VĂN']) {
+      const [{ u }] = await dataSource.query('SELECT lower(btrim($1::text)) AS u', [value]);
+      assert.equal(await normalizeUsername(dataSource, value), u, JSON.stringify(value));
+    }
+  } finally {
+    await dataSource.destroy();
+  }
+});
+
+test('test_ST3c_AC2_greek_username_creates_and_logs_in_with_postgres_lowercase', { timeout: 90_000 }, async () => {
+  await withAuthDb('pos_st3c', async (db) => {
+    const { owner, temporaryPassword } = await new PlatformService(db).createStore(
+      { name: 'ST3c Store', owner: { username: 'ΑΣ', fullName: 'ST3c Owner' } } as any, '00000000-0000-4000-8000-000000000000', 'req-st3c');
+    const [{ expected }] = await db.query("SELECT lower(btrim('ΑΣ'::text)) AS expected");
+    assert.equal(expected, 'ασ');
+    const [{ username }] = await db.query('SELECT username FROM users WHERE id = $1', [owner.id]);
+    assert.equal(username, expected);
+    const auth = new AuthService(db);
+    assert.equal((await auth.login('ΑΣ', temporaryPassword, 'st3c-ip-1')).user.id, owner.id);
+    assert.equal((await auth.login('ασ', temporaryPassword, 'st3c-ip-2')).user.id, owner.id);
+  });
+});
+
+async function withAuthDb(prefix: string, run: (db: DataSource) => Promise<void>): Promise<void> {
+  const name = `${prefix}_${randomBytes(6).toString('hex')}`;
+  const url = new URL(process.env.DATABASE_URL!); url.pathname = `/${name}`;
+  const db = new DataSource({ type: 'postgres', url: url.toString(), entities: dataSource.options.entities, migrations: dataSource.options.migrations });
+  await dataSource.initialize();
+  let created = false;
+  try {
+    await dataSource.query(`CREATE DATABASE "${name}"`); created = true;
+    await db.initialize(); await db.runMigrations();
+    process.env.JWT_SECRET = 'j'.repeat(32); process.env.CSRF_SECRET = 'c'.repeat(32);
+    await run(db);
+  } finally {
+    if (db.isInitialized) await db.destroy();
+    if (created) await dataSource.query(`DROP DATABASE "${name}" WITH (FORCE)`);
+    await dataSource.destroy();
+  }
+}
+
+test('test_ST19_AC1_auth_lock_sequences', { timeout: 90_000 }, async (t) => {
+  await withAuthDb('pos_st19a', async (db) => {
+    const hash = await bcrypt.hash('temporary-password-12', 4);
+    await db.query(`INSERT INTO users (id,role_id,full_name,username,password_hash) SELECT gen_random_uuid(),id,'ST19','st19_admin',$1 FROM roles WHERE name='PLATFORM_ADMIN'`, [hash]);
+    const [{ id: storeId }] = await db.query("INSERT INTO stores (id, name) VALUES (gen_random_uuid(), 'ST19 Store') RETURNING id");
+    await db.query(`INSERT INTO users (id,role_id,store_id,full_name,username,password_hash) SELECT gen_random_uuid(),id,$2,'ST19 owner','st19_owner',$1 FROM roles WHERE name='OWNER'`, [hash, storeId]);
+    const auth = new AuthService(db);
+
+    const sqlLogin = captureSql(t);
+    const owner = await auth.login('st19_owner', 'temporary-password-12', 'st19-ip-1');
+    assert.deepEqual(lockSequence(sqlLogin), ['advisory', 'advisory', 'UPDATE:users', 'SHARE:stores']);
+    t.mock.restoreAll();
+    const sqlRefresh = captureSql(t);
+    await auth.refresh(owner.refresh, owner.csrf, owner.csrf);
+    const refreshSeq = lockSequence(sqlRefresh);
+    assert.deepEqual(refreshSeq, ['UPDATE:users', 'SHARE:stores', 'advisory', 'UPDATE:refresh_tokens']);
+    t.mock.restoreAll();
+
+    const admin = await auth.login('st19_admin', 'temporary-password-12', 'st19-ip-2');
+    const sqlLogout = captureSql(t);
+    await auth.logout(admin.refresh, admin.csrf, admin.csrf);
+    assert.deepEqual(lockSequence(sqlLogout), ['UPDATE:users', 'advisory', 'UPDATE:refresh_tokens']);
+    t.mock.restoreAll();
+
+    const changer = await auth.login('st19_owner', 'temporary-password-12', 'st19-ip-3');
+    const sqlChange = captureSql(t);
+    await auth.changePassword(changer.access, changer.csrf, changer.csrf, 'another-password-123', 'temporary-password-12');
+    assert.deepEqual(lockSequence(sqlChange), ['UPDATE:users']);
+    // The race test dispatches on this comment; accept raw or identifier-quoted form.
+    assert.ok(sqlChange.some((statement) => /^\/\* SELECT [^*]*password_hash[^*]* \*\//.test(statement) && /FOR UPDATE/i.test(statement)));
+    t.mock.restoreAll();
+  });
+});
+
+test('test_ST19_AC3_rate_limit_retry_after', { timeout: 90_000 }, async () => {
+  await withAuthDb('pos_st19c', async (db) => {
+    await db.query(`INSERT INTO users (id,role_id,full_name,username,password_hash) SELECT gen_random_uuid(),id,'ST19','st19_rate',$1 FROM roles WHERE name='PLATFORM_ADMIN'`, [await bcrypt.hash('temporary-password-12', 4)]);
+    const auth = new AuthService(db);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await assert.rejects(auth.login('st19_rate', 'wrong-password-12', 'st19-rate-ip'), (error: any) => error.getStatus() === 401);
+    }
+    // Age the oldest event of each scope by 600s: retryAfter must follow the oldest event (about 300s), not the newest.
+    await db.query("UPDATE auth_rate_events SET occurred_at = now() - interval '600 seconds' WHERE id IN (SELECT DISTINCT ON (scope) id FROM auth_rate_events ORDER BY scope, occurred_at)");
+    await assert.rejects(auth.login('st19_rate', 'wrong-password-12', 'st19-rate-ip'), (error: any) => {
+      const body = error.getResponse();
+      assert.equal(error.getStatus(), 429);
+      assert.equal(body.code, 'TOO_MANY_REQUESTS');
+      assert.ok(Number.isInteger(body.retryAfter) && body.retryAfter >= 1 && body.retryAfter <= 900, String(body.retryAfter));
+      assert.ok(body.retryAfter >= 290 && body.retryAfter <= 300, `retryAfter follows the oldest event: ${body.retryAfter}`);
+      return true;
+    });
+  });
+});
+
+test('test_ST19_revocation_keeps_old_timestamps_and_order', { timeout: 90_000 }, async () => {
+  await withAuthDb('pos_st19b', async (db) => {
+    await db.query(`INSERT INTO users (id,role_id,full_name,username,password_hash) SELECT gen_random_uuid(),id,'ST19','st19_rev',$1 FROM roles WHERE name='PLATFORM_ADMIN'`, [await bcrypt.hash('temporary-password-12', 4)]);
+    const auth = new AuthService(db);
+    const [{ id: userId }] = await db.query("SELECT id FROM users WHERE username = 'st19_rev'");
+    const oldRevoked = async (sessionId: string | null) => {
+      const hash = randomBytes(32).toString('hex');
+      await db.query(`INSERT INTO refresh_tokens (id, user_id, session_id, token_hash, expires_at, revoked_at, replaced_at)
+        VALUES (gen_random_uuid(), $1, COALESCE($2::uuid, gen_random_uuid()), $3, now() + interval '1 day', '2000-01-01T00:00:00Z', '2000-01-01T00:00:00Z')`, [userId, sessionId, hash]);
+      return hash;
+    };
+    const revokedAt = async (hash: string) => (await db.query('SELECT revoked_at FROM refresh_tokens WHERE token_hash = $1', [hash]))[0].revoked_at.toISOString();
+
+    const first = await auth.login('st19_rev', 'temporary-password-12', 'rev-ip-1');
+    const dbPermissions = (await db.query(`SELECT p.code FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id
+      WHERE rp.role_id = (SELECT role_id FROM users WHERE id = $1) ORDER BY p.code ASC`, [userId])).map((row: { code: string }) => row.code);
+    assert.ok(dbPermissions.length > 1);
+    assert.deepEqual((await auth.me(first.access)).permissions, dbPermissions);
+    assert.ok(await auth.getCsrf(first.refresh));
+
+    const sessionId = (await db.query('SELECT session_id FROM refresh_tokens WHERE token_hash = $1', [createHash('sha256').update(first.refresh).digest('hex')]))[0].session_id;
+    const sameSessionOld = await oldRevoked(sessionId);
+    await auth.logout(first.refresh, first.csrf, first.csrf);
+    assert.equal(await revokedAt(sameSessionOld), '2000-01-01T00:00:00.000Z');
+    await assert.rejects(auth.getCsrf(first.refresh), (error: any) => error.getStatus() === 401);
+
+    const second = await auth.login('st19_rev', 'temporary-password-12', 'rev-ip-2');
+    const otherSessionOld = await oldRevoked(null);
+    await auth.changePassword(second.access, second.csrf, second.csrf, 'another-password-123', 'temporary-password-12');
+    assert.equal(await revokedAt(otherSessionOld), '2000-01-01T00:00:00.000Z');
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM refresh_tokens WHERE user_id = $1 AND revoked_at IS NULL', [userId]))[0].n, 0);
+  });
 });
