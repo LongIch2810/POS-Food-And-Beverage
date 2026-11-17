@@ -62,7 +62,7 @@ Quy tắc chuyển:
 | `ON CONFLICT ... DO UPDATE` | `upsert(values, { conflictPaths, returning? })` |
 | Đếm có bộ lọc | `count({ where })`; OR dùng mảng `where`; `ILIKE` dùng `ILike('%q%')` |
 | Điều kiện tùy chọn | Spread có điều kiện `...(branchId !== null ? { branch_id: branchId } : {})` |
-| Chuẩn hóa username | `normalizeUsername(value)` (export ở `auth/auth.service.ts`): bỏ dấu cách hai đầu rồi `toLowerCase()`; không dùng `trim()` vì `trim()` bỏ cả TAB |
+| Chuẩn hóa username | `await normalizeUsername(manager, value)` (export ở `auth/auth.service.ts`): lấy `lower(btrim(value))` từ PostgreSQL bằng một câu không đọc bảng (L5) rồi dùng kết quả; không dùng `toLowerCase()` của JS vì khác `lower()` của PostgreSQL ở `İ` và sigma cuối từ, và không dùng `trim()` vì bỏ cả TAB |
 | Lỗi DB (`23505`, `error.constraint`) | Giữ `catch` quanh đúng lời gọi `insert`/`update` gây lỗi |
 
 Lưu ý:

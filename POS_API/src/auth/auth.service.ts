@@ -2,7 +2,7 @@ import { HttpException, Inject, Injectable } from '@nestjs/common';
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
-import { DataSource, EntityManager, IsNull, Raw } from 'typeorm';
+import { DataSource, EntityManager, IsNull, Raw, SelectQueryBuilder } from 'typeorm';
 import { httpError } from '../http/http-error';
 import { AuthRateEvent } from './entities/auth-rate-event.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
@@ -24,10 +24,11 @@ export interface UserSummary {
 
 export interface SessionUser extends UserSummary { branchName: string | null; }
 
-// Same rule as PostgreSQL btrim(): strips spaces only, never TAB (trim() would break stored usernames).
-// shortcut: JS toLowerCase differs from PostgreSQL lower() for dotted capital I and Greek final sigma (test_ST3b_AC2b); upgrade to SQL lower(btrim()) if such usernames must log in with pre-refactor rows.
-export function normalizeUsername(value: string): string {
-  return value.replace(/^ +| +$/g, '').toLowerCase();
+// Normalised by PostgreSQL itself (lower(btrim())) so stored usernames match the old SQL for every Unicode edge case.
+export async function normalizeUsername(db: { createQueryBuilder(): SelectQueryBuilder<any> }, value: string): Promise<string> {
+  // QueryBuilder: table-less SELECT (advisory lock or probe); no repository method runs it
+  const row = await db.createQueryBuilder().select('lower(btrim(CAST(:value AS text)))', 'u').setParameter('value', value).fromDummy().getRawOne();
+  return row.u;
 }
 
 export type AccessPermission = string | { platform: string; store: string };
@@ -107,7 +108,7 @@ export class AuthService {
   }
 
   async login(username: string, password: string, ip: string, userAgent?: string): Promise<{ user: SessionUser; access: string; refresh: string; csrf: string }> {
-    const normalized = normalizeUsername(username);
+    const normalized = await normalizeUsername(this.db, username);
     const keys = [this.rateKey('login_ip', ip), this.rateKey('login_username', normalized)];
     const sessionId = randomUUID();
     const refresh = randomBytes(32).toString('base64url');

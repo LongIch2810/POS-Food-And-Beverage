@@ -73,7 +73,7 @@ export class UsersService {
         await this.organization.branchInScope(manager, input.branchId, actor, true);
         const role = await manager.getRepository(Role).findOneBy({ name: input.role });
         if (!role) throw httpError(503, 'SERVICE_UNAVAILABLE', 'Vai trò nhân viên chưa sẵn sàng.');
-        const username = normalizeUsername(input.username);
+        const username = await normalizeUsername(manager, input.username);
         const temporaryPassword = randomBytes(18).toString('base64url');
         const repo = manager.getRepository(User);
         const user = repo.create({ store_id: actor.storeId!, branch_id: input.branchId, role_id: role.id,

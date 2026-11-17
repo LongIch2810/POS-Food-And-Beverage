@@ -34,7 +34,7 @@ export class PlatformService {
   private async createOwner(manager: EntityManager, input: { storeId: string; username: string; fullName: string }) {
     const role = await manager.getRepository(Role).findOneBy({ name: 'OWNER' });
     if (!role) throw httpError(503, 'SERVICE_UNAVAILABLE', 'Vai trò chủ cửa hàng chưa sẵn sàng.');
-    const username = normalizeUsername(input.username);
+    const username = await normalizeUsername(manager, input.username);
     const temporaryPassword = randomBytes(18).toString('base64url');
     const owner = manager.getRepository(User).create({
       store_id: input.storeId, branch_id: null, role_id: role.id, username,

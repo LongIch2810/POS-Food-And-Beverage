@@ -9,6 +9,7 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../../app.module';
 import { assertSchemaCurrent } from '../auth-config';
 import { AuthService } from '../auth.service';
+import { PlatformService } from '../../platform/platform.service';
 import { normalizeUsername } from '../auth.service';
 import { dataSource } from '../../database/data-source';
 import { Foundation20261028000000 } from '../../database/migrations/20261028000000-Foundation';
@@ -559,7 +560,7 @@ test('test_ST3_AC7_login_lock_sequence', { timeout: 90_000 }, async (t) => {
     const advisory = sql.filter(statement => /pg_advisory_xact_lock/i.test(statement));
     assert.equal(advisory.length, 2);
     assert.ok(advisory.every(statement => /FROM \(SELECT 1 AS dummy_column\)/i.test(statement)));
-    assert.ok(!sql.some(statement => /lower\(btrim/i.test(statement)));
+    assert.equal(sql.filter(statement => /lower\(btrim/i.test(statement)).length, 1);
   } finally {
     if (db.isInitialized) await db.destroy();
     if (created) await dataSource.query(`DROP DATABASE "${name}"`);
@@ -572,42 +573,59 @@ test('test_ST3b_AC2_normalize_username_matches_postgres', { timeout: 90_000 }, a
   try {
     for (const value of ['  NV.An  ', '\tNV2', '  \tADMIN  ', 'ADMIN\t', ' ', 'Nguyễn.VĂN', 'ĐỨC', 'Ánh Dương']) {
       const [{ u }] = await dataSource.query('SELECT lower(btrim($1::text)) AS u', [value]);
-      assert.equal(normalizeUsername(value), u, JSON.stringify(value));
+      assert.equal(await normalizeUsername(dataSource, value), u, JSON.stringify(value));
     }
   } finally {
     await dataSource.destroy();
   }
 });
 
-test('test_ST3b_AC2b_normalize_username_unicode_edge_cases', { timeout: 90_000 }, async (t) => {
+test('test_ST3b_AC2b_normalize_username_unicode_edge_cases', { timeout: 90_000 }, async () => {
   await dataSource.initialize();
   const qr = dataSource.createQueryRunner();
   try {
-    const [{ version }] = await dataSource.query('SELECT version() AS version');
-    const [coll] = await dataSource.query('SELECT datcollate, datctype FROM pg_database WHERE datname = current_database()');
-    console.log('PG_VERSION', JSON.stringify(version), 'COLLATION', JSON.stringify(coll));
     const values = [
       'İSTANBUL', 'iİ', 'ΑΣ', 'ΑΣΑ', 'ΣΑ', 'ΟΔΥΣΣΕΥΣ', 'ẞ', 'STRAẞE', 'Straße', 'K', 'Kelvin', 'Ω', 'ΩMEGA',
       'ǅ', 'Ǆ', 'ǈ', 'ᏣᎳᎩ', 'Ꭰ', 'ა', 'Ა', 'ß', '𐐀', '𐐨', 'ÀÁẢÃẠ', 'ĐẶNG VĂN', 'Ǆ ', ' ΑΣ ', 'ǅ\t', 'ϴ', 'ᲀ', 'ſ', 'ǰ', 'ᾈ', 'ϑ',
     ];
     await qr.query('CREATE TEMP TABLE un_probe (username varchar(50) NOT NULL CHECK (username = lower(btrim(username))))');
-    const diffs: string[] = [];
     for (const v of values) {
       const [{ u }] = await qr.query('SELECT lower(btrim($1::text)) AS u', [v]);
-      const js = normalizeUsername(v);
-      let insert = 'ok';
-      try { await qr.query('INSERT INTO un_probe (username) VALUES ($1)', [js]); } catch (e) { insert = (e as { code?: string }).code ?? String(e); }
-      const same = js === u;
-      console.log(JSON.stringify({ v, js, pg: u, same, insertJs: insert }));
-      if (!same || insert !== 'ok') diffs.push(JSON.stringify(v));
-      else assert.equal(js, u, JSON.stringify(v));
+      const normalized = await normalizeUsername(dataSource, v);
+      assert.equal(normalized, u, JSON.stringify(v));
+      await qr.query('INSERT INTO un_probe (username) VALUES ($1)', [normalized]); // CHECK users_username_normalized must accept it
     }
-    t.diagnostic(`mismatch/check-violation values: ${diffs.join(' ')}`);
-    console.log('DIFF_COUNT', diffs.length, diffs.join(' '));
   } finally {
     await qr.release();
     await dataSource.destroy();
   }
+});
+
+test('test_ST3c_AC1_username_matches_postgres_for_unicode_edge_cases', { timeout: 90_000 }, async () => {
+  await dataSource.initialize();
+  try {
+    // First five differ between JS toLowerCase and PostgreSQL lower() (r3-username-unicode.log); the rest agree.
+    for (const value of ['İSTANBUL', 'iİ', 'ΑΣ', 'ΟΔΥΣΣΕΥΣ', ' ΑΣ ', 'ADMIN', '\tNV2', 'Nguyễn.VĂN']) {
+      const [{ u }] = await dataSource.query('SELECT lower(btrim($1::text)) AS u', [value]);
+      assert.equal(await normalizeUsername(dataSource, value), u, JSON.stringify(value));
+    }
+  } finally {
+    await dataSource.destroy();
+  }
+});
+
+test('test_ST3c_AC2_greek_username_creates_and_logs_in_with_postgres_lowercase', { timeout: 90_000 }, async () => {
+  await withAuthDb('pos_st3c', async (db) => {
+    const { owner, temporaryPassword } = await new PlatformService(db).createStore(
+      { name: 'ST3c Store', owner: { username: 'ΑΣ', fullName: 'ST3c Owner' } } as any, '00000000-0000-4000-8000-000000000000', 'req-st3c');
+    const [{ expected }] = await db.query("SELECT lower(btrim('ΑΣ'::text)) AS expected");
+    assert.equal(expected, 'ασ');
+    const [{ username }] = await db.query('SELECT username FROM users WHERE id = $1', [owner.id]);
+    assert.equal(username, expected);
+    const auth = new AuthService(db);
+    assert.equal((await auth.login('ΑΣ', temporaryPassword, 'st3c-ip-1')).user.id, owner.id);
+    assert.equal((await auth.login('ασ', temporaryPassword, 'st3c-ip-2')).user.id, owner.id);
+  });
 });
 
 async function withAuthDb(prefix: string, run: (db: DataSource) => Promise<void>): Promise<void> {
