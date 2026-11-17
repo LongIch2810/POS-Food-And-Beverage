@@ -8,7 +8,7 @@ File này ghi **công nghệ đã có trong mã hoặc cấu hình repository**;
 | --- | --- |
 | Node.js 22, TypeScript 5 | Runtime và ngôn ngữ; build bằng `tsc` |
 | NestJS 11, Express | API HTTP, module/controller/guard/exception filter |
-| PostgreSQL 17, `pg`, TypeORM 0.3 | Dữ liệu, truy vấn, transaction và migration |
+| PostgreSQL 17, `pg`, TypeORM 0.3 | Dữ liệu, truy vấn, transaction và migration. Truy vấn dùng method của repository/manager trước (`find`, `findOne`, `count`, `exists`, `insert`, `update`, `upsert`, `delete`, kể cả `relations`, `where` lồng qua quan hệ và `lock`); nhiều `find` tuần tự thay JOIN khi bảng chưa có quan hệ. QueryBuilder chỉ khi các cách đó không đủ: tổng tiền, cursor micro giây, CTE trong một statement, `ON CONFLICT ... DO NOTHING`, advisory lock, danh sách nhiều bảng không giới hạn dòng. Không SQL thuần ngoài migration và test (quy ước ở `rules/database.md`, chi tiết ở `POS_API/README.md`) |
 | `bcryptjs` | Hash và kiểm tra mật khẩu |
 | `jsonwebtoken` | Ký và xác minh access JWT |
 | `@nestjs/passport`, `passport`, `passport-local` | Passport local strategy cho đăng nhập |

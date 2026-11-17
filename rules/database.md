@@ -11,6 +11,14 @@
 - Đưa lọc, gom nhóm và tính toán phù hợp xuống cơ sở dữ liệu; tránh tải nhiều dòng lên ứng dụng chỉ để lọc hoặc đếm.
 - Kiểm tra kế hoạch thực thi và thời gian trên dữ liệu đủ lớn trước khi tối ưu truy vấn chậm. Không đoán hiệu năng từ số dòng mã.
 
+## Cách viết truy vấn bằng ORM
+
+- Thử method chuẩn của ORM trước, theo thứ tự: (1) tìm, tìm một, đếm, kiểm tồn tại với điều kiện, chọn cột, sắp xếp, quan hệ đã khai báo, điều kiện lồng qua quan hệ và khóa dòng qua tùy chọn của method; (2) tạo, lưu, chèn, cập nhật, chèn-hoặc-cập-nhật, xóa; (3) nhiều lời gọi method tuần tự thay phép nối khi bảng chưa có quan hệ. Query builder là phương án cuối vì dài, dễ sai một ký tự và chỉ lộ lỗi lúc chạy (HTTP 500).
+- Chỉ dùng query builder khi các cách trên không diễn đạt được truy vấn: tổng tiền, cursor cần độ chính xác dưới mili giây hoặc sắp xếp theo biểu thức, CTE hoặc sub-query trong một câu, chèn có xử lý xung đột, câu không đọc bảng, danh sách nhiều bảng không giới hạn số dòng. Mỗi chỗ dùng query builder có một dòng chú thích lý do method chuẩn không đủ.
+- Không dùng SQL thuần trong mã ứng dụng; SQL thuần chỉ nằm trong migration và trong test khi cần dựng hoặc kiểm tra dữ liệu. Không viết chuỗi SQL tay cho việc làm được trong mã ứng dụng (ví dụ chuẩn hóa chuỗi) khi kết quả tương đương.
+- Không truyền giá trị rỗng (`null`, `undefined`) vào điều kiện của method chuẩn khi ORM có thể bỏ qua điều kiện đó: truy vấn sẽ đọc rộng hơn dự định (ví dụ dữ liệu cửa hàng khác). Kiểm giá trị trước, hoặc dùng toán tử kiểm rỗng riêng khi cần.
+- Trong khối transaction, mọi truy vấn đi qua manager của transaction đó; không dùng repository được inject vào class, vì repository đó chạy ngoài transaction.
+
 ## Ghi dữ liệu và transaction
 
 - Gom những thay đổi phải thành công cùng nhau vào một transaction. Nếu một bước lỗi, toàn bộ thay đổi liên quan phải được hoàn tác.
