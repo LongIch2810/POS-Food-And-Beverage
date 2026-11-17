@@ -1,7 +1,7 @@
 # .devloopflow/devloopflow.md
 <!-- Sinh bởi /devloopflow:init. Cấu hình RIÊNG cho quy trình devloopflow của dự án này. Mọi fact có path nguồn; không ghi secret. -->
 
-- Cập nhật lần cuối: 2026-11-16
+- Cập nhật lần cuối: 2026-11-17
 
 ## 1. Liên kết với tài liệu chung
 - Giới thiệu chung: `AGENTS.md`, `CLAUDE.md` (bản sao nội dung của `AGENTS.md`, tạo 2026-11-09), `README.md`.
@@ -20,7 +20,7 @@
 - Dừng app local: `docker compose --env-file POS_INFRA/.env.local -f POS_INFRA/compose.local.yml down`; không thêm `-v` vì sẽ xóa volume dữ liệu local. Nguồn: `README.md`. Chưa chạy thử.
 - Build API: trong `POS_API/`, `npm run build`. Nguồn: `POS_API/package.json`, `.github/workflows/ci.yml`. Đã chạy thử 2026-11-10 (local): exit 0.
 - Build UI: trong `POS_UI/`, `npm run build`. Lệnh này typecheck rồi build Vite. Nguồn: `POS_UI/package.json`, `.github/workflows/ci.yml`. Đã chạy thử 2026-11-10 (local): exit 0.
-- Test toàn bộ API: trong `POS_API/`, `npm test`; lệnh tự build rồi chạy `node:test`. Cần `DATABASE_URL` trỏ tới PostgreSQL local/test; test tạo và xóa database thử ngẫu nhiên với prefix `pos_pb01_test_`, `pos_pb02_test_`, `pos_pb03_test_`, `pos_pb04_test_`, `pos_pb04_migration_` hoặc prefix theo module trong test. Tài khoản DB cần quyền `CREATE DATABASE`. Tuyệt đối không dùng DB production. Nguồn: `POS_API/package.json`, `POS_API/README.md`, `POS_API/src/**/tests/`. Đã chạy thử 2026-11-15 (local): exit 0, 256/256 pass (task 20261115-sprint10-stock-ledger; lượt trước chạy đồng thời nhiều bộ kiểm tra có một timeout PostgreSQL, lượt chạy tuần tự này đạt).
+- Test toàn bộ API: trong `POS_API/`, `npm test`; lệnh tự build rồi chạy `node:test`. Cần `DATABASE_URL` trỏ tới PostgreSQL local/test; test tạo và xóa database thử ngẫu nhiên với prefix `pos_pb01_test_`, `pos_pb02_test_`, `pos_pb03_test_`, `pos_pb04_test_`, `pos_pb04_migration_` hoặc prefix theo module trong test. Tài khoản DB cần quyền `CREATE DATABASE`. Tuyệt đối không dùng DB production. Nguồn: `POS_API/package.json`, `POS_API/README.md`, `POS_API/src/**/tests/`. Đã chạy thử 2026-11-17 (local): exit 0, 350/350 pass, `npm run build` exit 0 (task 20261116-orm-entities-refactor; chạy một mình, Docker và container PostgreSQL phải đang chạy).
 - Test toàn bộ UI: trong `POS_UI/`, `npm test` (Node `node:test`). Nguồn: `POS_UI/package.json`, `.github/workflows/ci.yml`. Đã chạy thử 2026-11-16 (local): exit 0, 221/221 pass (fix-backlog B-65 của task 20261115-sprint10-stock-ledger).
 - Test một file / một case: manifest không định nghĩa script riêng. API test TypeScript phải build trước; test UI là `test/*.test.mjs`. Dùng `node --test` với file hoặc `--test-name-pattern` khi cần tập trung; xác nhận đúng đường dẫn output `dist/` và lệnh cụ thể theo test liên quan trước khi chạy. Chưa chạy thử.
 - Test giao diện đóng ca trên Chrome (chạy riêng, không thuộc `npm test`): từ `POS_UI/`, `node --test test/shift-close-accessibility.browser.mjs`; cần Chrome hoặc Chromium, có thể chỉ đường dẫn qua `CHROME_BIN`. Đã chạy thử local: 3/3 pass (task 20261113-sprint09-ui, evidence/fix-verify/green.log).\n- Lint: không có script lint trong `POS_API/package.json` hoặc `POS_UI/package.json`; CI hiện chạy build, test và audit dependency.
@@ -45,7 +45,7 @@
 
 ## 4. Cách viết test của dự án (cho `tdd`)
 - Framework: Node `node:test`; API dùng `@nestjs/testing`, HTTP `fetch` và PostgreSQL integration; UI dùng `node:test` với `.test.mjs`. API tests ở `POS_API/src/**/tests/` và `POS_API/src/*.test.ts`; UI tests ở `POS_UI/test/`. Nguồn: `docs/architecture/TECH_STACK.md`, package manifests, `POS_API/README.md`.
-- Fixture/helper: đọc và tái dùng fixture ngay trong test module tương ứng; API test dùng database thử ngẫu nhiên và phải tự dọn database. Chưa xác minh có factory dùng chung toàn repo.
+- Fixture/helper: đọc và tái dùng fixture ngay trong test module tương ứng; API test dùng database thử ngẫu nhiên và phải tự dọn database. Helper dùng chung cho test khóa dòng: `POS_API/src/database/tests/sql-capture.ts` (`captureSql` ghi câu SQL thật, `lockSequence` rút chuỗi khóa theo thứ tự). Chưa xác minh có factory dữ liệu dùng chung toàn repo.
 - Mock ở biên HTTP/browser khi test UI; regression auth phải kiểm tra request và thứ tự promise thực tế theo test hiện có. API integration dùng PostgreSQL test thật; không mock transaction/constraint trong test dùng để xác nhận tính toàn vẹn DB. Nguồn: `docs/architecture/TECH_STACK.md`, `POS_API/README.md`, `rules/testing.md`.
 - Unit test cho logic thuần; integration/API test cho DB, transaction, auth và permission; browser QA bổ sung cho hành vi UI thực. CI workflow: `.github/workflows/ci.yml` chạy backend install/build/migration/test/audit và frontend install/build/test/audit trên PostgreSQL 17.
 - Root `AGENTS.md` yêu cầu kiểm tra caller/scope trước khi sửa logic dùng chung; giữ nguyên test; không tuyên bố pass nếu chưa chạy lại lệnh kiểm chứng tương ứng.
@@ -97,6 +97,7 @@
 - Chưa có staging/production hoặc tài khoản test cố định được chỉ định trong tài liệu; chỉ kiểm AC trên sandbox/local, không tự chọn môi trường production.
 
 ## 9. Lịch sử cập nhật (chỉ thêm, không xoá)
+- 2026-11-17 — Mục 2: kết quả local API 256/256 → 350/350 và build exit 0; Mục 4: thêm helper `POS_API/src/database/tests/sql-capture.ts` (`captureSql`, `lockSequence`) — task 20261116-orm-entities-refactor (sync-docs). Bằng chứng: `.devloopflow/verify/20261116-orm-entities-refactor/evidence/r2-npm-test-verifier.log`.
 - 2026-11-16 — Mục 2: cập nhật kết quả local UI 219/219 → 221/221 sau hai test `[B-65]` cho dialog tab Kho; task 20261115-sprint10-stock-ledger (sync-docs).
 - 2026-11-15 — Mục 2: cập nhật kết quả local API 256/256, UI 219/219 và thêm lệnh browser Sổ kho/router 8/8; task 20261115-sprint10-stock-ledger (sync-docs).
 - 2026-11-12 — Sao chép và đối chiếu SHA-256 cho 3.468 file QA cũ vào kho evidence lịch sử của plugin; lập manifest cho 1.000 file verify evidence Sprint 08 đã có, giữ nguồn và kết luận cũ.
