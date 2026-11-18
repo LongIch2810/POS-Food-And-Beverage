@@ -5,6 +5,7 @@ export function validateAuthConfig(): void {
     || !process.env.CSRF_SECRET || Buffer.byteLength(process.env.CSRF_SECRET) < 32) {
     throw new Error('Authentication secrets are missing or invalid');
   }
+  if (!/^rediss?:\/\//.test(process.env.REDIS_URL ?? '')) throw new Error('REDIS_URL is missing or invalid');
   try {
     const origin = new URL(process.env.PUBLIC_ORIGIN ?? '');
     if (origin.origin !== process.env.PUBLIC_ORIGIN || !['http:', 'https:'].includes(origin.protocol)) throw new Error();

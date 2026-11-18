@@ -1,6 +1,5 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
-import { AuthRateEvent } from '../auth/entities/auth-rate-event.entity';
 import { Branch } from '../organization/entities/branch.entity';
 import { DiningTable } from '../organization/entities/dining-table.entity';
 import { Permission } from '../auth/entities/permission.entity';
@@ -46,7 +45,6 @@ export const entities = [
   RolePermission,
   User,
   RefreshToken,
-  AuthRateEvent,
   Category,
   Size,
   Product,

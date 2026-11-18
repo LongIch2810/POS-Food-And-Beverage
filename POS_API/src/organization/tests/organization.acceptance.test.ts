@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { flushRedis } from '../../redis/tests/flush-redis';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { request as nodeRequest } from 'node:http';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -161,7 +162,7 @@ test('PB-04 acceptance evidence AUD-01..05 with PostgreSQL and captured app logs
       const run = async (id: string, action: () => Promise<void>) => {
         await t.test(id, async () => {
           currentCase = id;
-          await db.query('DELETE FROM auth_rate_events'); // QA fixture reset; rate limiting itself is covered by PB-02.
+          await flushRedis(); // QA fixture reset; throttling itself is covered by PB-02.
           try { await action(); } finally { currentCase = 'SETUP'; }
         });
       };
@@ -784,6 +785,7 @@ test('PB-04 acceptance evidence AUD-01..05 with PostgreSQL and captured app logs
           fixture.push({ stamp, isActive, role, branchId, branchIdNew, tableId, userId });
         }
         t.diagnostic(JSON.stringify({ case: currentCase, kind: 'SQL_PAGE_FIXTURE', actual: fixture }));
+        await flushRedis(); // fixture rows were written straight to PostgreSQL, bypassing cache invalidation
         type PageRow = { id: string; stamp: string; isActive: boolean; branchId?: string; role?: string };
         const stampSql = (alias: string) => `to_char(${alias}.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
         const expected: Record<string, PageRow[]> = {
@@ -831,9 +833,11 @@ test('PB-04 acceptance evidence AUD-01..05 with PostgreSQL and captured app logs
           assert.equal(defaultPage.status, 200); assert.equal(defaultPage.body.meta.limit, 20);
           const capped = await call(owner, `${endpoints[resource]}?limit=101`);
           assert.equal(capped.status, 200); assert.equal(capped.body.meta.limit, 100);
+          await flushRedis(); // query counts must measure the database path, not a cache hit
           const startSmall = queries.length;
           const small = await call(owner, `${endpoints[resource]}?limit=1`);
           const countSmall = queries.length - startSmall;
+          await flushRedis();
           const startLarge = queries.length;
           const large = await call(owner, `${endpoints[resource]}?limit=100`);
           const countLarge = queries.length - startLarge;

@@ -47,7 +47,12 @@ test('PB-02 startup rejects absent or weak authentication configuration', () => 
     process.env.PUBLIC_ORIGIN = 'http://localhost:5173/path';
     assert.throws(validateAuthConfig);
     process.env.PUBLIC_ORIGIN = 'http://localhost:5173';
+    process.env.REDIS_URL = 'redis://localhost:6379';
     assert.doesNotThrow(validateAuthConfig);
+    delete process.env.REDIS_URL;
+    assert.throws(validateAuthConfig, /REDIS_URL/);
+    process.env.REDIS_URL = 'http://localhost:6379';
+    assert.throws(validateAuthConfig, /REDIS_URL/);
   } finally {
     process.env = original;
   }

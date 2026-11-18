@@ -13,6 +13,7 @@ import { PlatformService } from '../../platform/platform.service';
 import { normalizeUsername } from '../auth.service';
 import { dataSource } from '../../database/data-source';
 import { Foundation20261028000000 } from '../../database/migrations/20261028000000-Foundation';
+import { flushRedis } from '../../redis/tests/flush-redis';
 
 test('PB-02 login creates a hashed refresh session and cookie-only tokens', { timeout: 90_000 }, async () => {
   const name = `pos_pb02_test_${randomBytes(6).toString('hex')}`;
@@ -28,6 +29,8 @@ test('PB-02 login creates a hashed refresh session and cookie-only tokens', { ti
   process.env.PUBLIC_ORIGIN = 'http://localhost:5173';
   process.env.JWT_SECRET = 'j'.repeat(32);
   process.env.CSRF_SECRET = 'c'.repeat(32);
+  // This test checks the real throttle limits, so drop the raised limits the test setup installs.
+  for (const name of ['THROTTLE_LOGIN_IP_LIMIT', 'THROTTLE_LOGIN_USER_LIMIT', 'THROTTLE_REFRESH_IP_LIMIT']) delete process.env[name];
   await dataSource.initialize();
   let created = false;
   try {
@@ -162,7 +165,7 @@ test('PB-02 login creates a hashed refresh session and cookie-only tokens', { ti
       }
       for (const error of loginErrors.slice(1)) assert.deepEqual(error, loginErrors[0]);
       await db.query("UPDATE users SET is_active = true WHERE username = 'admin'");
-      await db.query('DELETE FROM auth_rate_events');
+      await flushRedis();
       await db.query("UPDATE stores SET status = 'ACTIVE' WHERE id = $1", [storeId]);
       const malformedAccess = jwt.sign({ sid: '-'.repeat(36), role: 'PLATFORM_ADMIN', storeId: null, branchId: null }, process.env.JWT_SECRET!, {
         algorithm: 'HS256', expiresIn: 1800, subject: body.data.user.id,
@@ -405,7 +408,9 @@ test('PB-02 login creates a hashed refresh session and cookie-only tokens', { ti
         body: JSON.stringify({ username: 'unknown', password: 'wrong-password' }),
       });
       assert.equal(missingUser.status, 401);
-      for (let attempt = 0; attempt < 4; attempt++) {
+      // Throttle: fixed window, counts every login call per username (10 per 15 min); the 11th is refused with Retry-After.
+      await flushRedis();
+      for (let attempt = 0; attempt < 10; attempt++) {
         const failed: Response = await fetch(`http://127.0.0.1:${port}/api/v1/auth/login`, {
           method: 'POST', headers: { 'Content-Type': 'application/json', Origin: process.env.PUBLIC_ORIGIN! },
           body: JSON.stringify({ username: 'admin', password: 'wrong-password' }),
@@ -414,13 +419,13 @@ test('PB-02 login creates a hashed refresh session and cookie-only tokens', { ti
       }
       const limited = await fetch(`http://127.0.0.1:${port}/api/v1/auth/login`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Origin: process.env.PUBLIC_ORIGIN! },
-        body: JSON.stringify({ username: 'admin', password: 'new-password-12345' }),
+        body: JSON.stringify({ username: 'ADMIN ', password: 'new-password-12345' }),
       });
       assert.equal(limited.status, 429);
-      assert.ok(Number(limited.headers.get('Retry-After')) > 0);
-      await assert.rejects(auth.login('admin', 'wrong-password', 'other-ip'), (error: any) => error.getStatus() === 401);
-      await assert.rejects(auth.login('admin', 'new-password-12345', 'third-ip'), (error: any) => error.getStatus() === 429);
-      await db.query("DELETE FROM auth_rate_events WHERE scope = 'refresh_ip'");
+      assert.equal((await limited.json()).error.code, 'TOO_MANY_REQUESTS');
+      const retryAfter = Number(limited.headers.get('Retry-After'));
+      assert.ok(retryAfter > 0 && retryAfter <= 900, `Retry-After ${retryAfter}`);
+      await flushRedis();
       for (let attempt = 0; attempt < 30; attempt++) {
         const invalidRefresh: Response = await fetch(`http://127.0.0.1:${port}/api/v1/auth/refresh`, {
           method: 'POST', headers: { Origin: process.env.PUBLIC_ORIGIN! },
@@ -433,7 +438,7 @@ test('PB-02 login creates a hashed refresh session and cookie-only tokens', { ti
       assert.equal(limitedRefresh.status, 429);
 
       // BR-03/04: two independent sessions; logout must only revoke the caller.
-      await db.query('DELETE FROM auth_rate_events');
+      await flushRedis();
       const loginDevice = async () => {
         const result = await fetch(`http://127.0.0.1:${port}/api/v1/auth/login`, {
           method: 'POST', headers: { 'Content-Type': 'application/json', Origin: process.env.PUBLIC_ORIGIN! },
@@ -556,10 +561,8 @@ test('test_ST3_AC7_login_lock_sequence', { timeout: 90_000 }, async (t) => {
     await new AuthService(db).login('st3_login', 'temporary-password-12', 'st3-ip');
     const sequence = lockSequence(sql);
     t.diagnostic(JSON.stringify(sequence));
-    assert.deepEqual(sequence, ['advisory', 'advisory', 'UPDATE:users']);
-    const advisory = sql.filter(statement => /pg_advisory_xact_lock/i.test(statement));
-    assert.equal(advisory.length, 2);
-    assert.ok(advisory.every(statement => /FROM \(SELECT 1 AS dummy_column\)/i.test(statement)));
+    assert.deepEqual(sequence, ['UPDATE:users']);
+    assert.equal(sql.filter(statement => /pg_advisory_xact_lock/i.test(statement)).length, 0, 'throttling moved to Redis: no advisory locks in login');
     assert.equal(sql.filter(statement => /lower\(btrim/i.test(statement)).length, 1);
   } finally {
     if (db.isInitialized) await db.destroy();
@@ -656,7 +659,7 @@ test('test_ST19_AC1_auth_lock_sequences', { timeout: 90_000 }, async (t) => {
 
     const sqlLogin = captureSql(t);
     const owner = await auth.login('st19_owner', 'temporary-password-12', 'st19-ip-1');
-    assert.deepEqual(lockSequence(sqlLogin), ['advisory', 'advisory', 'UPDATE:users', 'SHARE:stores']);
+    assert.deepEqual(lockSequence(sqlLogin), ['UPDATE:users', 'SHARE:stores']);
     t.mock.restoreAll();
     const sqlRefresh = captureSql(t);
     await auth.refresh(owner.refresh, owner.csrf, owner.csrf);
@@ -677,26 +680,6 @@ test('test_ST19_AC1_auth_lock_sequences', { timeout: 90_000 }, async (t) => {
     // The race test dispatches on this comment; accept raw or identifier-quoted form.
     assert.ok(sqlChange.some((statement) => /^\/\* SELECT [^*]*password_hash[^*]* \*\//.test(statement) && /FOR UPDATE/i.test(statement)));
     t.mock.restoreAll();
-  });
-});
-
-test('test_ST19_AC3_rate_limit_retry_after', { timeout: 90_000 }, async () => {
-  await withAuthDb('pos_st19c', async (db) => {
-    await db.query(`INSERT INTO users (id,role_id,full_name,username,password_hash) SELECT gen_random_uuid(),id,'ST19','st19_rate',$1 FROM roles WHERE name='PLATFORM_ADMIN'`, [await bcrypt.hash('temporary-password-12', 4)]);
-    const auth = new AuthService(db);
-    for (let attempt = 0; attempt < 5; attempt++) {
-      await assert.rejects(auth.login('st19_rate', 'wrong-password-12', 'st19-rate-ip'), (error: any) => error.getStatus() === 401);
-    }
-    // Age the oldest event of each scope by 600s: retryAfter must follow the oldest event (about 300s), not the newest.
-    await db.query("UPDATE auth_rate_events SET occurred_at = now() - interval '600 seconds' WHERE id IN (SELECT DISTINCT ON (scope) id FROM auth_rate_events ORDER BY scope, occurred_at)");
-    await assert.rejects(auth.login('st19_rate', 'wrong-password-12', 'st19-rate-ip'), (error: any) => {
-      const body = error.getResponse();
-      assert.equal(error.getStatus(), 429);
-      assert.equal(body.code, 'TOO_MANY_REQUESTS');
-      assert.ok(Number.isInteger(body.retryAfter) && body.retryAfter >= 1 && body.retryAfter <= 900, String(body.retryAfter));
-      assert.ok(body.retryAfter >= 290 && body.retryAfter <= 300, `retryAfter follows the oldest event: ${body.retryAfter}`);
-      return true;
-    });
   });
 });
 

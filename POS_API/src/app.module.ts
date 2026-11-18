@@ -6,6 +6,7 @@ import { NextFunction, Request, Response } from 'express';
 import { ApiErrorFilter } from './http/api-error.filter';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
+import { RedisModule } from './redis/redis.module';
 import { HealthController } from './http/health.controller';
 import { PlatformModule } from './platform/platform.module';
 import { OrganizationModule } from './organization/organization.module';
@@ -18,7 +19,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { ReportsModule } from './reports/reports.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, PlatformModule, OrganizationModule, UsersModule, MenuModule, ShiftsModule, SalesModule, InventoryModule, PromotionsModule, ReportsModule],
+  imports: [DatabaseModule, RedisModule, AuthModule, PlatformModule, OrganizationModule, UsersModule, MenuModule, ShiftsModule, SalesModule, InventoryModule, PromotionsModule, ReportsModule],
   controllers: [HealthController],
   providers: [{ provide: APP_FILTER, useClass: ApiErrorFilter }],
 })

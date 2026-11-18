@@ -41,7 +41,7 @@ Browser hiển thị và gửi ý định thao tác; **API là nguồn sự th�
 - Local dùng UI Vite, API NestJS và PostgreSQL qua Docker Compose; chưa có staging riêng. Lệnh hiện có xem `POS_UI/package.json`, `POS_API/package.json` và `POS_INFRA/compose.local.yml`.
 - Deploy: build image, chạy **lệnh TypeORM migration riêng** trên DB, chỉ đưa API phiên bản mới vào phục vụ khi migration thành công; không để API tự migration lúc khởi động. Migration cần tương thích với thời điểm chuyển phiên bản; khi thất bại, dừng deploy và xử lý/khôi phục theo bản sao lưu.
 - Sao lưu PostgreSQL **hằng ngày**, giữ **7 ngày**, lưu **ngoài VPS**; ảnh món trong DB nằm trong cùng bản sao lưu. Kiểm tra khả năng khôi phục định kỳ. Một VPS là điểm lỗi đơn, nên sự cố VPS có thể làm ngừng dịch vụ cho đến khi khôi phục.
-- Redis/BullMQ chưa là thành phần MVP mặc định. Chỉ thêm khi một nhu cầu cache/job nền cụ thể được chứng minh và ghi lại quyết định.
+- **Redis** là thành phần Giai đoạn 2, dùng cho cache đọc (menu, chi nhánh, bàn) và throttle đăng nhập/refresh bằng thành phần có sẵn của NestJS; thiết kế ở mục 10.1, chưa triển khai. Redis chỉ truy cập qua mạng nội bộ Compose, không công khai cổng, không là nguồn sự thật và không lưu dữ liệu nghiệp vụ duy nhất. BullMQ vẫn chưa dùng; chỉ thêm khi một nhu cầu job nền cụ thể được chứng minh và ghi lại quyết định.
 
 ## 5. Cấu trúc ứng dụng và chiều phụ thuộc
 
@@ -181,7 +181,54 @@ API theo [api-spec.md](../api-spec.md): JSON response bọc `data` trừ `204`, 
 
 Database constraint bảo vệ một ca mở mỗi người/branch, một đơn `OPEN` mỗi bàn, một payment cho invoice, idempotency key duy nhất và một refresh token hiện hành mỗi phiên. Service dùng transaction/row lock cho thao tác dễ tranh chấp; khi vi phạm unique do request song song, đọc lại trạng thái để trả kết quả hoặc lỗi nghiệp vụ đúng. Cập nhật menu/giá theo lần lưu sau cùng ở MVP, chưa dùng ETag. Index phục vụ truy vấn nóng theo store, branch, trạng thái và thời gian; tránh N+1 theo [rules/database.md](../../rules/database.md).
 
-Một VPS chỉ có một API instance ban đầu. Thiết kế không dựa vào state tiến trình cho tiền/đơn/kho; khi mở rộng nhiều instance, kiểm tra lại rate limit, cache và job trước khi thêm dịch vụ hỗ trợ.
+Một VPS chỉ có một API instance ban đầu. Thiết kế không dựa vào state tiến trình cho tiền/đơn/kho; khi triển khai Giai đoạn 2, throttle và cache nằm ở Redis nên nhiều API instance dùng chung được. Quy tắc cache chung ở [rules/database.md](../../rules/database.md) mục "Cache dữ liệu".
+
+### 10.1 Cache và throttle bằng Redis (Giai đoạn 2)
+
+Dùng thành phần có sẵn của NestJS thay vì tự viết: cache bằng `@nestjs/cache-manager` (`CACHE_MANAGER`) với Redis làm kho lưu; throttle bằng `@nestjs/throttler` (`ThrottlerModule`, `ThrottlerGuard`) với kho đếm đặt ở Redis. Cả hai dùng chung một `REDIS_URL`. Thư viện và phiên bản ở [TECH_STACK.md](TECH_STACK.md); mã ở `POS_API/src/redis/`.
+
+Cấu hình: biến `REDIS_URL` **bắt buộc**; thiếu thì API không khởi động (giống `JWT_SECRET`). Redis lỗi lúc đang chạy thì **fail-open**: bỏ qua cache và throttle, ghi log cảnh báo, request vẫn được phục vụ từ PostgreSQL. Lỗi từ kho Redis được bắt ở lớp bọc; không để nó thành `500`.
+
+**Cache theo mẫu cache-aside.**
+
+1. Lần đầu chưa có khóa: đọc PostgreSQL, ghi kết quả vào Redis kèm TTL rồi trả kết quả.
+2. Lần sau có khóa (cache hit): trả đúng dữ liệu đã lưu từ Redis, không chạy truy vấn.
+3. Khi dữ liệu bị ghi: xóa các khóa liên quan sau khi transaction commit; request kế tiếp quay lại bước 1.
+
+| Nhóm | Dữ liệu | Khóa | Ghi xóa cache |
+| --- | --- | --- | --- |
+| `menu` | Danh mục, size, món (danh sách và chi tiết), topping, topping theo danh mục | `cache:menu:<storeId>:<tên truy vấn>:<tham số>` | Mọi thao tác tạo/sửa/xóa danh mục, size, món, size của món, topping, liên kết topping, ảnh món |
+| `org` | Danh sách chi nhánh, danh sách bàn | `cache:org:<storeId>:<tên truy vấn>:<chi nhánh và quyền xem mọi chi nhánh của người gọi, tham số>` | Tạo/sửa chi nhánh, tạo/sửa bàn |
+
+- TTL 5 phút, dùng để tự dọn; đúng dữ liệu được bảo đảm bằng việc xóa khóa khi ghi, không bằng TTL.
+- Gọi `CACHE_MANAGER` trong service (hoặc interceptor có `trackBy` riêng), **không** dùng khóa tự sinh theo URL của `CacheInterceptor`: khóa đó không chứa `storeId` nên có thể trả dữ liệu của cửa hàng khác.
+- `cache-manager` chỉ xóa theo từng khóa, không xóa theo tiền tố. Mỗi nhóm của một store giữ một khóa chỉ mục `cache:<nhóm>:<storeId>:index` liệt kê các khóa đã nạp; khi ghi thì đọc chỉ mục, xóa từng khóa rồi xóa chỉ mục. Cách này cần chốt khi viết spec (xem "Còn mở").
+- Cache chỉ phục vụ API đọc danh sách/chi tiết. **Không** cache và không đọc từ cache trong: kiểm tra phiên và quyền mỗi request (theo [auth.md](auth.md) mục 2), tính giá và tổng đơn, thanh toán, trừ kho, ca, báo cáo, tồn kho. Giá của đơn luôn được server tính lại từ PostgreSQL, nên cache menu cũ không làm sai tiền.
+- Quyền và phạm vi chi nhánh được kiểm trước khi đọc cache.
+
+**Throttle** (thay giới hạn tần suất lưu PostgreSQL trong bảng `auth_rate_events`; bảng này bị bỏ bằng migration khi triển khai):
+
+- Cơ chế là **bộ đếm cửa sổ cố định** của `@nestjs/throttler`: mỗi khóa (IP hoặc username) có một bộ đếm, hết `ttl` thì đặt lại; vượt `limit` thì trả `429 TOO_MANY_REQUESTS` kèm `Retry-After`. Không dùng cửa sổ trượt.
+- Bộ đếm đặt trong Redis để nhiều API instance dùng chung. Khóa theo IP dùng IP từ kết nối hoặc reverse proxy tin cậy; khóa theo username dùng giá trị đã chuẩn hóa `lower(btrim())` bằng PostgreSQL. Throttler băm khóa nên Redis không chứa username hay IP gốc.
+- Áp dụng bằng `AuthThrottlerGuard` (kế thừa `ThrottlerGuard`) trên hai route, với ba throttler có tên cấu hình ở `AuthModule`; mỗi route bỏ throttler không dùng bằng `@SkipThrottle`:
+
+| Route | Throttler | Giới hạn | Cửa sổ |
+| --- | --- | --- | --- |
+| `POST /auth/login` | `login_user` (theo username chuẩn hóa) | 10 lần | 15 phút |
+| `POST /auth/login` | `login_ip` (theo IP) | 20 lần | 15 phút |
+| `POST /auth/refresh` | `refresh_ip` (theo IP) | 30 lần | 1 phút |
+
+- `ThrottlerGuard` đếm **mọi** request tới route, không chỉ lần thất bại; vì vậy limit login lớn hơn quy tắc cũ "5 lần thất bại trong 15 phút" để người dùng đăng nhập đúng nhiều lần (đổi ca, đổi máy) không bị khóa.
+- `AuthThrottlerGuard` bắt lỗi kho Redis và cho request đi qua (fail-open); chỉ `429` được ném lại, cùng mã `TOO_MANY_REQUESTS` và `Retry-After` như trước.
+- Fail-open nghĩa là lúc Redis chết, giới hạn thử mật khẩu không có hiệu lực; vận hành phải theo dõi log cảnh báo và tình trạng Redis.
+
+**Đã chốt (18/11/2026, chủ dự án):**
+
+- Throttle đếm mọi lần gọi với limit lớn hơn quy tắc cũ (bảng trên); không tự viết lớp đếm riêng chỉ lần thất bại.
+- Xóa cache theo nhóm bằng khóa chỉ mục `cache:<nhóm>:<storeId>:index` như trên, không dùng `SCAN`. Giới hạn đã biết: hai lần nạp đầu tiên chạy song song có thể làm một khóa không vào chỉ mục, khi đó khóa sống tới hết TTL 5 phút; chỉ ảnh hưởng hiển thị, tiền luôn tính từ PostgreSQL.
+- Redis lỗi thì fail-open ở cả cache (`StoreCache` bắt lỗi, trả dữ liệu từ DB) và throttle (`AuthThrottlerGuard`).
+
+**Chạy local và test:** `POS_INFRA/compose.local.yml` có service `redis`; CI có service Redis. Test API cần Redis thật qua `REDIS_URL`, nên trỏ vào một số database riêng (ví dụ `redis://127.0.0.1:6379/15`) vì `npm test` xóa sạch database Redis đó ở đầu mỗi file test (`POS_API/test-setup/flush-redis.mjs`).
 
 ## 11. Bảo mật và vận hành
 

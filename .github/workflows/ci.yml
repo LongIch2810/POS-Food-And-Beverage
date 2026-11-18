@@ -4,9 +4,17 @@ on:
   push:
     branches:
       - '**'
+    paths:
+      - 'POS_API/**'
+      - 'POS_UI/**'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches:
       - master
+    paths:
+      - 'POS_API/**'
+      - 'POS_UI/**'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
 
 concurrency:
@@ -30,6 +38,15 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -66,6 +83,7 @@ jobs:
           JWT_SECRET: ci_test_jwt_secret_must_be_at_least_32_bytes_long!
           CSRF_SECRET: ci_test_csrf_secret_must_be_at_least_32_bytes_long!
           PUBLIC_ORIGIN: http://localhost:5173
+          REDIS_URL: redis://localhost:6379
         run: npm test
 
       - name: Audit dependencies
@@ -100,6 +118,7 @@ jobs:
         working-directory: POS_UI
         run: npm test
 
+      # Build tools (vite and its helpers) are devDependencies and never reach the production bundle, so only runtime dependencies gate CI.
       - name: Audit dependencies
         working-directory: POS_UI
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high

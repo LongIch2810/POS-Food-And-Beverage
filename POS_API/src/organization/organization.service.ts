@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { And, DataSource, Equal, EntityManager, FindOptionsWhere } from 'typeorm';
 import { UserSummary } from '../auth/auth.service';
 import { httpError } from '../http/http-error';
+import { Cached, Invalidates } from '../redis/cache.decorators';
+import { StoreCache } from '../redis/store-cache';
 import { Branch } from './entities/branch.entity';
 import { DiningTable } from './entities/dining-table.entity';
 import { WorkShift } from '../shifts/entities/work-shift.entity';
@@ -31,7 +33,7 @@ function tableView(table: DiningTable) {
 
 @Injectable()
 export class OrganizationService {
-  constructor(private readonly db: DataSource) {}
+  constructor(private readonly db: DataSource, private readonly cache?: StoreCache) {}
 
   private async unique<T>(operation: () => Promise<T>): Promise<T> {
     try { return await operation(); } catch (error) {
@@ -56,6 +58,7 @@ export class OrganizationService {
     return branch;
   }
 
+  @Cached('org')
   async listBranches(user: UserSummary, page: OrganizationPage) {
     // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
     const query = this.db.getRepository(Branch).createQueryBuilder('b').where('b.store_id = :storeId', { storeId: user.storeId });
@@ -66,6 +69,7 @@ export class OrganizationService {
     return { ...result, data: result.data.map(row => ({ ...row, initialCash: money(row.initialCash) })) };
   }
 
+  @Invalidates('org')
   async createBranch(user: UserSummary, input: CreateBranchDto) {
     return this.unique(async () => {
       const repo = this.db.getRepository(Branch);
@@ -75,6 +79,7 @@ export class OrganizationService {
     });
   }
 
+  @Invalidates('org')
   async patchBranch(user: UserSummary, id: string, input: PatchBranchDto) {
     return this.unique(() => this.db.transaction(async manager => {
       const repo = manager.getRepository(Branch);
@@ -98,6 +103,7 @@ export class OrganizationService {
     }));
   }
 
+  @Cached('org')
   async listTables(user: UserSummary, page: OrganizationPage) {
     if (page.branchId) await this.branchInScope(this.db.manager, page.branchId, user);
     // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
@@ -109,6 +115,7 @@ export class OrganizationService {
       't.created_at AS "createdAt"', 't.updated_at AS "updatedAt"']);
   }
 
+  @Invalidates('org')
   async createTable(user: UserSummary, input: CreateTableDto) {
     const allBranches = user.permissions.includes('branch.access_all');
     if ((allBranches && !input.branchId) || (!allBranches && input.branchId !== undefined) || (!allBranches && !user.branchId)) {
@@ -122,6 +129,7 @@ export class OrganizationService {
     }));
   }
 
+  @Invalidates('org')
   async patchTable(user: UserSummary, id: string, input: PatchTableDto) {
     return this.unique(() => this.db.transaction(async manager => {
       const repo = manager.getRepository(DiningTable);

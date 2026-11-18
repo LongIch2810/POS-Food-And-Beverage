@@ -9,6 +9,8 @@ import { AccessGuard, AuthenticatedRequest } from '../security/access.guard';
 import { authValidationPipe, ChangePasswordRequestDto, LoginRequestDto, SessionResponseDto, UserResponseDto } from './auth.dto';
 import { AuthBodyGuard, LocalAuthGuard } from '../security/local-auth.guard';
 import { authCookie } from './auth-cookie';
+import { SkipThrottle } from '@nestjs/throttler';
+import { AuthThrottlerGuard } from '../../redis/auth-throttler.guard';
 
 @Controller('api/v1/auth')
 export class AuthController {
@@ -74,6 +76,8 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @UseGuards(AuthThrottlerGuard)
+  @SkipThrottle({ login_ip: true, login_user: true })
   @ApiOkResponse({ type: SessionResponseDto })
   @ApiResponse({ status: 401, type: ErrorResponseDto })
   @ApiResponse({ status: 403, type: ErrorResponseDto })
@@ -82,7 +86,6 @@ export class AuthController {
   async refresh(@Req() request: Request, @Res() response: Response): Promise<void> {
     this.checkOrigin(request);
     this.noInput(request);
-    await this.auth.recordRefreshAttempt(request.socket.remoteAddress ?? '');
     let session: Awaited<ReturnType<AuthService['refresh']>>;
     try {
       session = await this.auth.refresh(authCookie(request, '__Host-pos_refresh'), request.header('X-CSRF-Token'), authCookie(request, '__Host-pos_csrf'));
@@ -111,7 +114,8 @@ export class AuthController {
   }
 
   @Post('login')
-  @UseGuards(LocalAuthGuard)
+  @UseGuards(AuthThrottlerGuard, LocalAuthGuard)
+  @SkipThrottle({ refresh_ip: true })
   @ApiBody({ type: LoginRequestDto })
   @ApiOkResponse({ type: SessionResponseDto })
   @ApiResponse({ status: 400, type: ErrorResponseDto })

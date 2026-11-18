@@ -15,6 +15,8 @@ File này ghi **công nghệ đã có trong mã hoặc cấu hình repository**;
 | `cookie-parser`, `cookie` | Đọc Cookie request và tạo Set-Cookie response |
 | `class-validator`, `class-transformer` | Xác thực DTO request với NestJS `ValidationPipe` |
 | `@nestjs/swagger` | Sinh OpenAPI và Swagger UI chỉ trong development |
+| `@nestjs/cache-manager`, `cache-manager`, `keyv`, `@keyv/redis` | Cache-aside cho menu, chi nhánh và bàn; kho lưu là Redis (`POS_API/src/redis/`) |
+| `@nestjs/throttler`, `@nest-lab/throttler-storage-redis`, `ioredis` | Throttle cửa sổ cố định cho `POST /auth/login` và `POST /auth/refresh`; bộ đếm ở Redis |
 
 ## Frontend — `POS_UI/`
 
@@ -34,9 +36,10 @@ PB-13 đã nối xác thực PB-02, quản trị nền tảng PB-03 và Cài đ�
 | --- | --- |
 | Docker Compose | Khởi chạy cụm local full-stack gồm database, backend API và frontend UI từ `compose.local.yml` |
 | PostgreSQL 17 container | Database phát triển và kiểm thử local |
+| Redis 7 container (`redis:7-alpine`) | Cache và bộ đếm throttle local; cũng là service của CI |
 | Node.js 22 Alpine Dockerfile | Image môi trường chạy cho `POS_API` (biên dịch TypeScript, chạy TypeORM migration và khởi động API NestJS) và `POS_UI` (Vite dev server) |
 
-Reverse proxy, TLS, image production, backup và Redis/BullMQ chưa có cấu hình triển khai trong repository. Chúng là kiến trúc dự kiến hoặc chỉ thêm khi có nhu cầu được chốt.
+Reverse proxy, TLS, image production, backup và BullMQ chưa có cấu hình triển khai trong repository. Chúng là kiến trúc dự kiến hoặc chỉ thêm khi có nhu cầu được chốt. Redis chỉ có cấu hình local và CI; chưa có cấu hình production. Thiết kế cache và throttle ở [ARCHITECTURE.md](ARCHITECTURE.md) mục 10.1.
 
 ## Kiểm thử và công cụ
 
