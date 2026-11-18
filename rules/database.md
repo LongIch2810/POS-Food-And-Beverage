@@ -28,6 +28,19 @@
 - Chọn thứ tự khóa nhất quán cho các thao tác đụng nhiều bản ghi để giảm nguy cơ deadlock. Chỉ thử lại transaction khi thao tác an toàn trước việc chạy lại.
 - Tác dụng phụ bên ngoài cơ sở dữ liệu chỉ được phát sau khi transaction thành công; nếu cần bảo đảm không thất lạc, dùng cơ chế ghi nhận công việc trong cùng transaction.
 
+## Cache dữ liệu
+
+- Dùng cơ chế cache-aside: lần đầu chưa có khóa thì đọc cơ sở dữ liệu rồi ghi kết quả vào cache; các lần sau có khóa thì trả dữ liệu từ cache, không chạy lại truy vấn. Ưu tiên thành phần cache có sẵn của framework thay vì tự viết kho cache.
+- Cơ sở dữ liệu là nguồn sự thật duy nhất. Cache chỉ là bản sao đọc nhanh, mất hoặc hỏng thì hệ thống vẫn đúng, chỉ chậm hơn: khi kho cache lỗi, đọc thẳng cơ sở dữ liệu và ghi log cảnh báo; không để lỗi cache làm hỏng request.
+- Chỉ cache dữ liệu đọc nhiều, ghi ít và chấp nhận được khi cũ trong thời gian ngắn (ví dụ menu, danh mục, cấu hình). Không cache dữ liệu quyết định tiền, tồn kho, quyền hoặc phiên đăng nhập: giá, tổng tiền, trừ kho, kiểm tra quyền và kiểm tra phiên luôn đọc cơ sở dữ liệu trong transaction.
+- Khóa cache bắt đầu bằng phạm vi tenant (`store`) và tên nhóm dữ liệu, ví dụ `cache:menu:<storeId>:...`; phần còn lại gồm tên truy vấn và mọi tham số làm đổi kết quả (bộ lọc, con trỏ, giới hạn, phạm vi chi nhánh của người gọi). Thiếu một tham số là trả nhầm dữ liệu giữa người dùng hoặc giữa cửa hàng.
+- Kiểm quyền và phạm vi trước khi đọc cache; cache không thay thế kiểm quyền.
+- Mọi cache có hạn sống (TTL) để tự dọn; hạn mặc định ngắn (vài phút), không dùng làm cơ chế duy nhất bảo đảm đúng dữ liệu.
+- Ghi dữ liệu xong thì xóa các khóa cache liên quan (theo tenant và nhóm; nếu kho cache chỉ xóa được từng khóa thì giữ một khóa chỉ mục liệt kê các khóa của nhóm) **sau khi transaction commit**, không trước. Mọi đường ghi vào bảng đã được cache đều phải xóa; thêm đường ghi mới thì kiểm lại danh sách này. Xóa trước commit cho phép một request khác nạp lại dữ liệu cũ vào cache.
+- Chỉ lưu vào cache kết quả đã tuần tự hóa được (JSON); không lưu thực thể ORM sống hoặc dữ liệu nhạy cảm (mật khẩu, token). Dữ liệu trả từ cache phải có cùng hình dạng với dữ liệu đọc từ cơ sở dữ liệu.
+- Không dùng khóa tự sinh theo địa chỉ URL của framework cho dữ liệu theo tenant; khóa luôn do mã ứng dụng dựng theo quy tắc trên.
+- Kiểm thử cache bằng kho cache thật: cache trúng (không chạy lại truy vấn), xóa sau khi ghi, tách biệt giữa hai cửa hàng và hành vi khi kho cache lỗi.
+
 ## Ràng buộc và mô hình dữ liệu
 
 - Dùng khóa chính, khóa ngoại, `NOT NULL`, `UNIQUE` và điều kiện kiểm tra để bảo vệ những bất biến có thể diễn đạt ở cơ sở dữ liệu. Kiểm tra ở ứng dụng vẫn cần thiết để trả lỗi dễ hiểu.

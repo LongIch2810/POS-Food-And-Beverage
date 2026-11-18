@@ -4,7 +4,6 @@ import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import { DataSource, EntityManager, IsNull, Raw, SelectQueryBuilder } from 'typeorm';
 import { httpError } from '../http/http-error';
-import { AuthRateEvent } from './entities/auth-rate-event.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { RolePermission } from './entities/role-permission.entity';
 import { Store } from '../platform/entities/store.entity';
@@ -71,54 +70,11 @@ export class AuthService {
     };
   }
 
-  private rateKey(scope: string, value: string): string {
-    return createHmac('sha256', process.env.CSRF_SECRET!).update(`${scope}:${value}`).digest('hex');
-  }
-
-  private async checkRate(manager: EntityManager, scope: string, key: string, limit: number, seconds: number): Promise<void> {
-    const repo = manager.getRepository(AuthRateEvent);
-    const where = {
-      scope,
-      key_hash: key,
-      occurred_at: Raw((a) => `${a} > now() - (:seconds * interval '1 second')`, { seconds }),
-    };
-    const count = await repo.count({ where });
-
-    if (count >= limit) {
-      const oldest = await repo.findOne({ where, select: { id: true, occurred_at: true }, order: { occurred_at: 'ASC' } });
-      const retryAfter = oldest ? Math.max(1, Math.ceil((oldest.occurred_at.getTime() + seconds * 1000 - Date.now()) / 1000)) : 1; // oldest expired between the two reads
-      throw new HttpException({ code: 'TOO_MANY_REQUESTS', message: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.', retryAfter }, 429);
-    }
-  }
-
-  private async recordRate(manager: EntityManager, scope: string, key: string): Promise<void> {
-    const repo = manager.getRepository(AuthRateEvent);
-    await repo.save(repo.create({ scope, key_hash: key }));
-  }
-
-  async recordRefreshAttempt(ip: string): Promise<void> {
-    const key = this.rateKey('refresh_ip', ip);
-    await this.db.transaction(async (manager) => {
-      await manager.getRepository(AuthRateEvent).delete({ occurred_at: Raw((a) => `${a} < now() - interval '15 minutes'`) });
-      // QueryBuilder: table-less SELECT (advisory lock or probe); no repository method runs it
-      await manager.createQueryBuilder().select('pg_advisory_xact_lock(hashtextextended(:lockKey, 0))', 'locked').fromDummy().setParameter('lockKey', key).getRawOne();
-      await this.checkRate(manager, 'refresh_ip', key, 30, 60);
-      await this.recordRate(manager, 'refresh_ip', key);
-    });
-  }
-
   async login(username: string, password: string, ip: string, userAgent?: string): Promise<{ user: SessionUser; access: string; refresh: string; csrf: string }> {
     const normalized = await normalizeUsername(this.db, username);
-    const keys = [this.rateKey('login_ip', ip), this.rateKey('login_username', normalized)];
     const sessionId = randomUUID();
     const refresh = randomBytes(32).toString('base64url');
     const outcome = await this.db.transaction(async (manager) => {
-      await manager.getRepository(AuthRateEvent).delete({ occurred_at: Raw((a) => `${a} < now() - interval '15 minutes'`) });
-      // QueryBuilder: table-less SELECT (advisory lock or probe); no repository method runs it
-      for (const key of [...keys].sort()) await manager.createQueryBuilder().select('pg_advisory_xact_lock(hashtextextended(:lockKey, 0))', 'locked').fromDummy().setParameter('lockKey', key).getRawOne();
-      await this.checkRate(manager, 'login_ip', keys[0], 5, 900);
-      await this.checkRate(manager, 'login_username', keys[1], 5, 900);
-
       const identity = await manager.getRepository(User).findOne({
         where: { username: normalized }, select: { id: true }, lock: { mode: 'pessimistic_write' },
       });
@@ -135,8 +91,6 @@ export class AuthService {
         where: { id: user.store_id }, lock: { mode: 'pessimistic_read' },
       }) : null;
       if (!matches || !user?.is_active || store?.status === 'SUSPENDED') {
-        await this.recordRate(manager, 'login_ip', keys[0]);
-        await this.recordRate(manager, 'login_username', keys[1]);
         return undefined;
       }
 

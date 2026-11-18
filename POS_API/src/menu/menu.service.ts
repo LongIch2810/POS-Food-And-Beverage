@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, In, Repository } from 'typeorm';
 import { UserSummary } from '../auth/auth.service';
 import { httpError } from '../http/http-error';
+import { Cached, Invalidates } from '../redis/cache.decorators';
+import { StoreCache } from '../redis/store-cache';
 import { Category } from './entities/category.entity';
 import { CategoryTopping } from './entities/category-topping.entity';
 import { Product } from './entities/product.entity';
@@ -68,7 +70,7 @@ export class MenuService {
   private readonly toppingRepo: Repository<Topping>;
   private readonly categoryToppingRepo: Repository<CategoryTopping>;
 
-  constructor(private readonly dataSource: DataSource) {
+  constructor(private readonly dataSource: DataSource, private readonly cache?: StoreCache) {
     this.categoryRepo = this.dataSource.getRepository(Category);
     this.sizeRepo = this.dataSource.getRepository(Size);
     this.productRepo = this.dataSource.getRepository(Product);
@@ -102,6 +104,7 @@ export class MenuService {
 
   // --- CATEGORIES ---
 
+  @Cached('menu')
   async listCategories(user: UserSummary, page: MenuPage) {
     const storeId = this.storeId(user);
     // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
@@ -121,6 +124,7 @@ export class MenuService {
     ]);
   }
 
+  @Invalidates('menu')
   async createCategory(user: UserSummary, input: CreateCategoryDto): Promise<CategoryOutputDto> {
     const storeId = this.storeId(user);
     const existing = await this.categoryRepo.findOne({ where: { store_id: storeId, name: input.name } });
@@ -146,6 +150,7 @@ export class MenuService {
     };
   }
 
+  @Invalidates('menu')
   async patchCategory(user: UserSummary, id: string, input: PatchCategoryDto): Promise<CategoryOutputDto> {
     const storeId = this.storeId(user);
     const category = await this.categoryRepo.findOne({ where: { id, store_id: storeId } });
@@ -173,6 +178,7 @@ export class MenuService {
     };
   }
 
+  @Invalidates('menu')
   async deleteCategory(user: UserSummary, id: string): Promise<void> {
     const storeId = this.storeId(user);
     const category = await this.categoryRepo.findOne({ where: { id, store_id: storeId } });
@@ -197,6 +203,7 @@ export class MenuService {
 
   // --- SIZES ---
 
+  @Cached('menu')
   async listSizes(user: UserSummary): Promise<SizeOutputDto[]> {
     const storeId = this.storeId(user);
     const sizes = await this.sizeRepo.find({
@@ -213,6 +220,7 @@ export class MenuService {
     }));
   }
 
+  @Invalidates('menu')
   async createSize(user: UserSummary, input: CreateSizeDto): Promise<SizeOutputDto> {
     const storeId = this.storeId(user);
     const existing = await this.sizeRepo.findOne({ where: { store_id: storeId, name: input.name } });
@@ -234,6 +242,7 @@ export class MenuService {
     };
   }
 
+  @Invalidates('menu')
   async patchSize(user: UserSummary, id: string, input: PatchSizeDto): Promise<SizeOutputDto> {
     const storeId = this.storeId(user);
     const size = await this.sizeRepo.findOne({ where: { id, store_id: storeId } });
@@ -257,6 +266,7 @@ export class MenuService {
     };
   }
 
+  @Invalidates('menu')
   async deleteSize(user: UserSummary, id: string): Promise<void> {
     const storeId = this.storeId(user);
     const size = await this.sizeRepo.findOne({ where: { id, store_id: storeId } });
@@ -271,6 +281,7 @@ export class MenuService {
 
   // --- PRODUCTS ---
 
+  @Cached('menu')
   async listProducts(user: UserSummary, page: MenuPage) {
     const storeId = this.storeId(user);
     // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
@@ -336,6 +347,7 @@ export class MenuService {
     };
   }
 
+  @Cached('menu')
   async getProduct(user: UserSummary, id: string): Promise<ProductDetailDto> {
     const storeId = this.storeId(user);
     const product = await this.productRepo.findOne({
@@ -371,6 +383,7 @@ export class MenuService {
     };
   }
 
+  @Invalidates('menu')
   async createProduct(user: UserSummary, input: CreateProductDto): Promise<ProductOutputDto> {
     const storeId = this.storeId(user);
     const category = await this.categoryRepo.findOne({ where: { id: input.categoryId, store_id: storeId } });
@@ -401,6 +414,7 @@ export class MenuService {
     };
   }
 
+  @Invalidates('menu')
   async patchProduct(user: UserSummary, id: string, input: PatchProductDto): Promise<ProductOutputDto> {
     const storeId = this.storeId(user);
     const product = await this.productRepo.findOne({
@@ -463,6 +477,7 @@ export class MenuService {
     };
   }
 
+  @Invalidates('menu')
   async deleteProduct(user: UserSummary, id: string): Promise<void> {
     const storeId = this.storeId(user);
     const product = await this.productRepo.findOne({ where: { id, category: { store_id: storeId } } });
@@ -483,6 +498,7 @@ export class MenuService {
 
   // --- PRODUCT IMAGE ---
 
+  @Invalidates('menu')
   async uploadProductImage(
     user: UserSummary,
     productId: string,
@@ -527,6 +543,7 @@ export class MenuService {
     return { buffer, mime: product.image_mime };
   }
 
+  @Invalidates('menu')
   async deleteProductImage(user: UserSummary, productId: string): Promise<void> {
     const storeId = this.storeId(user);
     const product = await this.productRepo.findOne({ where: { id: productId, category: { store_id: storeId } } });
@@ -540,6 +557,7 @@ export class MenuService {
 
   // --- PRODUCT SIZES & PRICING ---
 
+  @Invalidates('menu')
   async createProductSize(
     user: UserSummary,
     productId: string,
@@ -576,6 +594,7 @@ export class MenuService {
     };
   }
 
+  @Invalidates('menu')
   async patchProductSize(user: UserSummary, id: string, input: PatchProductSizeDto): Promise<ProductSizeOutputDto> {
     const storeId = this.storeId(user);
     const productSize = await this.productSizeRepo.findOne({
@@ -599,6 +618,7 @@ export class MenuService {
     };
   }
 
+  @Invalidates('menu')
   async deleteProductSize(user: UserSummary, id: string): Promise<void> {
     const storeId = this.storeId(user);
     const productSize = await this.productSizeRepo.findOne({
@@ -616,6 +636,7 @@ export class MenuService {
 
   // --- TOPPINGS ---
 
+  @Cached('menu')
   async listToppings(user: UserSummary, page: MenuPage) {
     const storeId = this.storeId(user);
     // QueryBuilder: cursor needs microsecond to_char, a row-value comparison or ORDER BY lower()
@@ -642,6 +663,7 @@ export class MenuService {
     };
   }
 
+  @Invalidates('menu')
   async createTopping(user: UserSummary, input: CreateToppingDto): Promise<ToppingOutputDto> {
     const storeId = this.storeId(user);
     const existing = await this.toppingRepo.findOne({ where: { store_id: storeId, name: input.name } });
@@ -665,6 +687,7 @@ export class MenuService {
     };
   }
 
+  @Invalidates('menu')
   async patchTopping(user: UserSummary, id: string, input: PatchToppingDto): Promise<ToppingOutputDto> {
     const storeId = this.storeId(user);
     const topping = await this.toppingRepo.findOne({ where: { id, store_id: storeId } });
@@ -690,6 +713,7 @@ export class MenuService {
     };
   }
 
+  @Invalidates('menu')
   async deleteTopping(user: UserSummary, id: string): Promise<void> {
     const storeId = this.storeId(user);
     const topping = await this.toppingRepo.findOne({ where: { id, store_id: storeId } });
@@ -708,6 +732,7 @@ export class MenuService {
 
   // --- CATEGORY TOPPING LINKS ---
 
+  @Cached('menu')
   async listCategoryToppings(user: UserSummary, categoryId: string): Promise<ToppingOutputDto[]> {
     const storeId = this.storeId(user);
     const category = await this.categoryRepo.findOne({ where: { id: categoryId, store_id: storeId } });
@@ -732,6 +757,7 @@ export class MenuService {
       }));
   }
 
+  @Invalidates('menu')
   async linkTopping(user: UserSummary, categoryId: string, input: LinkToppingDto): Promise<CategoryToppingOutputDto> {
     const storeId = this.storeId(user);
     const category = await this.categoryRepo.findOne({ where: { id: categoryId, store_id: storeId } });
@@ -754,6 +780,7 @@ export class MenuService {
     return { categoryId, toppingId: input.toppingId };
   }
 
+  @Invalidates('menu')
   async unlinkTopping(user: UserSummary, categoryId: string, toppingId: string): Promise<void> {
     const storeId = this.storeId(user);
     const category = await this.categoryRepo.findOne({ where: { id: categoryId, store_id: storeId } });

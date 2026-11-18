@@ -70,7 +70,7 @@ Mỗi login tạo `session_id` riêng. Guard xác minh JWT, kiểm tra refresh t
 
 Refresh khóa token hiện hành trong transaction, đánh dấu `revoked_at` và `replaced_at`, thêm token mới cùng session. Nếu token đã xoay bị dùng lại, thu hồi mọi token của session đó và xóa cookie; phiên khác còn hiệu lực. Logout thu hồi đúng session; đổi mật khẩu cập nhật hash, xóa cờ và thu hồi mọi phiên trong một transaction. Khóa user/store ở PB sau phải thu hồi phiên trong transaction của chính thao tác đó; guard PB-02 vẫn từ chối ngay khi trạng thái DB đã khóa.
 
-Login giới hạn 5 lần **thất bại** trong 15 phút trượt theo username chuẩn hóa và theo IP; lần thứ sáu bị từ chối trước khi kiểm tra mật khẩu. User không tồn tại vẫn được tính. Refresh giới hạn 30 lần gọi/phút trượt theo IP. Bộ đếm lưu PostgreSQL, kiểm tra/ghi nguyên tử dưới cạnh tranh. `429` kèm `Retry-After` giây đến lúc sự kiện cũ nhất rời cửa sổ. Chỉ tin IP của kết nối hoặc proxy đã cấu hình. Sự kiện hết hạn được dọn định kỳ; không lưu username/IP thô trong bảng giới hạn.
+Từ 18/11/2026 giới hạn tần suất dùng throttle cửa sổ cố định (`@nestjs/throttler`) với bộ đếm ở Redis, thay quy tắc cửa sổ trượt cũ lưu PostgreSQL (bảng `auth_rate_events` bị bỏ bằng migration `20261118000000-DropAuthRateEvents`). Login: 10 lần/15 phút theo username chuẩn hóa và 20 lần/15 phút theo IP, đếm mọi lần gọi. Refresh: 30 lần/phút theo IP. User không tồn tại vẫn được tính. `429 TOO_MANY_REQUESTS` kèm `Retry-After` giây đến lúc cửa sổ hết hạn. Redis lỗi thì fail-open. Chỉ tin IP của kết nối hoặc proxy đã cấu hình; Redis không chứa username/IP thô (khóa được băm). Quy tắc cũ (5 lần thất bại/15 phút trượt) là lịch sử.
 
 ## Chi tiết endpoint để rà soát
 
