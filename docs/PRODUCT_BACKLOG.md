@@ -39,7 +39,7 @@ Mỗi PB được tách thành item nhỏ khi refinement. Các mục Tùy chọn
 
 ## Product Backlog Giai đoạn 2
 
-Phạm vi chốt ngày 16/11/2026, quy tắc ở [BUSINESS_RULES.md](BUSINESS_RULES.md) mục 18 (BR-106..BR-122), tổng quan ở [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md) mục 5. **Chưa có sprint nào được chọn, chưa có spec.** Mỗi mục cần spec trong `.devloopflow/specs/` trước khi code. Chạy và nghiệm thu local, không phụ thuộc PB-14. Thứ tự dưới đây là đề xuất, Product Owner chọn sprint.
+Phạm vi chốt ngày 16/11/2026, quy tắc ở [BUSINESS_RULES.md](BUSINESS_RULES.md) mục 18 (BR-106..BR-122), tổng quan ở [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md) mục 5. **Sprint 11 đã được Product Owner chốt phạm vi ngày 18/11/2026; chưa có spec. Sprint 12–16 trong lộ trình bên dưới vẫn chỉ là đề xuất.** Mỗi mục cần spec trong `.devloopflow/specs/` trước khi code. Chạy và nghiệm thu local, không phụ thuộc PB-14. Thứ tự dưới đây là đề xuất, Product Owner chọn sprint.
 
 | ID | Kết quả người dùng / điều kiện chấp nhận chính | Phụ thuộc |
 | --- | --- | --- |
@@ -60,6 +60,17 @@ Phạm vi chốt ngày 16/11/2026, quy tắc ở [BUSINESS_RULES.md](BUSINESS_RU
 **Đã chốt thêm 16/11/2026:** thu ngân giảm tay trong giới hạn `OWNER` cấu hình, vượt thì cần quản lý; hai gói cố định `BASIC` và `PRO`; hủy phiếu nhập ghi sai bằng dòng đảo dấu; PDF gồm tên, chi nhánh, địa chỉ, logo, mã QR, phương thức và giờ thanh toán.
 
 **Đã chốt thêm:** chưa đặt giới hạn thì thu ngân không giảm tay được; `BASIC` giới hạn 1 chi nhánh / 5 tài khoản / 15 bàn, `PRO` 5 / 30 / không giới hạn bàn; chỉ `PRO` có lợi nhuận gộp và xuất PDF; nhật ký đầy đủ nội dung, giữ 12 tháng.
+
+**Lộ trình (18/11/2026; Sprint 11 đã chốt, Sprint 12–16 là đề xuất):** 6 sprint, mỗi sprint có hồ sơ riêng. Thứ tự theo dependency: PB-16 trước (đổi hành vi cũ), kho/giá vốn (PB-17) trước nhật ký và lợi nhuận, gói (PB-25) trước hai tính năng chỉ `PRO` (PB-22, PB-19), tách bill (PB-23) cuối vì rủi ro cao vào lõi bán hàng.
+
+| Sprint | Item | Lý do ghép |
+| --- | --- | --- |
+| [Sprint 11](../sprints/sprint-11/SPRINT.md) | PB-16, PB-17, chọn ngân hàng ở Cài đặt (PB-13) | Bãi bỏ hủy `PAID` trước; phiếu nhập và giá vốn bình quân là nền cho các sprint sau; select box ngân hàng là việc nhỏ của lát cắt Cài đặt |
+| [Sprint 12](../sprints/sprint-12/SPRINT.md) | PB-18, PB-20 | Hao hụt, kiểm kê cần phiếu nhập; nhật ký ghi các thao tác kho và dựng nơi cài đặt ngưỡng |
+| [Sprint 13](../sprints/sprint-13/SPRINT.md) | PB-21, PB-25 | Báo cáo kỳ nối tiếp Sprint 10; gói và cổng `PRO` phải có trước lợi nhuận và PDF |
+| [Sprint 14](../sprints/sprint-14/SPRINT.md) | PB-22, PB-26 | Chụp giá vốn khi `PAID` cần giá vốn, báo cáo kỳ, cổng `PRO`; theme cấp logo cho PDF |
+| [Sprint 15](../sprints/sprint-15/SPRINT.md) | PB-19, PB-24 | PDF cần `PRO`, logo, QR; giảm tay cần nhật ký và cài đặt giới hạn |
+| [Sprint 16](../sprints/sprint-16/SPRINT.md) | PB-23 + nghiệm thu tổng | Tách bill sau cùng để hồi quy; đồng bộ tài liệu cho cả Giai đoạn 2 |
 
 **Còn chưa chốt, để khi viết spec:** đơn vị tính giới hạn giảm tay (VND hay phần trăm); cách thực hiện việc dọn nhật ký quá 12 tháng (job nền hay khi có request). PB-14 vẫn để nguyên trạng, chưa làm.
 
