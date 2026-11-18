@@ -756,7 +756,7 @@ export class MockEngine {
     return { payment, invoice: updatedInvoice };
   }
 
-  // --- CANCEL INVOICE & STOCK REVERSAL (BR-28, BR-29, BR-47) ---
+  // --- CANCEL OPEN INVOICE (BR-28, BR-110) ---
   public static cancelInvoice(invoiceId: string, reason: string): Invoice {
     if (!reason.trim()) throw new Error('Bắt buộc phải nhập lý do hủy đơn (BR-28, BR-29)');
 
@@ -782,77 +782,7 @@ export class MockEngine {
       return updatedInvoice;
     }
 
-    if (invoice.status === 'PAID') {
-      // BR-29: Hủy đơn PAID cần quyền quản lý và ca của đơn đó còn mở
-      if (user.role_code !== 'OWNER' && user.role_code !== 'MANAGER') {
-        throw new Error('Cần quyền quản lý để hủy hóa đơn đã thanh toán (BR-29)');
-      }
-
-      const shift = state.workShifts.find((s) => s.id === invoice.work_shift_id);
-      if (!shift || shift.status !== 'OPEN') {
-        throw new Error('Chỉ được hủy đơn đã thanh toán khi ca của đơn đó còn đang mở (BR-29)');
-      }
-
-      // BR-47: Hoàn kho nguyên liệu qua bút toán SALE_REVERSAL đối dấu
-      const originalMovements = state.stockMovements.filter(
-        (sm) => sm.invoice_id === invoiceId && sm.movement_type === 'SALE'
-      );
-
-      const reversalMovements: StockMovement[] = [];
-      const nextStocks = [...state.branchStocks];
-
-      originalMovements.forEach((orig) => {
-        const returnQty = Math.abs(orig.quantity);
-        const idx = nextStocks.findIndex(
-          (bs) => bs.branch_id === invoice.branch_id && bs.ingredient_id === orig.ingredient_id
-        );
-        let balanceAfter = returnQty;
-        if (idx >= 0) {
-          nextStocks[idx] = {
-            ...nextStocks[idx],
-            current_stock: nextStocks[idx].current_stock + returnQty,
-          };
-          balanceAfter = nextStocks[idx].current_stock;
-        }
-
-        reversalMovements.push({
-          id: `sm-rev-${Date.now()}-${Math.random()}`,
-          branch_id: invoice.branch_id,
-          ingredient_id: orig.ingredient_id,
-          movement_type: 'SALE_REVERSAL',
-          quantity: returnQty,
-          balance_after: balanceAfter,
-          invoice_id: invoiceId,
-          note: `Hoàn kho do hủy hóa đơn ${invoice.invoice_code}`,
-          created_at: new Date().toISOString(),
-        });
-      });
-
-      // Trả lại 1 lượt dùng mã giảm giá nếu có (BR-39)
-      const nextPromos = state.promotions.map((p) => {
-        if (p.id === invoice.applied_promotion?.promotion_code_id && p.used_count > 0) {
-          return { ...p, used_count: p.used_count - 1 };
-        }
-        return p;
-      });
-
-      const updatedInvoice: Invoice = {
-        ...invoice,
-        status: 'CANCELLED',
-        cancel_reason: reason.trim(),
-        cancelled_by: user.id,
-        cancelled_at: new Date().toISOString(),
-      };
-
-      mockStorage.setState((prev) => ({
-        invoices: prev.invoices.map((inv) => (inv.id === invoiceId ? updatedInvoice : inv)),
-        branchStocks: nextStocks,
-        stockMovements: [...reversalMovements, ...prev.stockMovements],
-        promotions: nextPromos,
-      }));
-
-      return updatedInvoice;
-    }
+    if (invoice.status === 'PAID') throw new Error('Đơn đã thanh toán không thể hủy.');
 
     return invoice;
   }
@@ -950,7 +880,6 @@ export class MockEngine {
         'shift.open_close',
         'shift.force_close',
         'invoice.cancel_open',
-        'invoice.cancel_paid',
         'inventory.view',
         'report.view_shift',
         'report.view_branch',

@@ -356,7 +356,7 @@ Bước 2: kết quả đối soát.
 
 | Màn hình | Bố cục                                                                                                               | Ghi chú                                                                                                                                                                                                                                          |
 | -------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Hóa đơn  | Bảng + bộ lọc (ngày, trạng thái, bàn, thu ngân). Bấm dòng mở chi tiết ở ngăn bên phải                                | Hủy đơn đã thanh toán: nút ở ngăn chi tiết, cần quyền quản lý, lý do, và chỉ khi ca của đơn còn mở. Hộp thoại nhắc hoàn tiền: tiền mặt thì "Hoàn lại 95.000đ cho khách từ két", chuyển khoản thì "Hoàn tiền chuyển khoản ngoài hệ thống" (BR-29) |
+| Hóa đơn  | Bảng + bộ lọc (ngày, trạng thái, bàn, thu ngân). Bấm dòng mở chi tiết ở ngăn bên phải                                | Hủy đơn `OPEN`: nút ở ngăn chi tiết, cần quyền hủy đơn mở, lý do, và ca thu ngân đang mở của chính người hủy. Đơn đã thanh toán không có nút hủy (BR-110) |
 | Ca làm   | Danh sách ca. Chi tiết ca có tiền đầu ca, kỳ vọng, đã đếm, chênh lệch, các khoản chi                                 | Ca lệch được đánh dấu bằng nhãn Thiếu hoặc Thừa ở đầu dòng                                                                                                                                                                                       |
 | Thực đơn | Bảng món + form sửa ở ngăn bên phải. Tab "Size và giá", "Topping", "Công thức"                                       | Đổi giá chỉ áp cho đơn mới (BR-12). Có nút tải ảnh món lên hệ thống; ảnh không bắt buộc (BR-105)                                                                                                                                               |
 | Kho      | Bảng tồn kho theo chi nhánh. Cột: nguyên liệu, tồn, tồn tối thiểu, đơn vị. Tab "Sổ kho"                              | Nguyên liệu sắp hết có nhãn Sắp hết (warning). Tồn âm dùng chữ `danger`                                                                                                                                                                          |
@@ -549,7 +549,7 @@ MVP không hỗ trợ bán hàng ngoại tuyến. Khi mất mạng, không cho t
 | Đóng ca đếm mù: không hiện tiền kỳ vọng trước khi nhập số đã đếm                              | BR-58                |
 | Chưa mở ca thì chặn toàn bộ màn hình bán hàng, thay bằng màn hình mở ca                       | BR-16                |
 | Không đóng được ca khi còn đơn mở. Hiện danh sách đơn đó                                      | BR-19                |
-| Hủy đơn đã thanh toán chỉ có ở người có quyền. Bắt buộc nhập lý do                            | BR-29                |
+| Hủy đơn chỉ áp dụng cho đơn `OPEN`, người có quyền, bắt buộc nhập lý do                            | BR-28, BR-110                |
 | Nút Thanh toán bị khóa ngay sau khi bấm                                                       | BR-34                |
 | Bàn đang có đơn mở: chạm vào mở đơn đó, không tạo đơn thứ hai                                 | BR-74                |
 | Chủ đơn mang đi không chọn bàn. Đơn tại chỗ bắt buộc chọn bàn                                 | BR-69                |
@@ -608,7 +608,6 @@ Ngắn, rõ, nói theo việc người dùng đang làm. Dùng động từ cụ
 | Bàn đã có đơn                                | "Bàn 5 đang có đơn. Mở đơn để gọi thêm món."                                                                 |
 | Khách đưa thiếu tiền                         | "Khách đưa chưa đủ. Cần thêm 20.000đ."                                                                       |
 | Còn đơn chưa trả khi đóng ca                 | "Còn 2 đơn chưa thanh toán. Thanh toán hoặc hủy các đơn này trước khi đóng ca."                              |
-| Thiếu quyền                                  | "Cần quyền quản lý để hủy đơn đã thanh toán."                                                                |
 | Thanh toán thành công                        | "Đã thanh toán 95.000đ."                                                                                     |
 | Lỗi máy chủ                                  | "Chưa lưu được. Kiểm tra kết nối rồi thử lại."                                                               |
 | Danh sách đơn trống                          | "Chưa có đơn nào trong ca này. Chọn món để tạo đơn đầu tiên."                                                |
@@ -871,6 +870,6 @@ Phần này mô tả màn và thao tác **chưa có trong ứng dụng**. Quy t�
 | Cài đặt cửa hàng: Theme | `OWNER` chọn màu thương hiệu và tải logo; hệ thống kiểm độ tương phản. | BR-121 |
 | Nền tảng: Gói dịch vụ | `PLATFORM_ADMIN` gán gói và ngày hết hạn; cửa hàng `EXPIRED` thấy thông báo hết hạn, khác thông báo bị khóa. | BR-119, BR-120 |
 
-**Thay đổi giao diện đã có:** bỏ nút hủy đơn đã thanh toán ở ngăn chi tiết Hóa đơn (mục 5, mục 8, mục 9) khi BR-110 được triển khai. Đơn `OPEN` vẫn hủy được.
+**Thay đổi giao diện đã có:** bỏ nút hủy đơn đã thanh toán ở ngăn chi tiết Hóa đơn (mục 5, mục 8, mục 9); đã triển khai ở PB-16 (BR-110). Đơn `OPEN` vẫn hủy được.
 
 **Vẫn không làm:** nút gộp bill, chuyển bàn nâng cao, giá riêng từng chi nhánh, màn lời mời, màn truy cập hỗ trợ (mục 13).

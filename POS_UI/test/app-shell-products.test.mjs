@@ -37,7 +37,6 @@ test('[B-63] rail dùng cùng quyền với route cho người chỉ được đ
     ['invoice.read', 'Hóa đơn', true], ['invoice.read', 'Bán hàng', true],
     ['table.read', 'Sơ đồ bàn', true], ['table.manage', 'Sơ đồ bàn', false],
     ['pos.sell', 'Hóa đơn', false], ['invoice.cancel_open', 'Hóa đơn', true],
-    ['invoice.cancel_paid', 'Hóa đơn', true],
   ]) {
     assert.equal(railHas(sess('MANAGER', [permission]), label), expected, `${permission}: ${label}`);
   }

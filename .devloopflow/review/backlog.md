@@ -1,7 +1,7 @@
 # Backlog lỗi nhẹ (Low, Very Low) chờ xử lý
 <!-- Do agent chính ghi vào .devloopflow/review/backlog.md khi user chọn "đưa vào backlog" ở bước 10 của run (hoặc khi review dùng rời và user muốn xử lý sau). Được commit nên chỉ ghi tóm tắt và trích đoạn ngắn không nhạy cảm, không secret. Chỉ thêm, không xoá mục cũ; đổi trạng thái khi xử lý và ghi thêm dòng lịch sử. Xử lý các mục bằng /devloopflow:fix-backlog. -->
 
-- Cập nhật lần cuối: 2026-11-17
+- Cập nhật lần cuối: 2026-11-19
 - Id `B-<n>` tăng dần trong toàn dự án, không dùng lại.
 
 ## Tổng hợp
@@ -79,6 +79,9 @@
 | B-70 | Very Low | 20261116-orm-entities-refactor (review vòng 1, R1-5) | `POS_API/src/organization/tests/organization.integration.test.ts`, `POS_API/src/platform/tests/platform.integration.test.ts` | Hai test trùng tên `test_ST20_AC1_lock_sequences`; `--test-name-pattern` chạy cả hai | Hẹp | 2026-11-17 | đã sửa |
 | B-71 | Low | 20261116-orm-entities-refactor (review vòng 1, R1-3) | `.devloopflow/plans/draft/20261113-sprint09-ui-r1-6.md` | File draft đã commit bị xóa trong working tree, thuộc task khác | Hẹp | 2026-11-17 | bỏ |
 | B-72 | Low | 20261116-orm-entities-refactor (review vòng 3, R3-1) | `.devloopflow/tasks/active/20261116-orm-entities-refactor.md` | Bảng File đã thay đổi và Đã đọc errors dừng ở ST-6, khối Trạng thái mâu thuẫn | Hẹp | 2026-11-17 | đã sửa |
+| B-73 | Very Low | 20261118-sprint11-pb16-remove-cancel-paid (review vòng 1, R1-1) | `POS_UI/src/features/invoices/CancelInvoiceModal.tsx:63` | Điều kiện `if (latest.status === 'OPEN')` luôn đúng sau khi gỡ nhánh PAID; nhánh else ngầm là mã chết | 2026-11-19 | đã sửa |
+| B-74 | Very Low | 20261118-sprint11-pb16-remove-cancel-paid (review vòng 1, R1-2) | `POS_UI/src/mock/mockEngine.ts:759,788` | Tiêu đề còn ghi hoàn kho (BR-29/47) dù đã bỏ; `MockEngine.cancelInvoice` ném lỗi với PAID chưa có test; hàm không có nơi gọi | 2026-11-19 | đã sửa |
+| B-75 | Very Low | 20261118-sprint11-pb16-remove-cancel-paid (review vòng 1, R1-3) | `POS_UI/test/invoice-cancel.test.mjs:36,38` | Test dùng `message: code`, chưa khẳng định đúng câu 'Đơn đã thanh toán không thể hủy. (Mã yêu cầu: req)' như E2E-AC-7 | 2026-11-19 | bỏ |
 
 - Trạng thái: `chờ xử lý` | `đã sửa` | `bỏ` (finding sai, hoặc không còn áp dụng vì code đã đổi; ghi lý do trong lịch sử)
 
@@ -666,3 +669,36 @@
 - Trạng thái: đã sửa
 - Lịch sử trạng thái: 2026-11-17 — chờ xử lý — review vòng 3, Low.
 - Lịch sử trạng thái: 2026-11-17 — đã sửa — agent chính bổ sung bảng "File đã thay đổi", "Đã đọc errors" và khối "Trạng thái" của task, ngay trong bước 8.
+
+### B-73 — R1-1 [Very Low]
+- Task nguồn: 20261118-sprint11-pb16-remove-cancel-paid, review vòng 1.
+- File:dòng: `POS_UI/src/features/invoices/CancelInvoiceModal.tsx:63`
+- Finding nguyên văn: Điều kiện `if (latest.status === 'OPEN')` luôn đúng: `canConfirm` bắt buộc `invoice.status === 'OPEN'` và dòng 58 đã thoát khi `latest.status !== invoice.status`; nhánh else ngầm là mã chết sau khi gỡ PAID. Căn cứ: `rules/clean-code.md`, plan ST-3.
+- Đề xuất fix: Bỏ `if`, để khối đọc ca chạy thẳng; chạy lại `invoice-cancel.test.mjs`. Không cần test tái hiện (refactor).
+- Phạm vi ảnh hưởng khi sửa: sẽ đổi: `CancelInvoiceModal.tsx:63-68` | nơi gọi: không có (hàm cục bộ `handleCancel`) | test: cả `POS_UI/test/invoice-cancel.test.mjs` | lan sang module khác: không | mức: Hẹp
+- Ngày ghi: 2026-11-19
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-19 — chờ xử lý — review vòng 1, Very Low.
+- Lịch sử trạng thái: 2026-11-19 — đã sửa — `CancelInvoiceModal.tsx` bỏ điều kiện dư, không đổi hành vi; test `invoice-cancel.test.mjs` bảo vệ trước và sau, test tập trung 15/15, UI 231/231, typecheck/build exit 0. Hồ sơ: `.devloopflow/errors/20261119-backlog-cancel-modal-redundant-open-check.md`.
+
+### B-74 — R1-2 [Very Low]
+- Task nguồn: 20261118-sprint11-pb16-remove-cancel-paid, review vòng 1.
+- File:dòng: `POS_UI/src/mock/mockEngine.ts:759,788`
+- Finding nguyên văn: Tiêu đề còn ghi 'CANCEL INVOICE & STOCK REVERSAL (BR-28, BR-29, BR-47)' dù hoàn kho đã bỏ; `return invoice;` cuối hàm chỉ chạm khi trạng thái ngoài enum; chưa có test cho `MockEngine.cancelInvoice` ném lỗi với PAID; hàm không có nơi gọi. Căn cứ: plan 'Quyết định thiết kế' (mock), `rules/naming.md`.
+- Đề xuất fix: Sửa chú thích tiêu đề; thêm test `[PB16-mock]` (đơn PAID → ném 'Đơn đã thanh toán không thể hủy.', state không đổi) hoặc xóa hàm không dùng nếu user đồng ý.
+- Phạm vi ảnh hưởng khi sửa: sẽ đổi: `mockEngine.ts:759` (+ test mới) | nơi gọi: không có (`rg \.cancelInvoice\(`) | test: chưa có test phủ, phải viết test đặc tả trước | lan sang module khác: không | mức: Hẹp
+- Ngày ghi: 2026-11-19
+- Trạng thái: đã sửa
+- Lịch sử trạng thái: 2026-11-19 — chờ xử lý — review vòng 1, Very Low.
+- Lịch sử trạng thái: 2026-11-19 — đã sửa — `mockEngine.ts` sửa tiêu đề, giữ hàm và `return invoice` cuối hàm; test `[B-74][PB16-mock][BR-110] PAID cancellation throws and preserves all state` xanh trước và sau sửa chú thích. Test tập trung 15/15, UI 231/231, typecheck/build exit 0. Hồ sơ: `.devloopflow/errors/20261119-backlog-mock-cancel-paid-test-gap.md`.
+
+### B-75 — R1-3 [Very Low]
+- Task nguồn: 20261118-sprint11-pb16-remove-cancel-paid, review vòng 1.
+- File:dòng: `POS_UI/test/invoice-cancel.test.mjs:36,38`
+- Finding nguyên văn: Test dùng `message: code` (hoặc chuỗi tự đặt) cho 409, chưa khẳng định đúng câu 'Đơn đã thanh toán không thể hủy. (Mã yêu cầu: req)'. Logic hiển thị chung nên rủi ro thấp. Căn cứ: plan E2E-AC-7.
+- Đề xuất fix: Thêm test `T5-stale: INVOICE_PAID_IMMUTABLE message and request id shown`: reject `{status:409, code:'INVOICE_PAID_IMMUTABLE', message:'Đơn đã thanh toán không thể hủy.', requestId:'req'}` → text chứa 'Đơn đã thanh toán không thể hủy. (Mã yêu cầu: req)', `gets.length` 2, `success.length` 0.
+- Phạm vi ảnh hưởng khi sửa: sẽ đổi: `invoice-cancel.test.mjs` (chỉ thêm test) | nơi gọi: không áp dụng | test: cả file | lan sang module khác: không | mức: Hẹp
+- Ngày ghi: 2026-11-19
+- Trạng thái: bỏ
+- Lịch sử trạng thái: 2026-11-19 — chờ xử lý — review vòng 1, Very Low.
+- Lịch sử trạng thái: 2026-11-19 — bỏ — không còn áp dụng: `POS_UI/test/invoice-cancel.test.mjs:32` đã kiểm `INVOICE_PAID_IMMUTABLE`, message, requestId, hai lần GET và không gọi success; `node --test test/invoice-cancel.test.mjs` đạt 14/14.

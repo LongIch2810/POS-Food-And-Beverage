@@ -29,7 +29,7 @@ export function accessibleTabs(session: AuthSession): NavTab[] {
   if (session.user.role_code === 'OWNER' && canOpenSettings(session.permissions)) tabs.push('settings');
   if (has('pos.sell') || has('invoice.read')) tabs.push('pos');
   if (has('pos.sell') || has('table.read')) tabs.push('tables');
-  if (has('invoice.read') || has('invoice.cancel_open') || has('invoice.cancel_paid')) tabs.push('invoices');
+  if (has('invoice.read') || has('invoice.cancel_open')) tabs.push('invoices');
   if (has('shift.read') || has('shift.open') || has('shift.close') || has('shift.force_close')) tabs.push('shifts');
   if (canOpenProducts(session.permissions)) tabs.push('products');
   if (has('inventory.view')) tabs.push('inventory');

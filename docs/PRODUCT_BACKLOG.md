@@ -43,7 +43,7 @@ Phạm vi chốt ngày 16/11/2026, quy tắc ở [BUSINESS_RULES.md](BUSINESS_RU
 
 | ID | Kết quả người dùng / điều kiện chấp nhận chính | Phụ thuộc |
 | --- | --- | --- |
-| PB-16 | Bãi bỏ hủy đơn `PAID`: chỉ đơn `OPEN` hủy được; gỡ API, UI, mã lỗi và test liên quan; dữ liệu `CANCELLED` cũ giữ nguyên. Thay đổi hành vi PB-11 đã triển khai (BR-110). Đơn `PAID` bất biến, thu nhầm xử lý ngoài hệ thống. **Làm đầu tiên ở Sprint 11.** | PB-11 |
+| PB-16 | Bãi bỏ hủy đơn `PAID`: chỉ đơn `OPEN` hủy được; gỡ API, UI, mã lỗi và test liên quan; dữ liệu `CANCELLED` cũ giữ nguyên. Thay đổi hành vi PB-11 đã triển khai (BR-110). Đơn `PAID` bất biến, thu nhầm xử lý ngoài hệ thống. **Làm đầu tiên ở Sprint 11; đã triển khai và QA local ngày 19/11/2026 (hủy `PAID` trả `409 INVOICE_PAID_IMMUTABLE`, quyền gỡ bằng migration), chưa commit/CI.** | PB-11 |
 | PB-17 | `OWNER`/`MANAGER` tạo phiếu nhập có đơn giá; kho cộng đúng, giá vốn bình quân gia quyền cập nhật; phiếu không sửa được (BR-106, BR-107). Hủy phiếu ghi sai bằng dòng đảo dấu (BR-108). | PB-08 |
 | PB-18 | Ghi hao hụt có lý do và chặn vượt tồn; kiểm kê theo đợt đếm mù; danh sách và huy hiệu sắp hết (BR-109, BR-111, BR-112). | PB-17 |
 | PB-19 | Xuất hóa đơn `PAID` ra PDF khổ 80mm theo phạm vi xem hóa đơn (BR-122). | PB-09 |

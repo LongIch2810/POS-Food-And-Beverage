@@ -27,11 +27,12 @@ test('test_ST2_AC1_paid_zero_cancelled', { timeout: 120_000 }, async () => {
       { date: D14, invoiceCount: 3, totalRevenue: 85000, cashRevenue: 35000, transferRevenue: 50000, dailyRevenue: undefined, bestSellers: undefined });
 
     const manager = await w.login('mgr_a1');
-    const cancelled = await w.post(`/invoices/${cash}/cancel`, manager, { reason: 'Khách đổi ý' });
-    assert.equal(cancelled.status, 200, await cancelled.clone().text());
+    const rejected = await w.post(`/invoices/${cash}/cancel`, manager, { reason: 'Khách đổi ý' });
+    assert.equal(rejected.status, 409, await rejected.clone().text());
+    assert.equal((await rejected.json()).error.code, 'INVOICE_PAID_IMMUTABLE');
     r = await ownerGet(w);
     assert.equal(r.status, 200, r.text);
-    assert.deepEqual([r.body.data.invoiceCount, r.body.data.cashRevenue, r.body.data.transferRevenue, r.body.data.totalRevenue], [2, 0, 50000, 50000]);
+    assert.deepEqual([r.body.data.invoiceCount, r.body.data.cashRevenue, r.body.data.transferRevenue, r.body.data.totalRevenue], [3, 35000, 50000, 85000]);
 
     r = await ownerGet(w, defaultQuery({ date: '2026-11-20', fromDate: '2026-11-20', toDate: '2026-11-20' }));
     assert.deepEqual(r.body.data, { date: '2026-11-20', invoiceCount: 0, totalRevenue: 0, cashRevenue: 0, transferRevenue: 0,

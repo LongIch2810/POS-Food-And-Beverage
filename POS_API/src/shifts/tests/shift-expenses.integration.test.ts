@@ -208,7 +208,6 @@ test('[S9-01/S9-02] shift expenses and reconciliation over HTTP with PostgreSQL'
             )
           ).map((r: any) => r.name);
         assert.deepEqual(await roles('shift.expense'), ['CASHIER', 'MANAGER', 'OWNER']);
-        assert.deepEqual(await roles('invoice.cancel_paid'), ['MANAGER', 'OWNER']);
       });
 
       await t.test('[S9-01][ST-2.AC-1] cashier records drawer expense on own open shift', async () => {
