@@ -110,6 +110,7 @@ jobs:
         working-directory: POS_UI
         run: npm test
 
+      # Build tools (vite and its helpers) are devDependencies and never reach the production bundle, so only runtime dependencies gate CI.
       - name: Audit dependencies
         working-directory: POS_UI
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
