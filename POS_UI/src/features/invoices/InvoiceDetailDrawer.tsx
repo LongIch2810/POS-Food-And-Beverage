@@ -34,7 +34,6 @@ export const InvoiceDetailDrawer: React.FC<InvoiceDetailDrawerProps> = ({
   const isCancelled = invoice.status === 'CANCELLED';
 
   // Kiểm tra quyền hủy đơn động (BR-05, BR-28, BR-29)
-  const canCancelPaid = session.permissions.includes('invoice.cancel_paid');
   const canCancelOpen = session.permissions.includes('invoice.cancel_open');
   const isShiftOpen = invoice.workShiftStatus === 'OPEN';
 
@@ -46,14 +45,6 @@ export const InvoiceDetailDrawer: React.FC<InvoiceDetailDrawerProps> = ({
       canCancel = true;
     } else {
       cancelDisabledReason = 'Cần ca thu ngân đang mở của bạn để hủy đơn này.';
-    }
-  } else if (isPaid) {
-    if (!canCancelPaid) {
-      cancelDisabledReason = 'Cần quyền hủy hóa đơn đã thanh toán (invoice.cancel_paid)';
-    } else if (!isShiftOpen) {
-      cancelDisabledReason = 'Ca của hóa đơn này đã đóng, không thể hủy đơn (BR-29)';
-    } else {
-      canCancel = true;
     }
   }
 
@@ -191,7 +182,7 @@ export const InvoiceDetailDrawer: React.FC<InvoiceDetailDrawerProps> = ({
         </div>
 
         {/* Nút hủy hóa đơn */}
-        {!isCancelled && (isPaid ? canCancelPaid : canCancelOpen) && (
+        {isOpenStatus && canCancelOpen && (
           <div style={{ marginTop: 'auto', paddingTop: 16 }}>
             <Button
               variant="danger"

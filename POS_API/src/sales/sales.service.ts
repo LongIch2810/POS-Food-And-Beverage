@@ -555,46 +555,12 @@ export class SalesService {
     if (!reason?.trim()) throw httpError(422, 'CANCEL_REASON_REQUIRED', 'Cần nhập lý do hủy đơn.');
     return this.db.transaction(async manager => {
       const row = await this.invoice(manager, user, id);
-      if (row.status === 'PAID') await this.cancelPaid(manager, user, row, reason.trim());
-      else if (row.status === 'OPEN') {
-        await this.writable(manager, user, id);
-        await manager.getRepository(Invoice).update({ id }, { status: 'CANCELLED', cancel_reason: reason.trim(), cancelled_by: user.id, cancelled_at: () => 'now()', updated_at: () => 'now()' });
-      } else throw httpError(409, 'INVOICE_NOT_OPEN', 'Đơn không còn mở.');
+      // BR-110: PAID invoices are immutable; mistakes are handled outside the system.
+      if (row.status === 'PAID') throw httpError(409, 'INVOICE_PAID_IMMUTABLE', 'Đơn đã thanh toán không thể hủy.');
+      if (row.status !== 'OPEN') throw httpError(409, 'INVOICE_NOT_OPEN', 'Đơn không còn mở.');
+      await this.writable(manager, user, id);
+      await manager.getRepository(Invoice).update({ id }, { status: 'CANCELLED', cancel_reason: reason.trim(), cancelled_by: user.id, cancelled_at: () => 'now()', updated_at: () => 'now()' });
       return this.detail(manager, await this.invoice(manager, user, id));
     });
-  }
-
-  // Lock order: shift -> invoice -> promotion codes -> stock (same as payCash).
-  private async cancelPaid(manager: EntityManager, user: UserSummary, row: Row, reason: string): Promise<void> {
-    if (!user.permissions.includes('invoice.cancel_paid')) throw httpError(403, 'PERMISSION_DENIED', 'Bạn không có quyền thực hiện thao tác này.');
-    const shift = await manager.getRepository(WorkShift).findOne({ where: { id: row.work_shift_id }, select: { id: true, status: true }, lock: { mode: 'pessimistic_write' } });
-    if (shift!.status !== 'OPEN') throw httpError(409, 'CANCEL_NOT_ALLOWED', 'Chỉ hủy được đơn đã thanh toán khi ca của đơn còn mở.');
-    const locked = await this.invoice(manager, user, row.id, true);
-    if (locked.status !== 'PAID') throw httpError(409, 'INVOICE_NOT_OPEN', 'Đơn không còn mở.');
-
-    const payment = await manager.getRepository(Payment).findOne({ where: { invoice_id: row.id }, select: { id: true, method: true, amount: true } });
-    if (payment?.method === 'CASH') {
-      // QueryBuilder: SUM of money read as text; Repository.sum() returns a float
-      const cash = await manager.getRepository(CashReconciliation).createQueryBuilder('r').select('r.opening_cash::text', 'opening_cash')
-        .addSelect("COALESCE((SELECT SUM(p.amount) FROM payments p JOIN invoices i ON i.id=p.invoice_id WHERE i.work_shift_id=r.work_shift_id AND i.status='PAID' AND p.method='CASH'),0)::text", 'cash_sales')
-        .addSelect("COALESCE((SELECT SUM(e.amount) FROM shift_expenses e WHERE e.work_shift_id=r.work_shift_id AND e.paid_from_drawer=true),0)::text", 'expenses')
-        .where('r.work_shift_id = :shiftId', { shiftId: row.work_shift_id }).getRawOne();
-      if (!cash) throw httpError(500, 'INTERNAL_ERROR', 'Không tìm thấy bản ghi đối soát của ca thu ngân.');
-      if (BigInt(cash.opening_cash) + BigInt(cash.cash_sales) - BigInt(cash.expenses) - BigInt(payment.amount) < 0n)
-        throw httpError(409, 'CANCEL_EXCEEDS_DRAWER', 'Tiền mặt trong két không đủ để hoàn cho khách.');
-    }
-
-    const linked = await manager.getRepository(InvoicePromotionCode).findOneBy({ invoice_id: row.id });
-    const promos = linked ? [await manager.getRepository(PromotionCode).findOne({ where: { id: linked.promotion_code_id }, select: { id: true }, lock: { mode: 'pessimistic_write' } })] : [];
-    // CHECK used_count >= 0 aborts the transaction (500) if the counter is already 0.
-    for (const promo of promos) await manager.getRepository(PromotionCode).update({ id: promo!.id }, { used_count: () => 'used_count - 1', updated_at: () => 'now()' });
-
-    const sales = await manager.getRepository(StockMovement).find({ where: { invoice_id: row.id, type: 'SALE' },
-      select: { id: true, branch_id: true, ingredient_id: true, quantity: true }, order: { ingredient_id: 'ASC', id: 'ASC' } });
-    for (const sale of sales) {
-      await manager.getRepository(StockMovement).insert({ id: randomUUID(), branch_id: sale.branch_id, ingredient_id: sale.ingredient_id, type: 'SALE_REVERSAL',
-        quantity: sale.quantity.startsWith('-') ? sale.quantity.slice(1) : `-${sale.quantity}`, balance_after: '0', invoice_id: row.id, created_by: user.id, source: 'USER' });
-    }
-    await manager.getRepository(Invoice).update({ id: row.id }, { status: 'CANCELLED', cancel_reason: reason, cancelled_by: user.id, cancelled_at: () => 'now()', updated_at: () => 'now()' });
   }
 }

@@ -44,8 +44,8 @@ before(async () => {
 after(async () => { await browser?.close(); await new Promise(resolve => server?.close(resolve) ?? resolve()); });
 
 const permissions = {
-  owner: ['branch.read', 'branch.manage', 'branch.access_all', 'table.manage', 'user.manage', 'menu.read', 'menu.manage', 'shift.read', 'shift.open', 'shift.close', 'shift.force_close', 'pos.sell', 'invoice.cancel_open', 'invoice.read', 'table.read', 'inventory.view', 'inventory.manage', 'promotion.manage', 'store_bank_account.manage', 'transfer.confirm_manual', 'transfer.exception_read', 'shift.expense', 'invoice.cancel_paid', 'invoice.read_branch', 'report.view_all'],
-  manager: ['branch.read', 'table.manage', 'menu.read', 'menu.manage', 'shift.read', 'shift.open', 'shift.close', 'shift.force_close', 'invoice.read', 'table.read', 'inventory.view', 'inventory.manage', 'promotion.manage', 'pos.sell', 'transfer.confirm_manual', 'transfer.exception_read', 'invoice.cancel_open', 'shift.expense', 'invoice.cancel_paid', 'invoice.read_branch', 'report.view_branch'],
+  owner: ['branch.read', 'branch.manage', 'branch.access_all', 'table.manage', 'user.manage', 'menu.read', 'menu.manage', 'shift.read', 'shift.open', 'shift.close', 'shift.force_close', 'pos.sell', 'invoice.cancel_open', 'invoice.read', 'table.read', 'inventory.view', 'inventory.manage', 'promotion.manage', 'store_bank_account.manage', 'transfer.confirm_manual', 'transfer.exception_read', 'shift.expense', 'invoice.read_branch', 'report.view_all'],
+  manager: ['branch.read', 'table.manage', 'menu.read', 'menu.manage', 'shift.read', 'shift.open', 'shift.close', 'shift.force_close', 'invoice.read', 'table.read', 'inventory.view', 'inventory.manage', 'promotion.manage', 'pos.sell', 'transfer.confirm_manual', 'transfer.exception_read', 'invoice.cancel_open', 'shift.expense', 'invoice.read_branch', 'report.view_branch'],
   cashier: ['menu.read', 'shift.read', 'shift.open', 'shift.close', 'pos.sell', 'invoice.cancel_open', 'invoice.read', 'table.read', 'shift.expense', 'report.view_shift'],
 };
 const users = {

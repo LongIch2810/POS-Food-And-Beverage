@@ -350,7 +350,8 @@ Mỗi mã gắn với một business rule. Danh sách đầy đủ và `message`
 | `SHIFT_HAS_OPEN_INVOICES`      | 409  | BR-19         | Đóng ca khi còn đơn `OPEN`. Kèm danh sách mã đơn trong `details`       |
 | `FORCE_CLOSE_COUNT_REQUIRED`   | 422  | BR-88         | Đóng cưỡng chế thiếu tiền đã đếm                                       |
 | `RECONCILIATION_NOTE_REQUIRED` | 422  | BR-60         | Ca lệch mà thiếu ghi chú                                               |
-| `INVOICE_NOT_OPEN`             | 409  | BR-22         | Sửa món, thêm món, xem trước thanh toán khi đơn không còn `OPEN`; hủy đơn không còn `OPEN`/`PAID` (ví dụ đã `CANCELLED`)       |
+| `INVOICE_NOT_OPEN`             | 409  | BR-22         | Sửa món, thêm món, xem trước thanh toán khi đơn không còn `OPEN`; hủy đơn không còn `OPEN` (ví dụ đã `CANCELLED`; đơn `PAID` trả `INVOICE_PAID_IMMUTABLE`)       |
+| `INVOICE_PAID_IMMUTABLE`       | 409  | BR-110        | Hủy đơn `PAID`: đơn đã thanh toán bất biến, "Đơn đã thanh toán không thể hủy."                     |
 | `INVOICE_EMPTY`                | 422  | BR-27         | Thanh toán đơn chưa có món                                             |
 | `INVOICE_BRANCH_MISMATCH`      | 422  | BR-69         | Chi nhánh của ca, bàn, đơn không khớp                                  |
 | `TABLE_REQUIRED`               | 422  | BR-69         | Đơn tại chỗ thiếu bàn                                                  |
@@ -358,8 +359,7 @@ Mỗi mã gắn với một business rule. Danh sách đầy đủ và `message`
 | `TABLE_INACTIVE`               | 409  | BR-95         | Bàn ngưng dùng                                                         |
 | `ITEM_NOT_AVAILABLE`           | 409  | BR-09         | Món, size, topping đã ngưng bán                                        |
 | `TOPPING_NOT_ALLOWED`          | 422  | BR-11         | Topping không thuộc danh mục của món                                   |
-| `CANCEL_REASON_REQUIRED`       | 422  | BR-28, BR-29  | Hủy đơn thiếu lý do                                                    |
-| `CANCEL_NOT_ALLOWED`           | 409  | BR-29         | Hủy đơn `PAID` khi ca đã đóng (GĐ2 bãi bỏ hủy `PAID`, BR-110, PB-16)   |
+| `CANCEL_REASON_REQUIRED`       | 422  | BR-28         | Hủy đơn thiếu lý do                                                    |
 | `PAYMENT_AMOUNT_MISMATCH`      | 422  | BR-31         | Khoản thanh toán không bằng tổng hóa đơn                               |
 | `ZERO_TOTAL_REQUIRED`         | 422  | BR-104        | Gọi `complete-zero` khi tổng hóa đơn khác 0đ                          |
 | `TENDERED_INSUFFICIENT`        | 422  | BR-32         | Tiền khách đưa nhỏ hơn số tiền cần trả                                 |
@@ -376,7 +376,6 @@ Mỗi mã gắn với một business rule. Danh sách đầy đủ và `message`
 | `SHIFT_NOT_FOUND`              | 404  | BR-17         | Ca không tồn tại, khác cửa hàng hoặc khác chi nhánh khi không có `branch.access_all` |
 | `FORBIDDEN_NOT_SHIFT_OWNER`    | 403  | BR-16         | Thao tác trên ca của người khác (đóng ca, ghi chi phí)                 |
 | `EXPENSE_EXCEEDS_DRAWER`       | 422  | BR-53, BR-56  | Khoản chi từ két làm tiền kỳ vọng trong két nhỏ hơn 0                  |
-| `CANCEL_EXCEEDS_DRAWER`        | 409  | BR-29, BR-56  | Hủy đơn tiền mặt làm tiền kỳ vọng trong két nhỏ hơn 0 (GĐ2 bãi bỏ, PB-16) |
 
 
 - Thêm mã lỗi mới thì cập nhật bảng này và tham chiếu mã `BR-xx` tương ứng.
@@ -457,7 +456,7 @@ Các điểm cần xử lý khi cài đặt:
 - **Transaction**: ghi thanh toán (nếu có), đổi `status` hóa đơn sang `PAID` và trừ kho nằm trong **một transaction** (BR-35, BR-104). Hành động thêm hoặc sửa món khóa dòng hóa đơn trong transaction (BR-90).
 - **Ảnh món**: `POST /products/{id}/image` nhận `multipart/form-data` với một file ảnh tối đa 2 MB (2.000.000 byte); mỗi món có tối đa một ảnh đại diện. Người gọi phải có quyền sửa món và món phải thuộc cửa hàng của họ. Server kiểm tra file rồi mã hóa Base64 thuần (không kèm tiền tố `data:`) vào `products.image_base64` (`text`), lưu MIME ở `image_mime`; không nhận chuỗi Base64 từ client. Response trả `imageUrl` trỏ tới `GET /products/{id}/image` cùng origin, không trả đường dẫn lưu nội bộ. Route GET yêu cầu access cookie và kiểm tra cùng store, giải mã Base64 rồi trả bytes với MIME phù hợp thay vì JSON; web có thể hiển thị ảnh cùng origin bằng `<img src>` vì browser tự gửi cookie. Định dạng file cụ thể ghi trong `.devloopflow/specs/legacy-catalog.md` khi viết endpoint.
 - **Sổ kho** chỉ thêm dòng, **không có** route sửa hoặc xóa `stock_movements` (BR-44).
-- **Nội dung đã khóa**: hóa đơn `PAID` hoặc `CANCELLED` không sửa món, giá, tổng tiền. Ca `CLOSED` không sửa. Chuyển trạng thái chỉ qua hành động đã định nghĩa. Hóa đơn `PAID` chỉ chuyển được sang `CANCELLED` bằng `POST /invoices/{id}/cancel` theo BR-29 (cần quyền, lý do, ca còn mở). Các khoản `payments` đã nhận **giữ nguyên**, không sửa, không xóa (BR-17, BR-21, BR-29).
+- **Nội dung đã khóa**: hóa đơn `PAID` hoặc `CANCELLED` không sửa món, giá, tổng tiền. Ca `CLOSED` không sửa. Chuyển trạng thái chỉ qua hành động đã định nghĩa. Hóa đơn `PAID` không chuyển trạng thái được: `POST /invoices/{id}/cancel` trả `409 INVOICE_PAID_IMMUTABLE` (BR-110). Các khoản `payments` đã nhận **giữ nguyên**, không sửa, không xóa (BR-17, BR-21, BR-110).
 - **Trừ kho** theo `invoices.branch_id` (BR-72), không theo chi nhánh của người gọi.
 
 ---
@@ -521,7 +520,7 @@ Mỗi endpoint trong `.devloopflow/specs/<module>.md` phải có đủ các mụ
 - Phạm vi chi nhánh xác định theo loại route ở mục 3.
 - Thanh toán một lần, một phương thức, đủ toàn bộ; tối đa một mã giảm giá mỗi hóa đơn. Đơn 0đ hoàn tất bằng hành động riêng, không tạo `payment` (BR-31, BR-40, BR-104).
 - Thanh toán gửi lại cùng key và nội dung trả kết quả cũ; `payments.idempotency_request_hash` dùng để so nội dung (BR-34).
-- Hủy hóa đơn `PAID` theo BR-29 giữ nguyên `payments`; tiền mặt hoàn từ két, chuyển khoản hoàn ngoài hệ thống và ghi lý do. (Hiện hành ở MVP; Giai đoạn 2 bãi bỏ hủy `PAID` theo BR-110, làm ở PB-16.)
+- Đơn `PAID` không hủy được (BR-110, PB-16): `POST /invoices/{id}/cancel` trả `409 INVOICE_PAID_IMMUTABLE`; thu nhầm xử lý ngoài hệ thống, `payments` giữ nguyên.
 - Access token 30 phút, refresh token 7 ngày và xoay vòng mỗi lần làm mới. Mật khẩu tối thiểu 12 ký tự; giới hạn tần suất xem [auth.md](architecture/auth.md).
 - MVP chấp nhận lần lưu sau ghi đè thay đổi menu và giá, chưa dùng `ETag`/`If-Match`.
 - Ảnh món không bắt buộc; người có quyền sửa món tải ảnh lên hệ thống theo BR-105.

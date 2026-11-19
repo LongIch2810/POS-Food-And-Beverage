@@ -19,8 +19,8 @@
 
 | Thứ tự | Item | Kết quả cần đạt | Điều kiện bắt đầu | Trạng thái |
 | --- | --- | --- | --- | --- |
-| 1 | Spec PB-16 | Danh sách chính xác endpoint, mã lỗi, UI, test và tài liệu cần gỡ; cách xử lý lỗi khi gọi endpoint đã gỡ. | Rà `invoice.cancel_paid`, `CANCEL_NOT_ALLOWED`, `CANCEL_EXCEEDS_DRAWER`, BR-21/29/39/47. | Chưa bắt đầu |
-| 2 | PB-16 — gỡ hủy đơn `PAID` | API, UI, test, mã lỗi, permission và tài liệu khớp BR-110; dữ liệu `CANCELLED` cũ giữ nguyên; hủy đơn `OPEN` không đổi. | Spec item 1. | Chưa bắt đầu |
+| 1 | Spec PB-16 | Danh sách chính xác endpoint, mã lỗi, UI, test và tài liệu cần gỡ; cách xử lý lỗi khi gọi endpoint đã gỡ. | Rà quyền và mã lỗi hủy đơn `PAID`, BR-21/29/39/47. | Đã xong 19/11/2026 (QA local, [report-1](../../.devloopflow/verify/20261118-sprint11-pb16-remove-cancel-paid/report-1.md)) |
+| 2 | PB-16 — gỡ hủy đơn `PAID` | API, UI, test, mã lỗi, permission và tài liệu khớp BR-110; dữ liệu `CANCELLED` cũ giữ nguyên; hủy đơn `OPEN` không đổi. | Spec item 1. | Đã xong 19/11/2026 (QA local, [report-1](../../.devloopflow/verify/20261118-sprint11-pb16-remove-cancel-paid/report-1.md)) |
 | 3 | Spec PB-17 + PB-13 Kho | Hợp đồng phiếu nhập, công thức giá vốn bình quân kể cả tồn 0/âm, hủy phiếu, mã permission nhập hàng, lỗi. | Chốt các điểm mở bên dưới. | Chưa bắt đầu |
 | 4 | PB-17 — API phiếu nhập | Tạo/xem/hủy phiếu; ghi `IMPORT` và đảo dấu trong sổ kho; cập nhật tồn và giá vốn nguyên tử, cùng transaction. | Spec item 3; migration mới. | Chưa bắt đầu |
 | 5 | PB-13 — UI nhập hàng | Màn nhập hàng và danh sách/hủy phiếu trong Kho dùng API thật, tiếng Việt, VND, tablet ngang. | API item 4. | Chưa bắt đầu |
@@ -33,8 +33,8 @@
 
 | Mã | Tiêu chí | Nguồn | Bằng chứng cần thu | Nghiệm thu |
 | --- | --- | --- | --- | --- |
-| S11-01 | Hủy đơn `PAID` bị từ chối ở API; UI không còn thao tác này; hủy đơn `OPEN` vẫn hoạt động; hóa đơn `CANCELLED` cũ không đổi và vẫn xem được. | PB-16; BR-110 | HTTP trên đơn `PAID`/`OPEN`; DB trước/sau; browser. | ☐ |
-| S11-02 | Endpoint, mã lỗi, permission và test của hủy đơn `PAID` đã gỡ; `docs/api-spec.md`, BR và README khớp mã. | PB-16 | `rg` kết quả, build/test, diff tài liệu. | ☐ |
+| S11-01 | Hủy đơn `PAID` bị từ chối ở API; UI không còn thao tác này; hủy đơn `OPEN` vẫn hoạt động; hóa đơn `CANCELLED` cũ không đổi và vẫn xem được. | PB-16; BR-110 | HTTP trên đơn `PAID`/`OPEN`; DB trước/sau; browser. | ☑ ([report-1](../../.devloopflow/verify/20261118-sprint11-pb16-remove-cancel-paid/report-1.md)) |
+| S11-02 | Endpoint, mã lỗi, permission và test của hủy đơn `PAID` đã gỡ; `docs/api-spec.md`, BR và README khớp mã. | PB-16 | `rg` kết quả, build/test, diff tài liệu. | ☑ ([report-1](../../.devloopflow/verify/20261118-sprint11-pb16-remove-cancel-paid/report-1.md)) |
 | S11-03 | Phiếu nhập nhiều dòng có đơn giá: tồn từng nguyên liệu cộng đúng, một dòng `IMPORT` mỗi nguyên liệu, tất cả trong một transaction (lỗi giữa chừng không ghi gì). | PB-17; BR-106 | Test PostgreSQL, SQL đối chiếu tồn và sổ kho, ca lỗi giữa chừng. | ☐ |
 | S11-04 | Giá vốn bình quân gia quyền tính đúng theo cặp chi nhánh + nguyên liệu qua nhiều lần nhập, gồm ca tồn bằng 0 hoặc âm theo spec. | BR-107 | Test với số cụ thể, SQL đối chiếu, số nguyên không làm tròn sai. | ☐ |
 | S11-05 | Phiếu không sửa được; hủy phiếu giữ phiếu gốc, đánh dấu đã hủy, sinh dòng đảo dấu, tính lại giá vốn; hủy lần hai bị chặn. | BR-108 | HTTP, DB, thử sửa/hủy lặp. | ☐ |

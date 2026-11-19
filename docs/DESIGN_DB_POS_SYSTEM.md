@@ -636,7 +636,7 @@ RETURNING current_stock;   -- ghi vào stock_movements.balance_after
 
 Ghi `payments` (nếu có), đổi `invoices.status`, trừ kho nằm trong **một transaction**. Với đơn 0đ, ghi `zero_completion_key` cùng transaction.
 
-**Hủy đơn đã PAID**: với mỗi dòng `SALE` của hóa đơn, thêm dòng `SALE_REVERSAL` có `quantity` đối dấu. Các dòng `payments` của đơn giữ nguyên làm lịch sử. Hóa đơn `CANCELLED` không còn tính vào doanh thu và đối soát (BR-29).
+**Hủy đơn đã PAID (đã bãi bỏ ở PB-16, BR-110; dòng `SALE_REVERSAL` cũ giữ nguyên)**: ở MVP, với mỗi dòng `SALE` của hóa đơn, thêm dòng `SALE_REVERSAL` có `quantity` đối dấu. Các dòng `payments` của đơn giữ nguyên làm lịch sử. Hóa đơn `CANCELLED` không còn tính vào doanh thu và đối soát (BR-29).
 
 **Sắp hết hàng**: `branch_ingredient_stocks.current_stock <= min_stock`.
 
@@ -743,4 +743,4 @@ Phần này là **thiết kế dự kiến, chưa có trong schema hiện tại 
 
 ### Hủy đơn `PAID` (BR-110)
 
-Quyết định bãi bỏ làm đổi hành vi đã triển khai: bỏ chuyển `PAID` → `CANCELLED`, bỏ `SALE_REVERSAL` do hủy, bỏ trả lượt mã giảm giá khi hủy, bỏ các mã lỗi hủy đơn `PAID` liên quan. Dữ liệu hóa đơn đã `CANCELLED` từ MVP giữ nguyên. Cần migration và sửa ràng buộc `CHECK` trạng thái nếu có, quyết định chi tiết khi viết spec.
+Quyết định bãi bỏ làm đổi hành vi đã triển khai: bỏ chuyển `PAID` → `CANCELLED`, bỏ `SALE_REVERSAL` do hủy, bỏ trả lượt mã giảm giá khi hủy, bỏ các mã lỗi hủy đơn `PAID` liên quan. Dữ liệu hóa đơn đã `CANCELLED` từ MVP giữ nguyên. Đã triển khai ở PB-16 (Sprint 11): migration `20261118000001-RemoveCancelPaidPermission` gỡ quyền hủy đơn `PAID`; `CHECK` trạng thái của `invoices` giữ nguyên (vẫn cho `CANCELLED`).

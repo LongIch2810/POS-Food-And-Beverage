@@ -7,7 +7,6 @@ import { useToast } from '../../context/ToastContext';
 import { getRequestIdentity } from '../../auth/session-events';
 import { useAuth } from '../../context/AuthContext';
 import { shiftService } from '../../services/shiftService';
-import { formatVND } from '../../utils/formatters';
 
 export interface CancelInvoiceModalProps {
   isOpen: boolean;
@@ -29,8 +28,7 @@ export const CancelInvoiceModal: React.FC<CancelInvoiceModalProps> = ({ isOpen, 
   const reasonRef = useRef<HTMLTextAreaElement>(null);
   const identity = getRequestIdentity();
   const current = () => { const now = getRequestIdentity(); return isCurrent() && now.identity === identity.identity && now.epoch === identity.epoch; };
-  const isPaid = invoice.status === 'PAID';
-  const canConfirm = invoice.workShiftStatus === 'OPEN' && (isPaid ? session.permissions.includes('invoice.cancel_paid') : invoice.status === 'OPEN' && session.permissions.includes('invoice.cancel_open') && session.permissions.includes('shift.read'));
+  const canConfirm = invoice.workShiftStatus === 'OPEN' && invoice.status === 'OPEN' && session.permissions.includes('invoice.cancel_open') && session.permissions.includes('shift.read');
   if (!isOpen) return null;
 
   const reload = async () => {
@@ -60,12 +58,10 @@ export const CancelInvoiceModal: React.FC<CancelInvoiceModalProps> = ({ isOpen, 
       if (latest.status !== invoice.status || latest.paymentMethod !== invoice.paymentMethod || latest.totalAmount !== invoice.totalAmount || latest.workShiftStatus !== invoice.workShiftStatus || latest.status === 'CANCELLED' || latest.workShiftStatus !== 'OPEN') {
         onUpdate(latest); setError('Hóa đơn hoặc ca đã thay đổi. Vui lòng kiểm tra lại trước khi xác nhận.'); return;
       }
-      if (latest.status === 'OPEN') {
-        const shift = await shiftService.getCurrentShift();
-        if (!current()) return;
-        if (!shift || shift.id !== latest.workShiftId || shift.userId !== session.user.id || shift.status !== 'OPEN' || shift.shiftType !== 'CASHIER') {
-          setError('Chỉ hủy được đơn mở thuộc ca thu ngân đang mở của bạn.'); return;
-        }
+      const shift = await shiftService.getCurrentShift();
+      if (!current()) return;
+      if (!shift || shift.id !== latest.workShiftId || shift.userId !== session.user.id || shift.status !== 'OPEN' || shift.shiftType !== 'CASHIER') {
+        setError('Chỉ hủy được đơn mở thuộc ca thu ngân đang mở của bạn.'); return;
       }
       posted = true;
       const result = await invoiceService.cancelInvoice(invoice.id, trimmed);
@@ -93,7 +89,7 @@ export const CancelInvoiceModal: React.FC<CancelInvoiceModalProps> = ({ isOpen, 
     </div>
   }>
     <form onSubmit={handleCancel} className="stack">
-      <p>{isPaid ? invoice.paymentMethod === 'CASH' ? `Hoàn lại ${formatVND(invoice.totalAmount)} cho khách từ két` : invoice.paymentMethod === 'TRANSFER' ? 'Hoàn tiền chuyển khoản ngoài hệ thống' : 'Không có khoản thanh toán' : 'Đơn hàng sẽ chuyển sang trạng thái đã hủy.'}</p>
+      <p>Đơn hàng sẽ chuyển sang trạng thái đã hủy.</p>
       <div className="field">
         <label htmlFor="cancel-invoice-reason" className="field-label">Lý do hủy đơn (bắt buộc)</label>
         <textarea ref={reasonRef} id="cancel-invoice-reason" rows={3} className="input" aria-invalid={error ? 'true' : undefined} aria-describedby={error ? 'cancel-invoice-error' : undefined} value={reason} onChange={e => setReason(e.target.value)} autoFocus />

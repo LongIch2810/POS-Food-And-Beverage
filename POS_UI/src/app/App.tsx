@@ -106,7 +106,7 @@ const AuthenticatedRouter: React.FC<{ error: string }> = ({ error }) => {
           />
         );
       case 'invoices':
-        if (!has('invoice.read') && !has('invoice.cancel_open') && !has('invoice.cancel_paid')) {
+        if (!has('invoice.read') && !has('invoice.cancel_open')) {
           return <AccessDenied message="Yêu cầu quyền xem hoặc xử lý hóa đơn." />;
         }
         return <InvoicesScreen />;

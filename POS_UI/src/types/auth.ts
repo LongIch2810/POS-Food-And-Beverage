@@ -29,7 +29,6 @@ export type PermissionCode =
   | 'pos.sell' // Bán hàng, tạo đơn, thanh toán
   | 'invoice.read' | 'invoice.read_branch'
   | 'invoice.cancel_open' // Hủy đơn OPEN
-  | 'invoice.cancel_paid' // Hủy đơn PAID (cần quyền quản lý & ca còn mở)
   | 'store_bank_account.manage'
   | 'transfer.confirm_manual'
   | 'transfer.exception_read'

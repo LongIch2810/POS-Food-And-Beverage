@@ -167,7 +167,7 @@ Trong một transaction: khóa/kiểm tra invoice và ca, kiểm tra `Idempotenc
 
 ### 8.3 Đóng ca, đối soát và hủy đơn
 
-Mỗi người chỉ có một ca mở, mỗi branch chỉ có một ca thu ngân mở; không đóng khi còn đơn `OPEN` của ca. Đối soát đếm mù: nhận `counted_cash` trước khi tiết lộ `expectedCash`; tiền chuyển khoản không vào két. Hủy đơn đã trả tiền chỉ theo quyền/lý do/ca còn mở; giữ payment làm lịch sử, hoàn tiền mặt từ két hoặc ghi nhận hoàn chuyển khoản ngoài hệ thống theo quy tắc đã chốt. Ghi hoàn kho bằng dòng sổ mới, không sửa dòng cũ.
+Mỗi người chỉ có một ca mở, mỗi branch chỉ có một ca thu ngân mở; không đóng khi còn đơn `OPEN` của ca. Đối soát đếm mù: nhận `counted_cash` trước khi tiết lộ `expectedCash`; tiền chuyển khoản không vào két. Đơn đã trả tiền không hủy được (BR-110); thu nhầm xử lý ngoài hệ thống. Dòng hoàn kho đã ghi từ MVP giữ nguyên, sổ kho chỉ thêm dòng.
 
 ### 8.4 Kho và báo cáo
 

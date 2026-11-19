@@ -123,3 +123,6 @@
 [ui, reports, date] O-1 nhãn ngày Báo cáo thiếu năm, trái dd/MM/yyyy → 20261116-reports-short-date-label.md
 
 [testing, refactor, tdd] tdd sửa/xóa dòng test cũ khi thêm test mới, trái E2E-AC-6 (R1-1) → 20261117-orm-refactor-existing-test-lines-edited.md
+[ui, invoices, refactor] B-73 điều kiện OPEN dư trong xác nhận hủy đơn → 20261119-backlog-cancel-modal-redundant-open-check.md
+[ui, mock, invoices, test] B-74 chú thích mock cũ và thiếu test không cho hủy đơn PAID → 20261119-backlog-mock-cancel-paid-test-gap.md
+[docs, invoices, permissions, state] V1-1 ma trận quyền và sơ đồ hóa đơn chưa khớp BR-110 → 20261119-pb16-business-rules-matrix-diagram-stale.md

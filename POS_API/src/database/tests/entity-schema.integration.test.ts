@@ -24,7 +24,7 @@ async function withDatabase(run: (db: DataSource) => Promise<void>) {
     await dataSource.query(`CREATE DATABASE "${name}"`);
     created = true;
     await db.initialize();
-    assert.equal((await db.runMigrations()).length, 14);
+    assert.equal((await db.runMigrations()).length, 15);
     await run(db);
   } finally {
     if (db.isInitialized) await db.destroy();
